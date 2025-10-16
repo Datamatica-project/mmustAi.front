@@ -1,6 +1,8 @@
 import React, { lazy, Suspense } from "react";
 import styled from "styled-components";
 import { Route, Routes } from "react-router-dom";
+import Login from "../pages/Login/Login";
+import Layout from "../pages/Layout";
 
 const Loader = styled.div`
   height: 100vh;
@@ -19,8 +21,12 @@ const NotFound = lazy(() => import("../pages/Notfound/NotFound"));
 const Router = () => (
   <Suspense fallback={<Loader>Loading...</Loader>}>
     <Routes>
-      {/* 로딩 중일 때 보여줄 UI  */}
-      <Route path="/" index element={<Home />} />
+      <Route path="/login" element={<Login />} />
+
+      <Route element={<Layout />}>
+        <Route path="/" index element={<Home />} />
+      </Route>
+
       <Route path="*" element={<NotFound />} />
     </Routes>
   </Suspense>
