@@ -10,13 +10,23 @@ const Container = styled.div`
   align-items: center;
   position: relative;
 
+ 
+
   .d-icon,
   .l-icon {
     position: absolute;
     z-index: -1;
     height: 470px;
+
+    opacity: 0; 
     transition-duration: 500ms;
+    animation: fadeIn 0.5s ease-out 0.3s forwards;
   }
+  @keyframes fadeIn {
+  to {
+    opacity: 1;
+  }
+}
   .d-icon {
     bottom: 70px;
     left: 70px;
@@ -36,11 +46,13 @@ const Container = styled.div`
 
 const Main = styled.main`
   text-align: center;
+  background-color: #1c1d2fd9;
 
   .title {
     font-size: 20px;
     font-weight: 500;
     color: #ea257f;
+    margin-bottom: 10px;
   }
   .subtitle {
     font-size: 50px;
@@ -63,18 +75,75 @@ const Main = styled.main`
     margin-bottom: 45px;
   }
 
+  
+
   .highlight {
     display: inline-block;
+    margin-bottom: 10px;
+    position: relative;
+    background-color: transparent;
 
-    &.pink {
-      background-color: rgba(234, 37, 127, 0.23);
-      border: 1px solid #ea257f;
-      color: rgba(250, 204, 225, 1);
+    .bounding-box{
+      position: absolute;
+      width: 0;
+      height: 0;
+      z-index: 1;
+      animation: expandBox 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
     }
-    &.green {
+
+    @keyframes expandBox {
+      to {
+        width: 100%;
+        height: 100%;
+      }
+    }
+    .bounding-box.green{
+      animation-delay: 0.4s;
+      bottom: 0; 
+      right: 0; 
       background-color: rgba(70, 235, 131, 0.23);
       border: 1px solid #46eb83;
-      color: rgba(212, 250, 226, 1);
+      div {
+        border: 1px solid #46eb83;
+      }
+    }
+    .bounding-box.pink{
+      animation-delay: 0.2s;
+      top: 0; 
+      left: 0; 
+      background-color: rgba(234, 37, 127, 0.23);
+      border: 1px solid #ea257f;
+      div {
+        border: 1px solid #ea257f;
+      }
+    }
+    .circle{
+      width: 7px;
+      height: 7px;
+      background-color: #ffffff;
+      border-radius: 50%;
+      position: absolute;
+      z-index: 2;
+    }
+    .circle.LT{
+      top: 0;
+      left: 0;
+      transform: translate(-50%, -50%);
+    }
+    .circle.RT{
+      top: 0;
+      right: 0;
+      transform: translate(50%, -50%);
+    }
+    .circle.LB{
+      left: 0; 
+      bottom: 0;
+      transform: translate(-50%, 50%);
+    }
+    .circle.RB{
+      right: 0; 
+      bottom: 0;
+      transform: translate(50%, 50%);
     }
   }
 `;
@@ -91,6 +160,20 @@ const LoginButton = styled.button`
   cursor: pointer;
 `;
 
+// 바운딩 박스 디자인 표현
+const PinkCircles = (<div className="bounding-box pink">
+<div className="circle LT"/>
+<div className="circle RT"/>
+<div className="circle LB"/>
+<div className="circle RB"/>
+</div>)
+const GreenCircles = (<div className="bounding-box green">
+<div className="circle LT"/>
+<div className="circle RT"/>
+<div className="circle LB"/>
+<div className="circle RB"/>
+</div>)
+
 export default function Login() {
   return (
     <Container>
@@ -99,12 +182,10 @@ export default function Login() {
       <Main>
         <h1 className="title">MmustAI</h1>
         <h2 className="subtitle">
-          <div>
-            <span className="highlight pink">Label</span> Smarter,
-          </div>
-          <div>
-            Not <span className="highlight green">Harder.</span>
-          </div>
+            <div className="highlight pink">{PinkCircles}Label</div> Smarter,
+            <br />
+            Not <div className="highlight green">{GreenCircles}Harder.</div>
+
         </h2>
         <p className="description">
           Automatically analyzes images and generates labels, <br />
