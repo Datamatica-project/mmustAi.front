@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import dUrl from "../../assets/svg/D.svg";
 import lUrl from "../../assets/svg/L.svg";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import AuthForm from "../molecules/AuthForm";
 import AuthLinks from "../molecules/AuthLinks";
 
@@ -166,9 +166,10 @@ const GreenCircles = (
 );
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("example@example.com");
+  const [password, setPassword] = useState("12345678");
   const [showInput, setShowInput] = useState(false);
+  const navigate = useNavigate();
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -176,6 +177,7 @@ export default function LoginPage() {
       setShowInput(true);
     } else {
       console.log("Login");
+      navigate("/labeling");
     }
   };
   return (
@@ -202,7 +204,7 @@ export default function LoginPage() {
           onSubmit={handleLogin}
           expanded={showInput}
         />
-        
+
         <AuthLinks expanded={showInput} />
       </Main>
     </Container>

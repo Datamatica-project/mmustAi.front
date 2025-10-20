@@ -3,6 +3,7 @@ import styled from "styled-components";
 import { Route, Routes } from "react-router-dom";
 import Login from "../pages/Login/Login";
 import Layout from "../pages/Layout";
+import Labeling from "../pages/Labeling";
 
 const Loader = styled.div`
   height: 100vh;
@@ -25,6 +26,7 @@ const Router = () => (
 
       <Route element={<Layout />}>
         <Route path="/" index element={<Home />} />
+        <Route path="/labeling" element={<Labeling />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />
