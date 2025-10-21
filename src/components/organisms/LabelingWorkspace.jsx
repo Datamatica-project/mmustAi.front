@@ -4,55 +4,128 @@ import UserInfo from "../molecules/UserInfo";
 import ToolSelector from "../molecules/ToolSelector";
 import ListSection from "../molecules/ListSection";
 import ClassLabel from "../atoms/ClassLabel";
-
-// 버튼 아이콘
-const PolygonIcon = (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="20"
-    height="20"
-    fill="currentColor"
-    className="bi bi-pentagon"
-    viewBox="0 0 16 16"
-  >
-    <path d="M7.685 1.545a.5.5 0 0 1 .63 0l6.263 5.088a.5.5 0 0 1 .161.539l-2.362 7.479a.5.5 0 0 1-.476.349H4.099a.5.5 0 0 1-.476-.35L1.26 7.173a.5.5 0 0 1 .161-.54l6.263-5.087Zm8.213 5.28a.5.5 0 0 0-.162-.54L8.316.257a.5.5 0 0 0-.631 0L.264 6.286a.5.5 0 0 0-.162.538l2.788 8.827a.5.5 0 0 0 .476.349h9.268a.5.5 0 0 0 .476-.35l2.788-8.826Z" />
-  </svg>
-);
-
-const BBoxIcon = (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="20"
-    height="20"
-    fill="currentColor"
-    className="bi bi-bounding-box-circles"
-    viewBox="0 0 16 16"
-  >
-    <path d="M2 1a1 1 0 1 0 0 2 1 1 0 0 0 0-2M0 2a2 2 0 0 1 3.937-.5h8.126A2 2 0 1 1 14.5 3.937v8.126a2 2 0 1 1-2.437 2.437H3.937A2 2 0 1 1 1.5 12.063V3.937A2 2 0 0 1 0 2m2.5 1.937v8.126c.703.18 1.256.734 1.437 1.437h8.126a2 2 0 0 1 1.437-1.437V3.937A2 2 0 0 1 12.063 2.5H3.937A2 2 0 0 1 2.5 3.937M14 1a1 1 0 1 0 0 2 1 1 0 0 0 0-2M2 13a1 1 0 1 0 0 2 1 1 0 0 0 0-2m12 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2" />
-  </svg>
-);
-
-// 스타일
+import DotMenuButton from "../molecules/DotMenuButton";
+import {
+  SaveIcon,
+  SubmitIcon,
+  LeftArrowIcon,
+  RightArrowIcon,
+} from "../icons/Icons";
+import { options, classes } from "../../data";
 const Section = styled.section`
   display: flex;
-  gap: 40px;
+  justify-content: center;
+  gap: 50px;
 `;
-
 const Aside = styled.aside`
   display: flex;
   flex-direction: column;
   gap: 20px;
 `;
+const Header = styled.header`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+
+  .file-info {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    h3 {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    p {
+      font-size: 15px;
+      font-weight: 800;
+      color: #575871;
+    }
+  }
+  .action-buttons {
+    display: flex;
+    gap: 10px;
+    button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: inherit;
+      color: #fff;
+      padding: 5px 12px;
+      border-radius: 10px;
+      transition-duration: 150ms;
+    }
+    .save-btn {
+      background-color: transparent;
+      border: 2px solid #5b5d75;
+      cursor: pointer;
+      &:hover {
+        background-color: #5b5d75;
+      }
+    }
+    .submit-btn {
+      background-color: #f62579;
+      border: none;
+      cursor: pointer;
+
+      &:hover {
+        background-color: #e01f6b;
+      }
+    }
+  }
+`;
+const ImageContainer = styled.div`
+  width: 790px;
+  height: 600px;
+  margin-bottom: 20px;
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+const Navigation = styled.nav`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  button {
+    font-size: 15px;
+    font-weight: 700;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    padding: 5px 12px;
+    gap: 11px;
+    border: 1px solid #5b5d75;
+    color: #fff;
+    background-color: transparent;
+    cursor: pointer;
+    transition-duration: 150ms;
+
+    &:hover {
+      background-color: #5b5d75;
+    }
+  }
+
+  span {
+    font-size: 17px;
+    font-weight: 700;
+    font-family: inherit;
+  }
+`;
 
 export default function LabelingWorkspace() {
   const [selectButton, setSelectButton] = useState("Polygon");
-  const options = [
-    { id: "Polygon", icon: PolygonIcon, label: "Polygon" },
-    { id: "Bounding Box", icon: BBoxIcon, label: "Bounding Box" },
-  ];
+  const [selectedClass, setSelectedClass] = useState(null);
 
   return (
     <Section>
+      {/* 왼쪽 사이드바 */}
       <Aside>
         {/* 작업자 정보 */}
         <UserInfo />
@@ -62,12 +135,60 @@ export default function LabelingWorkspace() {
           currentValue={selectButton}
           onChange={setSelectButton}
         />
+        {/* 클래스 목록 */}
         <ListSection title={"Classes"}>
-          <ClassLabel />
+          {classes.map((cls) => (
+            <ClassLabel
+              key={cls.id}
+              type="Class"
+              color={cls.color}
+              name={cls.name}
+              isSelected={selectedClass === cls.id}
+              onClick={() => setSelectedClass(cls.id)}
+            >
+              <span className="objectCount">{cls.objectCount}</span>
+            </ClassLabel>
+          ))}
         </ListSection>
-        <ListSection title={"Objects"}></ListSection>
+
+        {/* 클래스별 각 객체 목록 */}
+        <ListSection title={"Objects"}>
+          <ClassLabel type="Object" color="red" name="Object">
+            <DotMenuButton />
+          </ClassLabel>
+        </ListSection>
       </Aside>
-      <div>main area</div>
+
+      {/* 이미지 영역 */}
+      <main>
+        {/* 헤더 */}
+        <Header>
+          <div className="file-info">
+            <h3>Image001.jpg</h3>
+            <p>1 hour ago</p>
+          </div>
+          <div className="action-buttons">
+            <button className="save-btn">
+              {SaveIcon} <span>Save</span>
+            </button>
+            <button className="submit-btn">{SubmitIcon}Submit</button>
+          </div>
+        </Header>
+
+        {/* 이미지 */}
+        <ImageContainer className="image-container">
+          <img src="https://picsum.photos/800/600" alt="placeholder" />
+        </ImageContainer>
+
+        {/* 하단 네비게이션 */}
+        <footer>
+          <Navigation>
+            <button>{LeftArrowIcon}Prev</button>
+            <span>01/10</span>
+            <button>{RightArrowIcon}Next</button>
+          </Navigation>
+        </footer>
+      </main>
     </Section>
   );
 }

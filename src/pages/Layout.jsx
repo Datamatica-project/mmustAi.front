@@ -7,17 +7,16 @@ const Container = styled.div`
   display: flex;
   flex-direction: row; // 가로 배치 (기본값)
   height: 100vh; // 고정 높이
-  overflow: hidden;
+  /* overflow: hidden; */
 `;
 
 const Main = styled.main`
-  width: 100%;
-
+  width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
   .page-container {
     width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 70px 20px 20px 20px;
+    padding-top: 70px;
     box-sizing: border-box;
   }
 `;

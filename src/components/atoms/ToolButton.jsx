@@ -2,6 +2,7 @@ import React from "react";
 import styled from "styled-components";
 
 const Button = styled.button`
+  white-space: nowrap;
   background-color: #282943;
   border-radius: 10px;
   border: none;
