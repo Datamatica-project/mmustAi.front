@@ -12,6 +12,7 @@ import {
   RightArrowIcon,
 } from "../icons/Icons";
 import { options, classes } from "../../data";
+import KonvaCanvas from "./KonvaCanvas";
 const Section = styled.section`
   display: flex;
   justify-content: center;
@@ -80,6 +81,7 @@ const Header = styled.header`
 const ImageContainer = styled.div`
   width: 790px;
   height: 600px;
+  position: relative;
   margin-bottom: 20px;
   img {
     width: 100%;
@@ -177,6 +179,7 @@ export default function LabelingWorkspace() {
 
         {/* 이미지 */}
         <ImageContainer className="image-container">
+          <KonvaCanvas />
           <img src="https://picsum.photos/800/600" alt="placeholder" />
         </ImageContainer>
 
