@@ -11,7 +11,7 @@ import {
   LeftArrowIcon,
   RightArrowIcon,
 } from "../icons/Icons";
-import { options, classes } from "../../data";
+import { options, classes, objects } from "../../data";
 import KonvaCanvas from "./KonvaCanvas";
 const Section = styled.section`
   display: flex;
@@ -124,6 +124,8 @@ const Navigation = styled.nav`
 export default function LabelingWorkspace() {
   const [selectButton, setSelectButton] = useState("Polygon");
   const [selectedClass, setSelectedClass] = useState(null);
+  const [isClassDropdownOpen, setIsClassDropdownOpen] = useState(false);
+  const [isObjectDropdownOpen, setIsObjectDropdownOpen] = useState(false);
 
   return (
     <Section>
@@ -138,7 +140,11 @@ export default function LabelingWorkspace() {
           onChange={setSelectButton}
         />
         {/* 클래스 목록 */}
-        <ListSection title={"Classes"}>
+        <ListSection
+          title={"Classes"}
+          isOpen={isClassDropdownOpen}
+          onToggle={() => setIsClassDropdownOpen(!isClassDropdownOpen)}
+        >
           {classes.map((cls) => (
             <ClassLabel
               key={cls.id}
@@ -154,10 +160,21 @@ export default function LabelingWorkspace() {
         </ListSection>
 
         {/* 클래스별 각 객체 목록 */}
-        <ListSection title={"Objects"}>
-          <ClassLabel type="Object" color="red" name="Object">
-            <DotMenuButton />
-          </ClassLabel>
+        <ListSection
+          title={"Objects"}
+          isOpen={isObjectDropdownOpen}
+          onToggle={() => setIsObjectDropdownOpen(!isObjectDropdownOpen)}
+        >
+          {objects.map((obj) => (
+            <ClassLabel
+              key={obj.id}
+              type="Object"
+              color={obj.color}
+              name={obj.name}
+            >
+              <DotMenuButton />
+            </ClassLabel>
+          ))}
         </ListSection>
       </Aside>
 
@@ -177,9 +194,10 @@ export default function LabelingWorkspace() {
           </div>
         </Header>
 
-        {/* 이미지 */}
+        {/* 이미지 컨테이너 */}
         <ImageContainer className="image-container">
-          <KonvaCanvas />
+          {/* 캔버스 */}
+          <KonvaCanvas selectButton={selectButton} classes={classes} />
           <img src="https://picsum.photos/800/600" alt="placeholder" />
         </ImageContainer>
 

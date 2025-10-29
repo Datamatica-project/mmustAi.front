@@ -8,9 +8,17 @@ export const options = [
 
 // 클래스 목록
 export const classes = [
-  { id: "People", color: "red", name: "People", objectCount: 5 },
-  { id: "Car", color: "blue", name: "Car", objectCount: 10 },
-  { id: "Bike", color: "green", name: "Bike", objectCount: 15 },
-  { id: "Bus", color: "yellow", name: "Bus", objectCount: 20 },
-  { id: "Train", color: "purple", name: "Train", objectCount: 25 },
+  { id: "People", color: "red", name: "People", objectCount: 0 },
+  { id: "Car", color: "blue", name: "Car", objectCount: 0 },
+  { id: "Bike", color: "green", name: "Bike", objectCount: 0 },
+  { id: "Bus", color: "yellow", name: "Bus", objectCount: 0 },
+  { id: "Train", color: "purple", name: "Train", objectCount: 0 },
+];
+
+export const objects = [
+  { id: "People", color: "red", name: "John Doe" },
+  { id: "Car", color: "blue", name: "Car" },
+  { id: "Bike", color: "green", name: "Bike" },
+  { id: "Bus", color: "yellow", name: "Bus" },
+  { id: "Train", color: "purple", name: "Train" },
 ];

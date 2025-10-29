@@ -10,7 +10,7 @@ const DotMenuButtonContainer = styled.div`
 `;
 const MenuButton = styled.button`
   position: relative;
-  z-index: 1000;
+  z-index: 10;
   background: none;
   border: none;
   color: white;
@@ -37,7 +37,7 @@ const DropdownMenu = styled.ul`
   display: flex;
   flex-direction: column;
   gap: 10px;
-  z-index: 10;
+  z-index: 20;
   max-height: 0;
 
   padding: 0;
