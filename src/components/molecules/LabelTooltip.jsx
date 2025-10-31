@@ -84,18 +84,19 @@ const ButtonContainer = styled.div`
   }
 
   .clear-btn {
-    color: #F44468;
+    color: #f44468;
     &:hover {
-      background-color: #F02B50;
-      color:#fff;
+      background-color: #f02b50;
+      color: #fff;
     }
   }
   .confirm-btn {
-    color: #46EB83;
+    color: #46eb83;
     &:hover {
-      background-color: #32D36D;
-      color:#fff;
+      background-color: #32d36d;
+      color: #fff;
     }
+  }
 `;
 export default function LabelTooltip({
   x,

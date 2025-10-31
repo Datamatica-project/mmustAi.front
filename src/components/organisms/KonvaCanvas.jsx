@@ -59,9 +59,36 @@ export default function KonvaCanvas({ selectButton, classes }) {
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (mode !== "polygon" || showTooltip) return;
+
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === "z" &&
+        !e.shiftKey
+      ) {
+        e.preventDefault();
+        setPolygonPoints((prev) => {
+          if (prev.length === 0) return prev;
+          const next = prev.slice(0, -1);
+          if (next.length === 0) setMousePosition(null);
+          return next;
+        });
+      }
+
+      if (e.key === "Escape" || e.key === "Backspace") {
+        setPolygonPoints([]);
+        setMousePosition(null);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mode, showTooltip]);
+
   // 도형 완성 시 툴팁 표시
   const handleShapeComplete = (shapeData) => {
-    console.log(shapeData);
     let centerX, centerY;
 
     if (shapeData.type === "boundingBox") {
@@ -78,6 +105,16 @@ export default function KonvaCanvas({ selectButton, classes }) {
     setCurrentShape(shapeData);
   };
 
+  const handleOnClick = (e) => {
+    if (e.evt.button !== 0) return;
+    e.evt.stopPropagation();
+    const stage = e.target.getStage();
+    const point = stage.getPointerPosition();
+
+    if (mode !== "polygon") return;
+    setPolygonPoints([...polygonPoints, { x: point.x, y: point.y }]);
+  };
+
   // 바운딩 박스 이벤트 핸들러
   const handleMouseDown = (e) => {
     const stage = e.target.getStage();
@@ -92,8 +129,6 @@ export default function KonvaCanvas({ selectButton, classes }) {
         id: `rect-${rectangles.length + 1}`,
       });
       setIsDragging(true);
-    } else if (mode === "polygon") {
-      setPolygonPoints([...polygonPoints, { x: point.x, y: point.y }]);
     }
   };
 
@@ -118,6 +153,7 @@ export default function KonvaCanvas({ selectButton, classes }) {
 
   // 마우스 업 시 바운딩 박스 완성
   const handleMouseUp = () => {
+    if (mode !== "boundingBox") return;
     if (newRect) {
       setRectangles([...rectangles, newRect]);
       handleShapeComplete({
@@ -134,8 +170,9 @@ export default function KonvaCanvas({ selectButton, classes }) {
   };
 
   // 이중 클릭 시 폴리곤 완성
-  const handleDoubleClick = (e) => {
+  const handlePolygonComplete = (e) => {
     if (mode !== "polygon") return;
+    e.evt.preventDefault();
 
     if (polygonPoints.length >= 3) {
       const closedPoints = [...polygonPoints, polygonPoints[0]];
@@ -163,10 +200,24 @@ export default function KonvaCanvas({ selectButton, classes }) {
       id: labelData.id,
     };
     console.log(labeledObject);
+    setLabelData({
+      className: "No Class",
+      objectName: "",
+      id: `obj_${Date.now()}`,
+    });
     setShowTooltip(false);
   };
 
   const handleLabelClear = () => {
+    // 취소 시 생성된 도형 제거
+    if (mode === "polygon") {
+      setPolygonPoints([]);
+      setMousePosition(null);
+      setCompletedPolygons((prev) => prev.slice(0, -1));
+    } else if (mode === "boundingBox") {
+      setRectangles((prev) => prev.slice(0, -1));
+    }
+
     setShowTooltip(false);
     setLabelData({
       className: "No Class",
@@ -183,7 +234,8 @@ export default function KonvaCanvas({ selectButton, classes }) {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onDblClick={handleDoubleClick}
+        onContextMenu={handlePolygonComplete}
+        onClick={handleOnClick}
       >
         <Layer>
           {rectangles.map((rect) => (
@@ -195,6 +247,7 @@ export default function KonvaCanvas({ selectButton, classes }) {
               height={rect.height}
               stroke="#f62579"
               strokeWidth={2}
+              fill="#f6257979"
             />
           ))}
 
@@ -204,7 +257,7 @@ export default function KonvaCanvas({ selectButton, classes }) {
               y={newRect.y}
               width={newRect.width}
               height={newRect.height}
-              stroke="yellow"
+              stroke="#f62579"
               dash={[4, 4]}
             />
           )}
@@ -214,7 +267,7 @@ export default function KonvaCanvas({ selectButton, classes }) {
                 ...polygonPoints.flatMap((p) => [p.x, p.y]),
                 ...(mousePosition ? [mousePosition.x, mousePosition.y] : []),
               ]} // 일차원 배열로 변환
-              stroke="blue"
+              stroke="#33D3ED"
               strokeWidth={2}
               strokeDashArray={mousePosition ? [5, 5] : undefined}
               closed={false}
@@ -224,9 +277,10 @@ export default function KonvaCanvas({ selectButton, classes }) {
             <Line
               key={index}
               points={polygon.flatMap((p) => [p.x, p.y])} // 일차원 배열로 변환
-              stroke="green"
+              stroke="#33D3ED"
               strokeWidth={2}
               closed={true}
+              fill="#33d4ed7c"
             />
           ))}
         </Layer>
