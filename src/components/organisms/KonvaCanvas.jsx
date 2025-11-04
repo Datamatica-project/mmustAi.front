@@ -19,13 +19,15 @@ export default function KonvaCanvas({ selectButton, classes }) {
   const containerRef = useRef(null);
   const [size, setSize] = useState({ width: 790, height: 600 });
   const [mode, setMode] = useState("Bounding Box");
-  const [rectangles, setRectangles] = useState([]); // 바운딩 박스 목록
+
+  const [shapes, setShapes] = useState([]); // 모든 도형 목록
+  const [maxZIndex, setMaxZIndex] = useState(0); // 최대 Z 인덱스
+
   const [newRect, setNewRect] = useState(null); // 새로운 바운딩 박스
   const [isDragging, setIsDragging] = useState(false); // 드래그 상태
 
   const [polygonPoints, setPolygonPoints] = useState([]); // 폴리곤 점 목록
   const [mousePosition, setMousePosition] = useState(null); // 폴리곤 마우스 위치
-  const [completedPolygons, setCompletedPolygons] = useState([]);
 
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
@@ -36,6 +38,7 @@ export default function KonvaCanvas({ selectButton, classes }) {
     id: `obj_${Date.now()}`,
   });
 
+  // 선택 모드 업데이트
   useEffect(() => {
     if (selectButton === "Bounding Box") {
       setMode("boundingBox");
@@ -59,6 +62,7 @@ export default function KonvaCanvas({ selectButton, classes }) {
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
+  // 폴리곤 키보드 이벤트
   useEffect(() => {
     const onKeyDown = (e) => {
       if (mode !== "polygon" || showTooltip) return;
@@ -105,6 +109,7 @@ export default function KonvaCanvas({ selectButton, classes }) {
     setCurrentShape(shapeData);
   };
 
+  // 클릭 시 폴리곤 점 추가
   const handleOnClick = (e) => {
     if (e.evt.button !== 0) return;
     e.evt.stopPropagation();
@@ -126,7 +131,7 @@ export default function KonvaCanvas({ selectButton, classes }) {
         y: point.y,
         width: 0,
         height: 0,
-        id: `rect-${rectangles.length + 1}`,
+        id: `bbox-${Date.now()}-${Math.random()}`,
       });
       setIsDragging(true);
     }
@@ -155,32 +160,48 @@ export default function KonvaCanvas({ selectButton, classes }) {
   const handleMouseUp = () => {
     if (mode !== "boundingBox") return;
     if (newRect) {
-      setRectangles([...rectangles, newRect]);
+      const newShape = {
+        type: "boundingBox",
+        zIndex: maxZIndex + 1,
+        ...newRect,
+      };
+      setShapes([...shapes, newShape]);
+      setMaxZIndex(maxZIndex + 1);
+
       handleShapeComplete({
         type: "boundingBox",
         x: newRect.x,
         y: newRect.y,
         width: newRect.width,
         height: newRect.height,
-        id: `rect-${rectangles.length + 1}`,
+        id: newRect.id,
       });
       setNewRect(null);
     }
     setIsDragging(false);
   };
 
-  // 이중 클릭 시 폴리곤 완성
+  // 폴리곤 완성
   const handlePolygonComplete = (e) => {
     if (mode !== "polygon") return;
     e.evt.preventDefault();
 
     if (polygonPoints.length >= 3) {
       const closedPoints = [...polygonPoints, polygonPoints[0]];
-      setCompletedPolygons([...completedPolygons, closedPoints]);
+
+      const newShape = {
+        type: "polygon",
+        zIndex: maxZIndex + 1,
+        points: closedPoints,
+        id: `polygon-${Date.now()}-${Math.random()}`,
+      };
+      setShapes([...shapes, newShape]);
+      setMaxZIndex(maxZIndex + 1);
+
       handleShapeComplete({
         type: "polygon",
         points: closedPoints,
-        id: `polygon-${completedPolygons.length + 1}`,
+        id: `polygon-${Date.now()}-${Math.random()}`,
       });
       setPolygonPoints([]);
       setMousePosition(null);
@@ -199,7 +220,6 @@ export default function KonvaCanvas({ selectButton, classes }) {
       objectName: labelData.objectName,
       id: labelData.id,
     };
-    console.log(labeledObject);
     setLabelData({
       className: "No Class",
       objectName: "",
@@ -208,15 +228,15 @@ export default function KonvaCanvas({ selectButton, classes }) {
     setShowTooltip(false);
   };
 
+  // 라벨 취소
   const handleLabelClear = () => {
     // 취소 시 생성된 도형 제거
     if (mode === "polygon") {
       setPolygonPoints([]);
       setMousePosition(null);
-      setCompletedPolygons((prev) => prev.slice(0, -1));
-    } else if (mode === "boundingBox") {
-      setRectangles((prev) => prev.slice(0, -1));
     }
+
+    setShapes((prev) => prev.slice(0, -1));
 
     setShowTooltip(false);
     setLabelData({
@@ -238,18 +258,35 @@ export default function KonvaCanvas({ selectButton, classes }) {
         onClick={handleOnClick}
       >
         <Layer>
-          {rectangles.map((rect) => (
-            <Rect
-              key={rect.id}
-              x={rect.x}
-              y={rect.y}
-              width={rect.width}
-              height={rect.height}
-              stroke="#f62579"
-              strokeWidth={2}
-              fill="#f6257979"
-            />
-          ))}
+          {shapes
+            .sort((a, b) => a.zIndex - b.zIndex)
+            .map((shape) => {
+              if (shape.type === "boundingBox") {
+                return (
+                  <Rect
+                    key={shape.id}
+                    x={shape.x}
+                    y={shape.y}
+                    width={shape.width}
+                    height={shape.height}
+                    stroke="#f62579"
+                    strokeWidth={2}
+                    fill="#f6257979"
+                  />
+                );
+              } else if (shape.type === "polygon") {
+                return (
+                  <Line
+                    key={shape.id}
+                    points={shape.points.flatMap((p) => [p.x, p.y])}
+                    stroke="#33D3ED"
+                    strokeWidth={2}
+                    closed={true}
+                    fill="#33d4ed7c"
+                  />
+                );
+              }
+            })}
 
           {newRect && (
             <Rect
@@ -273,16 +310,6 @@ export default function KonvaCanvas({ selectButton, classes }) {
               closed={false}
             />
           )}
-          {completedPolygons.map((polygon, index) => (
-            <Line
-              key={index}
-              points={polygon.flatMap((p) => [p.x, p.y])} // 일차원 배열로 변환
-              stroke="#33D3ED"
-              strokeWidth={2}
-              closed={true}
-              fill="#33d4ed7c"
-            />
-          ))}
         </Layer>
       </Stage>
       {showTooltip && (
