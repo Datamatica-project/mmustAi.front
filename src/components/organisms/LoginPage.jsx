@@ -5,6 +5,8 @@ import lUrl from "../../assets/svg/L.svg";
 import { Link, useNavigate } from "react-router-dom";
 import AuthForm from "../molecules/AuthForm";
 import AuthLinks from "../molecules/AuthLinks";
+import { usePostLogin } from "../../hooks/useUser";
+import { useAuthStore } from "../../store/authStore";
 
 const Container = styled.div`
   height: 100vh;
@@ -166,18 +168,34 @@ const GreenCircles = (
 );
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("example@example.com");
-  const [password, setPassword] = useState("12345678");
+  const [email, setEmail] = useState("user1@test.com");
+  const [password, setPassword] = useState("Password123!");
   const [showInput, setShowInput] = useState(false);
   const navigate = useNavigate();
 
+  const loginMutation = usePostLogin();
+  const { setToken } = useAuthStore();
   const handleLogin = (e) => {
     e.preventDefault();
     if (!showInput) {
       setShowInput(true);
     } else {
-      console.log("Login");
-      navigate("/labeling");
+      loginMutation.mutate(
+        { email, password },
+        {
+          onSuccess: (res) => {
+            const accessToken = res.data.data.accessToken;
+            setToken(accessToken);
+            navigate("/labeling");
+          },
+          onError: (error) => {
+            console.error(
+              "❌ 로그인 실패",
+              error.response?.data || error.message
+            );
+          },
+        }
+      );
     }
   };
   return (

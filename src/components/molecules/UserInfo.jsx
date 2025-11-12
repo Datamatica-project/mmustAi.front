@@ -25,12 +25,12 @@ const Container = styled.div`
   }
 `;
 
-export default function UserInfo({ userName = "John Doe" }) {
+export default function UserInfo({ role = "worker", userName = "John Doe" }) {
   return (
     <Container>
       {UserIcon}
       <div className="user-info-container">
-        <h3 className="user-info-title">worker</h3>
+        <h3 className="user-info-title">{role}</h3>
         <span className="user-info-name">{userName}</span>
       </div>
     </Container>

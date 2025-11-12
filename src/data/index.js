@@ -1,11 +1,19 @@
-import { PolygonIcon, BBoxIcon } from "../components/icons/Icons";
+import {
+  PolygonIcon,
+  BBoxIcon,
+  ApproveIcon,
+  RejectIcon,
+} from "../components/icons/Icons";
 // LabelingWorkspace에 사용되는 데이터
 // 작업 도구 선택
-export const options = [
+export const inspectionOptions = [
+  { id: "Approve", icon: ApproveIcon, label: "Approve" },
+  { id: "Reject", icon: RejectIcon, label: "Reject" },
+];
+export const labelingOptions = [
   { id: "Polygon", icon: PolygonIcon, label: "Polygon" },
   { id: "Bounding Box", icon: BBoxIcon, label: "Bounding Box" },
 ];
-
 // 클래스 목록
 export const classes = [
   { id: "People", color: "red", name: "People", objectCount: 0 },

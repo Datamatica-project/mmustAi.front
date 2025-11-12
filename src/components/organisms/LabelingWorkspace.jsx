@@ -11,7 +11,7 @@ import {
   LeftArrowIcon,
   RightArrowIcon,
 } from "../icons/Icons";
-import { options, classes, objects } from "../../data";
+import { labelingOptions, classes, objects } from "../../data";
 import KonvaCanvas from "./KonvaCanvas";
 const Section = styled.section`
   display: flex;
@@ -135,7 +135,7 @@ export default function LabelingWorkspace() {
         <UserInfo />
         {/* 작업 도구 선택 */}
         <ToolSelector
-          options={options}
+          options={labelingOptions}
           currentValue={selectButton}
           onChange={setSelectButton}
         />

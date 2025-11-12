@@ -20,6 +20,7 @@ const Main = styled.main`
     box-sizing: border-box;
   }
 `;
+
 export default function Layout() {
   const location = useLocation();
   if (location.pathname === "/") {

@@ -54,6 +54,9 @@ export default function Gnb() {
         <li>
           <NavLinks to="/labeling">Labeling</NavLinks>
         </li>
+        <li>
+          <NavLinks to="/inspection">Inspection</NavLinks>
+        </li>
       </ul>
     </Nav>
   );
