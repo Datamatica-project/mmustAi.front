@@ -44,7 +44,7 @@ const NavLinks = styled(NavLink)`
 export default function Gnb() {
   return (
     <Nav>
-      <Link to="/">
+      <Link to="/login">
         <img src={logoPng} alt="logo" width={70} height={70} />
       </Link>
       <ul>

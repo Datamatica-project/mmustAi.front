@@ -1,0 +1,174 @@
+import React from "react";
+import styled from "styled-components";
+import Taglabel from "../atoms/Taglabel";
+import { Link } from "react-router-dom";
+
+const Card = styled(Link)`
+  cursor: pointer;
+  text-decoration: none;
+  display: flex;
+  gap: 20px;
+  flex-direction: column;
+  padding: 23px;
+  background-color: #21213d;
+  border-radius: 15px;
+`;
+const CardHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 10px;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+  }
+  p {
+    font-size: 15px;
+    color: #a7a7a7;
+    font-weight: 400;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+  }
+  .role-container {
+    top: 10px;
+    right: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    .role {
+      font-weight: 700;
+      color: #f62579;
+    }
+    .date {
+      font-size: 15px;
+      color: #a7a7a7;
+      font-weight: 400;
+    }
+  }
+`;
+const CardBody = styled.div`
+  display: flex;
+  gap: 30px;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  .progress-bar-container {
+    width: 100%;
+  }
+  .progress-bar-text {
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    span:first-child {
+      font-size: 15px;
+      font-weight: 500;
+      color: #b6b5c5;
+    }
+    span:last-child {
+      font-size: 12px;
+      font-weight: 500;
+      color: #ffffff;
+    }
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 10px;
+    border-radius: 5px;
+    background-color: #30324e;
+    position: relative;
+  }
+  .progress-bar-fill {
+    transition: width 0.3s ease-in-out;
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    border-radius: 5px;
+    background: linear-gradient(135deg, #f4c37e 0%, #f4c37e 100%);
+    box-shadow: 0 0 10px 3px rgba(244, 195, 126, 0.25);
+    width: ${({ $width }) => `${$width || 0}%`};
+  }
+
+  .Tags-container {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+`;
+
+export default function ProjectCard({
+  title,
+  description,
+  role,
+  date,
+  progress,
+  tags,
+}) {
+  const TagColors = {
+    tree: "#243447",
+    person: "#1F3B2F",
+    plant: "#5A3D2B",
+    car: "#3A245D",
+    animal: "#394B63",
+    ect1: "#1C1A1E",
+    ect2: "#595963",
+    ect3: "#6B4B32",
+    ect4: "#18392B",
+  };
+  const RoleColors = {
+    PM: "#F62579",
+    Labeler: "#219EBC  ",
+    Reviewer: "#06A77D ",
+    SDO: "#7209B7 ",
+  };
+  const id = 1;
+  return (
+    <Card to={`/project/${id}`}>
+      <CardHeader>
+        <div>
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
+        <div className="role-container">
+          <span className="date">{date}</span>
+          <Taglabel label={role} color={RoleColors[role] || "#3A245D"} />
+        </div>
+      </CardHeader>
+      <CardBody>
+        <div className="progress-bar-container">
+          <div className="progress-bar-text">
+            <span>Task Progress</span>
+            <span>{progress}% Completed</span>
+          </div>
+          <div className="progress-bar">
+            <div
+              className="progress-bar-fill"
+              style={{ width: `${progress || 0}%` }}
+            ></div>
+          </div>
+        </div>
+        <div className="Tags-container">
+          {tags.map((tag) => (
+            <Taglabel
+              key={tag}
+              label={tag}
+              color={TagColors[tag] || "#3A245D"}
+            />
+          ))}
+        </div>
+      </CardBody>
+    </Card>
+  );
+}

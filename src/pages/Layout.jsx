@@ -23,9 +23,9 @@ const Main = styled.main`
 
 export default function Layout() {
   const location = useLocation();
-  if (location.pathname === "/") {
-    return <Navigate to="/login" replace />;
-  }
+  // if (location.pathname === "/") {
+  //   return <Navigate to="/login" replace />;
+  // }
 
   return (
     <Container>

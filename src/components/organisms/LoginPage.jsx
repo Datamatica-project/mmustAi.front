@@ -181,13 +181,15 @@ export default function LoginPage() {
       setShowInput(true);
     } else {
       loginMutation.mutate(
-        { email, password },
+        { email, password }, // 로그인 요청 데이터
         {
+          // 로그인 성공 시 실행
           onSuccess: (res) => {
             const accessToken = res.data.data.accessToken;
-            setToken(accessToken);
-            navigate("/labeling");
+            setToken(accessToken); // 토큰 저장
+            navigate("/");
           },
+          // 로그인 실패 시 실행
           onError: (error) => {
             console.error(
               "❌ 로그인 실패",

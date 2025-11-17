@@ -16,9 +16,11 @@ export const usePostLogin = () => {
   });
 };
 
-export const useGetRefreshToken = () => {
+export const useGetRefreshToken = (token, hasTriedRefresh) => {
   return useQuery({
     queryKey: ["refreshToken"],
     queryFn: getRefreshToken,
+    enabled: !token && hasTriedRefresh === false,
+    retry: false,
   });
 };
