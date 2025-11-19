@@ -8,6 +8,7 @@ const Container = styled.div`
   flex-direction: row; // 가로 배치 (기본값)
   height: 100vh; // 고정 높이
   /* overflow: hidden; */
+  padding-left: 135px;
 `;
 
 const Main = styled.main`

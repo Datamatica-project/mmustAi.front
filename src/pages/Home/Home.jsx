@@ -13,11 +13,17 @@ import IconButton from "../../components/atoms/IconButton";
 import ProjectCard from "../../components/molecules/ProjectCard";
 
 // Todo: 프로젝트 데이터 받아오기, map 함수로 교체하여 사용하기
-
 const Container = styled.div`
   width: 100%;
   height: 100%;
   background-color: #1c1d2f;
+
+  .recent-projects {
+    font-size: 17px;
+    font-weight: 500;
+    color: #ffffff;
+    line-height: 2;
+  }
 `;
 
 const Title = styled.h1`
@@ -79,7 +85,9 @@ const ActionBar = styled.div`
   margin-top: 20px;
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: 15px;
+  border-bottom: 1px solid #313250;
+  padding-bottom: 10px;
 `;
 
 const SearchInput = styled.div`
@@ -99,7 +107,7 @@ const SearchInput = styled.div`
     height: 40px;
     padding: 0 12px;
     border: 1px solid #434c63;
-    border-radius: 4px;
+    border-radius: 10px;
 
     /* border-radius: 10px; */
     /* background-color: #2c2d3f; */
@@ -120,7 +128,7 @@ const SearchInput = styled.div`
 `;
 
 const Main = styled.main`
-  margin-top: 50px;
+  margin-top: 10px;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 20px;
@@ -142,6 +150,34 @@ export default function Home() {
     TagsIcon,
     Clipboard2CheckIcon,
     RobotIcon,
+  ];
+  const data = [
+    {
+      id: 1,
+      title: "Project_1",
+      description: "Project Description",
+      role: "PM",
+      date: "2025-08-01",
+      progress: 70,
+      tags: [
+        { id: 1, name: "tree" },
+        { id: 2, name: "person" },
+        { id: 3, name: "plant" },
+      ],
+    },
+    {
+      id: 2,
+      title: "Project_2",
+      description: "Project Description",
+      role: "Labeler",
+      date: "2025-08-01",
+      progress: 50,
+      tags: [
+        { id: 1, name: "car" },
+        { id: 2, name: "animal" },
+        { id: 3, name: "ect1" },
+      ],
+    },
   ];
 
   return (
@@ -177,15 +213,11 @@ export default function Home() {
           />
         </ActionBar>
       </header>
+      <h2 className="recent-projects">Recent Projects</h2>
       <Main>
-        <ProjectCard
-          title="Project_1"
-          description="Project Description"
-          role="Labeler"
-          date="2025-08-01"
-          progress="70"
-          tags={["tree", "person", "plant"]}
-        />
+        {data.map((project) => (
+          <ProjectCard key={project.id} project={project} />
+        ))}
       </Main>
     </Container>
   );

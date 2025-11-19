@@ -4,6 +4,10 @@ import logoPng from "../../assets/image/datamatica_Logo.png";
 import { Link, NavLink } from "react-router-dom";
 
 const Nav = styled.nav`
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;

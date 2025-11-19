@@ -108,14 +108,7 @@ const CardBody = styled.div`
   }
 `;
 
-export default function ProjectCard({
-  title,
-  description,
-  role,
-  date,
-  progress,
-  tags,
-}) {
+export default function ProjectCard({ project }) {
   const TagColors = {
     tree: "#243447",
     person: "#1F3B2F",
@@ -133,38 +126,41 @@ export default function ProjectCard({
     Reviewer: "#06A77D ",
     SDO: "#7209B7 ",
   };
-  const id = 1;
+
   return (
-    <Card to={`/project/${id}`}>
+    <Card to={`/project/${project.id}`}>
       <CardHeader>
         <div>
-          <h2>{title}</h2>
-          <p>{description}</p>
+          <h2>{project.title}</h2>
+          <p>{project.description}</p>
         </div>
         <div className="role-container">
-          <span className="date">{date}</span>
-          <Taglabel label={role} color={RoleColors[role] || "#3A245D"} />
+          <span className="date">{project.date}</span>
+          <Taglabel
+            label={project.role}
+            color={RoleColors[project.role] || "#3A245D"}
+          />
         </div>
       </CardHeader>
       <CardBody>
         <div className="progress-bar-container">
           <div className="progress-bar-text">
             <span>Task Progress</span>
-            <span>{progress}% Completed</span>
+            <span>{project.progress}% Completed</span>
           </div>
           <div className="progress-bar">
             <div
               className="progress-bar-fill"
-              style={{ width: `${progress || 0}%` }}
+              style={{ width: `${project.progress || 0}%` }}
             ></div>
           </div>
         </div>
         <div className="Tags-container">
-          {tags.map((tag) => (
+          {project.tags.map((tag) => (
             <Taglabel
-              key={tag}
-              label={tag}
-              color={TagColors[tag] || "#3A245D"}
+              key={tag.id}
+              label={tag.name}
+              color={TagColors[tag.name] || "#3A245D"}
             />
           ))}
         </div>
