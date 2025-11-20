@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import styled from "styled-components";
 import ImageTable from "../components/molecules/ImageTable";
 import TaskInfo from "../components/molecules/TaskInfo";
@@ -38,6 +38,8 @@ const TaskContent = styled.div`
 `;
 
 export default function Task() {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const TaskData = {
     name: "Task 1",
     projectName: "Project 1",
@@ -55,7 +57,12 @@ export default function Task() {
         <span className="task-total-image">{TaskData.total} images</span>
       </TaskHeader>
       <TaskContent>
-        <ImageTable imageData={ImageData} />
+        <ImageTable
+          imageData={ImageData}
+          page={page}
+          pageSize={pageSize}
+          setPage={setPage}
+        />
         <TaskInfo data={TaskData} />
       </TaskContent>
     </main>

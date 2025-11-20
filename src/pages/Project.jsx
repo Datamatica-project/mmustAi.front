@@ -99,6 +99,10 @@ const Overview = styled.div`
 `;
 
 const TaskContainer = styled.div`
+  min-height: 900px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
   width: 1200px;
   margin-top: 40px;
   padding-bottom: 40px;

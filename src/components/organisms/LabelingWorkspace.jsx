@@ -10,9 +10,12 @@ import {
   SubmitIcon,
   LeftArrowIcon,
   RightArrowIcon,
+  PolygonIcon,
+  BBoxIcon,
 } from "../icons/Icons";
-import { labelingOptions, classes, objects } from "../../data";
+import { classes, objects } from "../../data";
 import KonvaCanvas from "./KonvaCanvas";
+
 const Section = styled.section`
   display: flex;
   justify-content: center;
@@ -124,27 +127,26 @@ const Navigation = styled.nav`
 export default function LabelingWorkspace() {
   const [selectButton, setSelectButton] = useState("Polygon");
   const [selectedClass, setSelectedClass] = useState(null);
-  const [isClassDropdownOpen, setIsClassDropdownOpen] = useState(false);
-  const [isObjectDropdownOpen, setIsObjectDropdownOpen] = useState(false);
+
+  const labelingButtonsOptions = [
+    { icon: PolygonIcon, title: "Polygon" },
+    { icon: BBoxIcon, title: "Bounding Box" },
+  ];
 
   return (
     <Section>
       {/* 왼쪽 사이드바 */}
       <Aside>
         {/* 작업자 정보 */}
-        <UserInfo />
+        <UserInfo role="Labeler" userName="John Doe" />
         {/* 작업 도구 선택 */}
         <ToolSelector
-          options={labelingOptions}
+          buttons={labelingButtonsOptions}
           currentValue={selectButton}
           onChange={setSelectButton}
         />
         {/* 클래스 목록 */}
-        <ListSection
-          title={"Classes"}
-          isOpen={isClassDropdownOpen}
-          onToggle={() => setIsClassDropdownOpen(!isClassDropdownOpen)}
-        >
+        <ListSection title={"Classes"}>
           {classes.map((cls) => (
             <ClassLabel
               key={cls.id}
@@ -160,11 +162,7 @@ export default function LabelingWorkspace() {
         </ListSection>
 
         {/* 클래스별 각 객체 목록 */}
-        <ListSection
-          title={"Objects"}
-          isOpen={isObjectDropdownOpen}
-          onToggle={() => setIsObjectDropdownOpen(!isObjectDropdownOpen)}
-        >
+        <ListSection title={"Objects"}>
           {objects.map((obj) => (
             <ClassLabel
               key={obj.id}

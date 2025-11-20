@@ -7,7 +7,7 @@ const Container = styled.div`
   justify-content: center;
   align-items: center;
   gap: 10px;
-  margin-top: 50px;
+  margin-top: auto;
 
   button {
     color: #a7a7a7;
@@ -47,6 +47,16 @@ const Container = styled.div`
 `;
 
 export default function Pagination({ total, page, pageSize, onChange }) {
+  const totalPages = Math.ceil(total / pageSize);
+  const limitPages = 5;
+
+  let startPage = Math.max(1, page - Math.floor(limitPages / 2));
+  let endPage = Math.min(totalPages, startPage + limitPages - 1);
+
+  // 페이지 범위가 제한보다 작으면 페이지 범위를 조정
+  if (endPage - startPage < limitPages - 1) {
+    startPage = Math.max(1, endPage - limitPages + 1);
+  }
   return (
     <Container>
       <button
@@ -57,13 +67,13 @@ export default function Pagination({ total, page, pageSize, onChange }) {
       >
         {ChevronLeftIcon}
       </button>
-      {Array.from({ length: Math.ceil(total / pageSize) }).map((_, index) => (
+      {Array.from({ length: endPage - startPage + 1 }).map((_, index) => (
         <button
           key={index}
-          onClick={() => onChange(index + 1)}
-          className={page === index + 1 ? "active" : ""}
+          onClick={() => onChange(index + startPage)}
+          className={page === index + startPage ? "active" : ""}
         >
-          {index + 1}
+          {index + startPage}
         </button>
       ))}
       <button

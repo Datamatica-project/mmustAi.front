@@ -6,17 +6,18 @@ const Container = styled.div`
   display: flex;
   gap: 16px;
 `;
-export default function ToolSelector({ options, currentValue, onChange }) {
+export default function ToolSelector({ buttons, currentValue, onChange }) {
   return (
     <Container>
-      {options.map((opt) => (
+      {buttons.map((button) => (
         <ToolButton
-          key={opt.id}
-          active={currentValue === opt.id}
-          onClick={() => onChange(opt.id)}
-          icon={opt.icon}
-          title={opt.label}
-        />
+          key={button.title}
+          active={currentValue === button.title}
+          onClick={() => onChange?.(button.title)}
+        >
+          {button.icon}
+          {button.title}
+        </ToolButton>
       ))}
     </Container>
   );

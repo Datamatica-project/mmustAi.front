@@ -6,14 +6,7 @@ import {
 } from "../components/icons/Icons";
 // LabelingWorkspace에 사용되는 데이터
 // 작업 도구 선택
-export const inspectionOptions = [
-  { id: "Approve", icon: ApproveIcon, label: "Approve" },
-  { id: "Reject", icon: RejectIcon, label: "Reject" },
-];
-export const labelingOptions = [
-  { id: "Polygon", icon: PolygonIcon, label: "Polygon" },
-  { id: "Bounding Box", icon: BBoxIcon, label: "Bounding Box" },
-];
+
 // 클래스 목록
 export const classes = [
   { id: "People", color: "red", name: "People", objectCount: 0 },
@@ -115,6 +108,46 @@ export const ImageData = [
   {
     id: 10,
     fileName: "Image010.jpx",
+    status: "complete",
+  },
+  {
+    id: 11,
+    fileName: "Image011.jpx",
+    status: "in-progress",
+  },
+  {
+    id: 12,
+    fileName: "Image012.jpx",
+    status: "complete",
+  },
+  {
+    id: 13,
+    fileName: "Image013.jpx",
+    status: "in-progress",
+  },
+  {
+    id: 14,
+    fileName: "Image014.jpx",
+    status: "complete",
+  },
+  {
+    id: 15,
+    fileName: "Image015.jpx",
+    status: "in-progress",
+  },
+  {
+    id: 16,
+    fileName: "Image016.jpx",
+    status: "complete",
+  },
+  {
+    id: 17,
+    fileName: "Image017.jpx",
+    status: "in-progress",
+  },
+  {
+    id: 18,
+    fileName: "Image018.jpx",
     status: "complete",
   },
 ];

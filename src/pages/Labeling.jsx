@@ -15,9 +15,7 @@ export default function Labeling() {
 
   return (
     <Container>
-      {/* 페이지 헤더 */}
       <PageHeader title={title} description={description} />
-      {/* 라벨링 작업 공간 */}
       <LabelingWorkspace />
     </Container>
   );

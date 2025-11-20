@@ -5,6 +5,7 @@ import { Link, NavLink } from "react-router-dom";
 
 const Nav = styled.nav`
   position: fixed;
+  z-index: 800;
   top: 0;
   left: 0;
   bottom: 0;
