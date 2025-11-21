@@ -12,7 +12,6 @@ const Container = styled.div`
 export default function Labeling() {
   const title = "Task 1";
   const description = "Project_1";
-
   return (
     <Container>
       <PageHeader title={title} description={description} />

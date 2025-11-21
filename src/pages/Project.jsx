@@ -8,7 +8,7 @@ import CompleteImage from "../components/molecules/CompleteImage";
 import TaskTable from "../components/molecules/TaskTable";
 import { data, peopleCost, TaskList } from "../data";
 import Pagination from "../components/common/Pagination";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 const Title = styled.h1`
   font-size: 32px;
@@ -43,6 +43,10 @@ const Header = styled.header`
     font-weight: 600;
     cursor: pointer;
   }
+`;
+const StyledLink = styled(Link)`
+  text-decoration: none;
+  color: white;
 `;
 
 const Overview = styled.div`
@@ -131,7 +135,9 @@ export default function Project() {
         </div>
         <div className="button-group">
           <button className="button">Auto Labeling</button>
-          <button className="button">Synthetic Data</button>
+          <StyledLink to="/synthetic-data" className="button">
+            Synthetic Data
+          </StyledLink>
         </div>
       </Header>
       <Overview>

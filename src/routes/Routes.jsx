@@ -6,6 +6,7 @@ import Layout from "../pages/Layout";
 import { useAuthStore } from "../store/authStore";
 import Project from "../pages/Project";
 import Task from "../pages/Task";
+import SyntheticData from "../pages/SyntheticData";
 
 const Loader = styled.div`
   height: 100vh;
@@ -42,6 +43,7 @@ const Router = ({ isAuthFailed }) => {
           <Route path="/project/:projectId/task/:taskId" element={<Task />} />
           <Route path="/labeling" element={<Labeling />} />
           <Route path="/inspection" element={<Inspection />} />
+          <Route path="/synthetic-data" element={<SyntheticData />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

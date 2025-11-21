@@ -28,6 +28,7 @@ const GraphBar = styled.div.attrs((props) => ({
   style: {
     width: `${props.$percentage}%`,
     backgroundColor: props.color,
+    borderRadius: "10px",
   },
 }))`
   height: 100%;
