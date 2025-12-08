@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import PageHeader from "../components/organisms/PageHeader";
 import styled from "styled-components";
 import {
@@ -21,6 +21,7 @@ import ToolSelector from "../components/molecules/ToolSelector";
 import ToggleButtons from "../components/molecules/ToggleButtons";
 import SlideBar from "../components/molecules/SlideBar";
 import CountButtonBox from "../components/molecules/CountButtonBox";
+import { segmentImage } from "../api/sam";
 
 const Container = styled.div`
   .description {
@@ -187,10 +188,19 @@ const ImageContainer = styled.div`
   height: 600px;
   position: relative;
   margin-bottom: 20px;
+  display: inline-block;
   img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+  }
+  .mask-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* 클릭 이벤트는 이미지가 받도록 */
   }
 `;
 
@@ -230,8 +240,12 @@ export default function SyntheticData() {
   const [selectButton, setSelectButton] = useState("Hover & Click");
   const [featherCount, setFeatherCount] = useState(10);
   const [expandCount, setExpandCount] = useState(10);
-  const [toggleStatusButton, setToggleStatusButton] = useState("Minus");
+  const [toggleStatusButton, setToggleStatusButton] = useState("Plus");
   const [toggleToolButton, setToggleToolButton] = useState("Mask");
+  const [maskHistory, setMaskHistory] = useState([]); // 히스토리 스택
+  const [historyIndex, setHistoryIndex] = useState(-1); // 현재 히스토리
+  const [fullMask, setFullMask] = useState(null); // 마스크 상태 저장
+  const fullMaskRef = useRef(null);
   const ProjectName = "Project_1";
   const ButtonsOptions = [
     { title: "Hover & Click", icon: CursorIcon },
@@ -248,11 +262,147 @@ export default function SyntheticData() {
     { title: "reset", icon: ResetIcon },
     { title: "redo", icon: RedoIcon },
   ];
+
+  function mergeMasks(oldMask, newMask, mode = "Plus") {
+    const height = newMask.length;
+    const width = newMask[0].length;
+
+    // 기존 마스크가 없을 시
+    if (!oldMask) {
+      // Minus 모드에서는 빼는 대상이 없으므로 빈 마스크 반환
+      if (mode === "Minus") {
+        return Array.from({ length: height }, () => Array(width).fill(0));
+      }
+      // Plus 모드에서는 새 마스크 반환
+      return newMask.map((row) => [...row]);
+    }
+
+    const result = Array.from({ length: height }, () => Array(width).fill(0));
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (mode === "Plus") {
+          result[y][x] = oldMask[y][x] || newMask[y][x] ? 1 : 0;
+        } else if (mode === "Minus") {
+          result[y][x] = oldMask[y][x] && !newMask[y][x] ? 1 : 0;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  // 이미지를 base64로 변환
+  function imageToBase64(img) {
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+
+    return canvas.toDataURL("image/png").split(",")[1];
+  }
+
+  // 마스크를 캔버스에 그리기
+  function drawMaskOnCanvas(mask, canvas, color = [0, 255, 0, 120]) {
+    const ctx = canvas.getContext("2d");
+    const height = mask.length;
+    const width = mask[0].length;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const imageData = ctx.createImageData(width, height);
+    const data = imageData.data;
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+
+        if (mask[y][x] === 1) {
+          data[idx] = color[0]; // R
+          data[idx + 1] = color[1]; // G
+          data[idx + 2] = color[2]; // B
+          data[idx + 3] = color[3]; // Alpha(0~255)
+        }
+      }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  // 클릭 이벤트
+  useEffect(() => {
+    fullMaskRef.current = fullMask;
+    const handleClick = async (e) => {
+      if (selectButton !== "Hover & Click") return;
+
+      const rect = e.currentTarget.getBoundingClientRect();
+      const targetImage = document.querySelector(".target-image");
+
+      const containerWidth = rect.width;
+      const containerHeight = rect.height;
+
+      const imageRatio = targetImage.naturalWidth / targetImage.naturalHeight;
+      const containerRatio = containerWidth / containerHeight;
+
+      let displayedWidth, displayedHeight, offsetX, offsetY;
+
+      if (imageRatio > containerRatio) {
+        // 가로가 더 길어서 상하에 padding 발생
+        displayedWidth = containerWidth;
+        displayedHeight = containerWidth / imageRatio;
+        offsetX = 0;
+        offsetY = (containerHeight - displayedHeight) / 2;
+      } else {
+        // 세로가 더 길어서 좌우에 padding 발생
+        displayedHeight = containerHeight;
+        displayedWidth = containerHeight * imageRatio;
+        offsetX = (containerWidth - displayedWidth) / 2;
+        offsetY = 0;
+      }
+
+      const x =
+        (e.clientX - rect.left - offsetX) *
+        (targetImage.naturalWidth / displayedWidth);
+      const y =
+        (e.clientY - rect.top - offsetY) *
+        (targetImage.naturalHeight / displayedHeight);
+      const base64 = imageToBase64(targetImage);
+
+      try {
+        const response = await segmentImage(base64, [[x, y]], [1]);
+        const newMask = response.mask;
+
+        // mergeMasks를 한 번만 실행하고 결과를 저장
+        const mergedMask = mergeMasks(
+          fullMaskRef.current,
+          newMask,
+          toggleStatusButton
+        );
+
+        // 상태 업데이트와 캔버스 그리기에 동일한 결과 사용
+        setFullMask(mergedMask);
+        drawMaskOnCanvas(mergedMask, document.querySelector(".mask-canvas"));
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    const imageContainer = document.querySelector(".image-container");
+    imageContainer?.addEventListener("click", handleClick);
+
+    return () => {
+      imageContainer?.removeEventListener("click", handleClick);
+    };
+  }, [selectButton, toggleStatusButton, fullMask]);
+
   return (
     <Container>
       <div>
         <PageHeader title={"Synthetic data"} description={ProjectName} />
-        <p className="description">Segment the image to extract objects."</p>
+        <p className="description">Segment the image to extract objects.</p>
       </div>
 
       <Main>
@@ -326,7 +476,12 @@ export default function SyntheticData() {
             <button>{PlusIcon} Add</button>
           </Header>
           <ImageContainer className="image-container">
-            <img src="https://picsum.photos/800/600" alt="placeholder" />
+            <img
+              src="/testImg2.jpg"
+              alt="placeholder"
+              className="target-image"
+            />
+            <canvas className="mask-canvas" />
           </ImageContainer>
           <footer>
             <Navigation>

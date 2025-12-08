@@ -34,6 +34,8 @@ const Nav = styled.nav`
 `;
 
 const NavLinks = styled(NavLink)`
+  box-sizing: border-box;
+  width: 100px;
   color: #fff;
   padding: 10px;
   text-decoration: none;
