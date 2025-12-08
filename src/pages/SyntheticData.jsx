@@ -22,6 +22,8 @@ import ToggleButtons from "../components/molecules/ToggleButtons";
 import SlideBar from "../components/molecules/SlideBar";
 import CountButtonBox from "../components/molecules/CountButtonBox";
 import { segmentImage } from "../api/sam";
+import { drawMaskOnCanvas, mergeMasks } from "../utils/maskUtils";
+import { handleCutout, imageToBase64 } from "../utils/imageUtils";
 
 const Container = styled.div`
   .description {
@@ -247,6 +249,7 @@ export default function SyntheticData() {
   const [fullMask, setFullMask] = useState(null); // 마스크 상태 저장
   const fullMaskRef = useRef(null);
   const ProjectName = "Project_1";
+
   const ButtonsOptions = [
     { title: "Hover & Click", icon: CursorIcon },
     { title: "Bounding Box", icon: BBoxIcon },
@@ -257,79 +260,47 @@ export default function SyntheticData() {
     { title: "Plus", icon: PlusIcon },
   ];
   const ToggleButtonsOptions2 = [{ title: "Mask" }, { title: "Outline" }];
+
   const StepControlButtons = [
     { title: "undo", icon: UndoIcon },
     { title: "reset", icon: ResetIcon },
     { title: "redo", icon: RedoIcon },
   ];
 
-  function mergeMasks(oldMask, newMask, mode = "Plus") {
-    const height = newMask.length;
-    const width = newMask[0].length;
+  function handleUndo() {
+    if (historyIndex <= 0) return;
 
-    // 기존 마스크가 없을 시
-    if (!oldMask) {
-      // Minus 모드에서는 빼는 대상이 없으므로 빈 마스크 반환
-      if (mode === "Minus") {
-        return Array.from({ length: height }, () => Array(width).fill(0));
-      }
-      // Plus 모드에서는 새 마스크 반환
-      return newMask.map((row) => [...row]);
-    }
+    const newIndex = historyIndex - 1;
+    setHistoryIndex(newIndex);
 
-    const result = Array.from({ length: height }, () => Array(width).fill(0));
+    const previousMask = maskHistory[newIndex];
+    setFullMask(previousMask);
+    fullMaskRef.current = previousMask;
 
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        if (mode === "Plus") {
-          result[y][x] = oldMask[y][x] || newMask[y][x] ? 1 : 0;
-        } else if (mode === "Minus") {
-          result[y][x] = oldMask[y][x] && !newMask[y][x] ? 1 : 0;
-        }
-      }
-    }
-
-    return result;
+    drawMaskOnCanvas(previousMask, document.querySelector(".mask-canvas"));
   }
 
-  // 이미지를 base64로 변환
-  function imageToBase64(img) {
-    const canvas = document.createElement("canvas");
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
+  function handleRedo() {
+    if (historyIndex >= maskHistory.length - 1) return;
 
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0);
+    const newIndex = historyIndex + 1;
+    setHistoryIndex(newIndex);
 
-    return canvas.toDataURL("image/png").split(",")[1];
+    const nextMask = maskHistory[newIndex];
+    setFullMask(nextMask);
+    fullMask.current = nextMask;
+
+    drawMaskOnCanvas(nextMask, document.querySelector(".mask-canvas"));
   }
 
-  // 마스크를 캔버스에 그리기
-  function drawMaskOnCanvas(mask, canvas, color = [0, 255, 0, 120]) {
-    const ctx = canvas.getContext("2d");
-    const height = mask.length;
-    const width = mask[0].length;
+  function handleReset() {
+    setMaskHistory([]);
+    setHistoryIndex(-1);
+    setFullMask(null);
+    fullMaskRef.current = null;
 
-    canvas.width = width;
-    canvas.height = height;
-
-    const imageData = ctx.createImageData(width, height);
-    const data = imageData.data;
-
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const idx = (y * width + x) * 4;
-
-        if (mask[y][x] === 1) {
-          data[idx] = color[0]; // R
-          data[idx + 1] = color[1]; // G
-          data[idx + 2] = color[2]; // B
-          data[idx + 3] = color[3]; // Alpha(0~255)
-        }
-      }
-    }
-
-    ctx.putImageData(imageData, 0, 0);
+    const canvas = document.querySelector(".mask-canvas");
+    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
   }
 
   // 클릭 이벤트
@@ -382,6 +353,13 @@ export default function SyntheticData() {
           toggleStatusButton
         );
 
+        setMaskHistory((prev) => {
+          const newHistory = prev.slice(0, historyIndex + 1); // redo 내용 잘라냄
+          newHistory.push(mergedMask);
+          return newHistory;
+        });
+
+        setHistoryIndex((prev) => prev + 1);
         // 상태 업데이트와 캔버스 그리기에 동일한 결과 사용
         setFullMask(mergedMask);
         drawMaskOnCanvas(mergedMask, document.querySelector(".mask-canvas"));
@@ -438,12 +416,23 @@ export default function SyntheticData() {
             />
             <StepControlButtonContainer>
               {StepControlButtons.map((item, index) => (
-                <button key={index} className="ButtonStyle StepControlButton">
+                <button
+                  key={index}
+                  className="ButtonStyle StepControlButton"
+                  onClick={() => {
+                    if (item.title === "undo") handleUndo();
+                    else if (item.title === "reset") handleReset();
+                    else if (item.title === "redo") handleRedo();
+                  }}
+                >
                   {item.icon}
                 </button>
               ))}
             </StepControlButtonContainer>
-            <button className="ButtonStyle cutOutObjectButton">
+            <button
+              className="ButtonStyle cutOutObjectButton"
+              onClick={() => handleCutout(fullMask)}
+            >
               {PatchPlusIcon} Cut out object
             </button>
           </div>
