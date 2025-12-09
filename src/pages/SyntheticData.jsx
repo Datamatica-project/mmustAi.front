@@ -24,6 +24,8 @@ import CountButtonBox from "../components/molecules/CountButtonBox";
 import { segmentImage } from "../api/sam";
 import { drawMaskOnCanvas, mergeMasks } from "../utils/maskUtils";
 import { handleCutout, imageToBase64 } from "../utils/imageUtils";
+import KonvaCanvas from "../components/organisms/KonvaCanvas";
+import KonvaBoundingBoxLayer from "../components/organisms/KonvaBoundingBoxLayer";
 
 const Container = styled.div`
   .description {
@@ -248,6 +250,7 @@ export default function SyntheticData() {
   const [historyIndex, setHistoryIndex] = useState(-1); // 현재 히스토리
   const [fullMask, setFullMask] = useState(null); // 마스크 상태 저장
   const fullMaskRef = useRef(null);
+
   const ProjectName = "Project_1";
 
   const ButtonsOptions = [
@@ -301,6 +304,66 @@ export default function SyntheticData() {
 
     const canvas = document.querySelector(".mask-canvas");
     canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function convertCanvasToImageCoords(canvasX, canvasY, img, containerRect) {
+    // canvasX : 화면 전체 기준 좌표
+    // canvasY : 화면 전체 기준 좌표
+    // containerRect : 컨테이너 영역 정보
+    // img : 이미지 정보
+
+    const naturalWidth = img.naturalWidth;
+    const naturalHeight = img.naturalHeight; // 원본 이미지 크기 1920 * 1389
+
+    const containerWidth = containerRect.width;
+    const containerHeight = containerRect.height; // 컨테이너 영역 크기 790 * 600
+
+    const relativeX = canvasX - containerRect.left; // 컨테이너 기준 바운딩 박스 좌표
+    const relativeY = canvasY - containerRect.top;
+
+    const imageRatio = naturalWidth / naturalHeight;
+    const containerRatio = containerWidth / containerHeight;
+
+    let displayedWidth, displayedHeight, offsetX, offsetY;
+
+    if (imageRatio > containerRatio) {
+      // 가로가 긴 이미지 → 세로 padding
+      displayedWidth = containerWidth;
+      displayedHeight = containerWidth / imageRatio;
+      offsetX = 0;
+      offsetY = (containerHeight - displayedHeight) / 2;
+    } else {
+      // 세로가 긴 이미지 → 좌우 padding
+      displayedHeight = containerHeight;
+      displayedWidth = containerHeight * imageRatio;
+      offsetX = (containerWidth - displayedWidth) / 2;
+      offsetY = 0;
+    }
+
+    // 1. 바운딩 박스 좌표를 이미지 영역 기준으로 변환
+    const imageAreaX = relativeX - offsetX;
+    const imageAreaY = relativeY - offsetY;
+
+    // 2. 원본 이미지 크기로 스케일링
+    let imageX = imageAreaX * (naturalWidth / displayedWidth);
+    let imageY = imageAreaY * (naturalHeight / displayedHeight);
+
+    if (imageX < 0) imageX = 0;
+    if (imageY < 0) imageY = 0;
+    if (imageX > naturalWidth) imageX = naturalWidth;
+    if (imageY > naturalHeight) imageY = naturalHeight;
+
+    return { x: imageX, y: imageY };
+  }
+
+  function handleMaskFromBbox(newMask) {
+    const merged = mergeMasks(fullMaskRef.current, newMask, toggleStatusButton);
+
+    setMaskHistory((prev) => [...prev, merged]);
+    setHistoryIndex((prev) => prev + 1);
+    setFullMask(merged);
+
+    drawMaskOnCanvas(merged, document.querySelector(".mask-canvas"));
   }
 
   // 클릭 이벤트
@@ -471,6 +534,15 @@ export default function SyntheticData() {
               className="target-image"
             />
             <canvas className="mask-canvas" />
+            {selectButton === "Bounding Box" && (
+              <KonvaBoundingBoxLayer
+                width={790}
+                height={600}
+                onSelect={(box) => handleMaskFromBbox(box)}
+                convertCanvasToImageCoords={convertCanvasToImageCoords}
+                imageToBase64={imageToBase64}
+              />
+            )}
           </ImageContainer>
           <footer>
             <Navigation>
