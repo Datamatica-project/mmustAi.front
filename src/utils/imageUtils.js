@@ -1,3 +1,7 @@
+import { useBboxStore } from "../store/bboxStore";
+import { useToastStore } from "../store/toastStore";
+import { saveImageToIndexedDB, saveMaskToIndexedDB } from "./indexDB";
+
 // 이미지를 base64로 변환
 export function imageToBase64(img) {
   const canvas = document.createElement("canvas");
@@ -11,6 +15,7 @@ export function imageToBase64(img) {
 }
 
 export async function handleCutout(fullMask) {
+  console.log("fullMask", fullMask);
   try {
     if (!fullMask) {
       alert("먼저 대상을 선택해주세요");
@@ -57,4 +62,41 @@ export async function handleCutout(fullMask) {
   } catch (error) {
     console.error("이미지 자르기 실패:", error);
   }
+}
+
+// 이미지 메타데이터 저장
+export async function saveMetaData(className, bbox, fullMask) {
+  const img = document.querySelector(".target-image");
+
+  if (!img) {
+    useToastStore.getState().addToast("Image not found", "error");
+    return;
+  }
+
+  // 인덱스 DB 키 값으로 쓸 랜덤 ID 생성
+  const id = crypto.randomUUID();
+
+  const metadata = {
+    id,
+    classId: className,
+    bbox,
+    image: {
+      width: img.naturalWidth,
+      height: img.naturalHeight,
+    },
+    createdAt: Date.now(),
+  };
+
+  // 이전 세션 데이터 가져오기
+  const prev = JSON.parse(sessionStorage.getItem("cutoutSources")) || [];
+
+  // 누적 저장
+  sessionStorage.setItem("cutoutSources", JSON.stringify([...prev, metadata]));
+
+  // 이미지 저장
+  const response = await fetch(img.src);
+  const blob = await response.blob();
+
+  await saveImageToIndexedDB(id, blob);
+  await saveMaskToIndexedDB(id, fullMask, img.naturalWidth, img.naturalHeight);
 }

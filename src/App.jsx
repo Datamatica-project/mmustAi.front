@@ -3,6 +3,7 @@ import { BrowserRouter, useNavigate } from "react-router-dom";
 import Routes from "./routes/Routes";
 import { useGetRefreshToken } from "./hooks/useUser";
 import { useAuthStore } from "./store/authStore";
+import ToastContainer from "./components/molecules/ToastContainer";
 function App() {
   const { token, setToken, clearToken } = useAuthStore();
   const hasTriedRefresh = useRef(false);
@@ -34,6 +35,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ToastContainer />
       <Routes isAuthFailed={isError} />
     </BrowserRouter>
   );

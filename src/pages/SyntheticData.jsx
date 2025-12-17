@@ -23,9 +23,16 @@ import SlideBar from "../components/molecules/SlideBar";
 import CountButtonBox from "../components/molecules/CountButtonBox";
 import { segmentImage } from "../api/sam";
 import { drawMaskOnCanvas, mergeMasks } from "../utils/maskUtils";
-import { handleCutout, imageToBase64 } from "../utils/imageUtils";
+import { imageToBase64, saveMetaData } from "../utils/imageUtils";
 import KonvaCanvas from "../components/organisms/KonvaCanvas";
 import KonvaBoundingBoxLayer from "../components/organisms/KonvaBoundingBoxLayer";
+import { useBboxStore } from "../store/bboxStore";
+import ListSection from "../components/molecules/ListSection";
+import ClassLabel from "../components/atoms/ClassLabel";
+import { classes } from "../data/index.js";
+import DropDown from "../components/molecules/DropDown.jsx";
+import { useToastStore } from "../store/toastStore.js";
+import { useNavigate } from "react-router-dom";
 
 const Container = styled.div`
   .description {
@@ -93,6 +100,7 @@ const Main = styled.main`
     justify-content: center;
     padding: 10px 20px;
     border-radius: 5px;
+    margin-top: 20px;
 
     transition: all 0.2s ease;
     svg {
@@ -228,8 +236,9 @@ const Navigation = styled.nav`
     cursor: pointer;
     transition-duration: 150ms;
 
-    &:hover {
-      background-color: #5b5d75;
+    &:disabled {
+      color: #5b5d75;
+      cursor: default;
     }
   }
 
@@ -241,7 +250,7 @@ const Navigation = styled.nav`
 `;
 export default function SyntheticData() {
   const [tool, setTool] = useState("segmentation");
-  const [selectButton, setSelectButton] = useState("Hover & Click");
+  const [selectButton, setSelectButton] = useState("Click");
   const [featherCount, setFeatherCount] = useState(10);
   const [expandCount, setExpandCount] = useState(10);
   const [toggleStatusButton, setToggleStatusButton] = useState("Plus");
@@ -250,11 +259,22 @@ export default function SyntheticData() {
   const [historyIndex, setHistoryIndex] = useState(-1); // 현재 히스토리
   const [fullMask, setFullMask] = useState(null); // 마스크 상태 저장
   const fullMaskRef = useRef(null);
-
+  const { bbox, setBbox } = useBboxStore();
   const ProjectName = "Project_1";
+  const [selectedClass, setSelectedClass] = useState(null);
+  const navigate = useNavigate();
+  const fileInputRef = useRef(null); // 이미지 파일 입력 참조
+  const [sgImage, setSgImage] = useState(null); // 이미지 URL 상태
+
+  // 이미지 URL 해제
+  useEffect(() => {
+    return () => {
+      if (sgImage) URL.revokeObjectURL(sgImage);
+    };
+  }, [sgImage]);
 
   const ButtonsOptions = [
-    { title: "Hover & Click", icon: CursorIcon },
+    { title: "Click", icon: CursorIcon },
     { title: "Bounding Box", icon: BBoxIcon },
   ];
 
@@ -280,7 +300,11 @@ export default function SyntheticData() {
     setFullMask(previousMask);
     fullMaskRef.current = previousMask;
 
-    drawMaskOnCanvas(previousMask, document.querySelector(".mask-canvas"));
+    drawMaskOnCanvas(
+      previousMask,
+      document.querySelector(".mask-canvas"),
+      setBbox
+    );
   }
 
   function handleRedo() {
@@ -293,7 +317,7 @@ export default function SyntheticData() {
     setFullMask(nextMask);
     fullMask.current = nextMask;
 
-    drawMaskOnCanvas(nextMask, document.querySelector(".mask-canvas"));
+    drawMaskOnCanvas(nextMask, document.querySelector(".mask-canvas"), setBbox);
   }
 
   function handleReset() {
@@ -357,20 +381,30 @@ export default function SyntheticData() {
   }
 
   function handleMaskFromBbox(newMask) {
+    if (selectButton !== "Bounding Box") return;
     const merged = mergeMasks(fullMaskRef.current, newMask, toggleStatusButton);
 
     setMaskHistory((prev) => [...prev, merged]);
     setHistoryIndex((prev) => prev + 1);
     setFullMask(merged);
 
-    drawMaskOnCanvas(merged, document.querySelector(".mask-canvas"));
+    drawMaskOnCanvas(merged, document.querySelector(".mask-canvas"), setBbox);
+  }
+
+  function handleCutout(fullMask) {
+    if (!selectedClass) {
+      useToastStore.getState().addToast("Please select a class", "error");
+      return;
+    }
+    saveMetaData(selectedClass, bbox, fullMask);
+    useToastStore.getState().addToast("Cutout saved", "success");
   }
 
   // 클릭 이벤트
   useEffect(() => {
     fullMaskRef.current = fullMask;
     const handleClick = async (e) => {
-      if (selectButton !== "Hover & Click") return;
+      if (selectButton !== "Click") return;
 
       const rect = e.currentTarget.getBoundingClientRect();
       const targetImage = document.querySelector(".target-image");
@@ -425,7 +459,11 @@ export default function SyntheticData() {
         setHistoryIndex((prev) => prev + 1);
         // 상태 업데이트와 캔버스 그리기에 동일한 결과 사용
         setFullMask(mergedMask);
-        drawMaskOnCanvas(mergedMask, document.querySelector(".mask-canvas"));
+        drawMaskOnCanvas(
+          mergedMask,
+          document.querySelector(".mask-canvas"),
+          setBbox
+        );
       } catch (error) {
         console.error(error);
       }
@@ -492,14 +530,21 @@ export default function SyntheticData() {
                 </button>
               ))}
             </StepControlButtonContainer>
+            {/* 클래스 선택 */}
+            <DropDown
+              classes={classes}
+              selectedClass={selectedClass}
+              setSelectedClass={setSelectedClass}
+            />
             <button
               className="ButtonStyle cutOutObjectButton"
               onClick={() => handleCutout(fullMask)}
             >
-              {PatchPlusIcon} Cut out object
+              {PatchPlusIcon} Save Cutout
             </button>
           </div>
-          <AdjustmentSection className="ToolSection">
+
+          {/* <AdjustmentSection className="ToolSection">
             <ToggleButtons
               name={ToggleButtonsOptions2}
               currentValue={toggleToolButton}
@@ -520,17 +565,32 @@ export default function SyntheticData() {
                 <CountButtonBox count={expandCount} setCount={setExpandCount} />
               </div>
             </BoundaryAdjustmentSection>
-          </AdjustmentSection>
+          </AdjustmentSection> */}
         </aside>
         <section>
           <Header>
             <h3>Image010.jpg</h3>
-            <button>{PlusIcon} Add</button>
+            <button onClick={() => fileInputRef.current.click()}>
+              {PlusIcon} Add
+            </button>
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const url = URL.createObjectURL(file);
+                setSgImage(url);
+              }}
+            />
           </Header>
           <ImageContainer className="image-container">
             <img
-              src="/testImg2.jpg"
-              alt="placeholder"
+              src={sgImage || "/testImg2.jpg"}
+              alt="segmantation image"
               className="target-image"
             />
             <canvas className="mask-canvas" />
@@ -546,8 +606,10 @@ export default function SyntheticData() {
           </ImageContainer>
           <footer>
             <Navigation>
-              <button>{LeftArrowIcon}Prev</button>
-              <button>{RightArrowIcon}Next</button>
+              <button disabled>{LeftArrowIcon}Prev</button>
+              <button onClick={() => navigate("/synthetic-data/background")}>
+                {RightArrowIcon}Next
+              </button>
             </Navigation>
           </footer>
         </section>
