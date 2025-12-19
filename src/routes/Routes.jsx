@@ -22,6 +22,7 @@ const Loader = styled.div`
 
 // 필요할 때만 로드 되도록 lazy 설정
 const Home = lazy(() => import("../pages/Home/Home"));
+const CreateProject = lazy(() => import("../pages/CreateProject"));
 const Labeling = lazy(() => import("../pages/Labeling"));
 const Inspection = lazy(() => import("../pages/Inspection"));
 const NotFound = lazy(() => import("../pages/Notfound/NotFound"));
@@ -42,6 +43,7 @@ const Router = ({ isAuthFailed }) => {
         <Route path="/login" element={<Login />} />
         <Route element={<Layout />}>
           <Route path="/" index element={<Home />} />
+          <Route path="/create-project" element={<CreateProject />} />
           <Route path="/project/:projectId" element={<Project />} />
           <Route path="/project/:projectId/task/:taskId" element={<Task />} />
           <Route path="/labeling" element={<Labeling />} />

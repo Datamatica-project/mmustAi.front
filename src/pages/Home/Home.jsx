@@ -11,6 +11,7 @@ import {
 } from "../../components/icons/HomeIcons";
 import IconButton from "../../components/atoms/IconButton";
 import ProjectCard from "../../components/molecules/ProjectCard";
+import { useNavigate } from "react-router-dom";
 
 // Todo: 프로젝트 데이터 받아오기, map 함수로 교체하여 사용하기
 const Container = styled.div`
@@ -137,6 +138,7 @@ const Main = styled.main`
 export default function Home() {
   const [selectTab, setSelectTab] = useState(0);
   const [search, setSearch] = useState("");
+  const navigate = useNavigate();
   const TabTitles = [
     "All Projects",
     "ProjectManager",
@@ -208,8 +210,8 @@ export default function Home() {
           </SearchInput>
           <IconButton
             icon={JournalBookmarkIcon}
-            onClick={() => {}}
             title="New"
+            to="/create-project"
           />
         </ActionBar>
       </header>

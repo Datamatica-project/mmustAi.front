@@ -210,126 +210,127 @@ export default function DataAugmentation() {
   //   loadAndAugment();
   // }, []);
 
-  // const loadAndAugment = async () => {
-  //   try {
-  //     setLoading(true);
+  const loadAndAugment = async () => {
+    try {
+      setLoading(true);
 
-  //     // 세션 스토리지에서 합성 데이터 가져오기
-  //     const compositeDataStr = sessionStorage.getItem("compositeData");
-  //     if (!compositeDataStr) {
-  //       useToastStore
-  //         .getState()
-  //         .addToast("합성 이미지 데이터를 찾을 수 없습니다.", "error");
-  //       navigate("/synthetic-data/background");
-  //       return;
-  //     }
+      // 세션 스토리지에서 합성 데이터 가져오기
+      const compositeDataStr = sessionStorage.getItem("compositeData");
 
-  //     const compositeData = JSON.parse(compositeDataStr);
-  //     const { imageBase64, labels } = compositeData;
+      if (!compositeDataStr) {
+        useToastStore
+          .getState()
+          .addToast("Synthetic image data not found.", "error");
+        navigate("/synthetic-data/background");
+        return;
+      }
 
-  //     // base64를 Blob으로 변환
-  //     const response = await fetch(imageBase64);
-  //     const imageBlob = await response.blob();
+      const compositeData = JSON.parse(compositeDataStr);
+      const { imageBase64, labels } = compositeData;
 
-  //     // OpenCV 증강 API 호출
-  //     const results = await augmentImage(imageBlob, labels);
+      // base64를 Blob으로 변환
+      const response = await fetch(imageBase64);
+      const imageBlob = await response.blob();
 
-  //     // API 응답 형식에 따라 처리
-  //     // 예상 형식: { images: [base64...], labels: [[...], [...]] } 또는
-  //     // { results: [{ image: base64, labels: [...] }] }
-  //     let processedResults = [];
+      // OpenCV 증강 API 호출
+      const results = await augmentImage(imageBlob, labels);
 
-  //     if (Array.isArray(results)) {
-  //       // 배열 형식인 경우
-  //       processedResults = results.map((result, index) => {
-  //         let imageUrl;
-  //         if (result.imageUrl) {
-  //           imageUrl = result.imageUrl;
-  //         } else if (result.imageBase64) {
-  //           imageUrl = result.imageBase64;
-  //         } else if (result.imageBlob) {
-  //           imageUrl = URL.createObjectURL(result.imageBlob);
-  //         } else if (typeof result === "string") {
-  //           // base64 문자열인 경우
-  //           imageUrl = result;
-  //         } else {
-  //           // Blob인 경우
-  //           imageUrl = URL.createObjectURL(result);
-  //         }
+      // API 응답 형식에 따라 처리
+      // 예상 형식: { images: [base64...], labels: [[...], [...]] } 또는
+      // { results: [{ image: base64, labels: [...] }] }
+      let processedResults = [];
 
-  //         return {
-  //           id: `augmented-${index}`,
-  //           imageUrl: imageUrl,
-  //           labels: result.labels || labels,
-  //           augmentationType:
-  //             result.type ||
-  //             result.augmentationType ||
-  //             `augmentation-${index + 1}`,
-  //         };
-  //       });
-  //     } else if (results.images && Array.isArray(results.images)) {
-  //       // { images: [...], labels: [...] } 형식
-  //       processedResults = results.images.map((image, index) => {
-  //         const imageUrl =
-  //           typeof image === "string" ? image : URL.createObjectURL(image);
-  //         return {
-  //           id: `augmented-${index}`,
-  //           imageUrl: imageUrl,
-  //           labels: results.labels?.[index] || labels,
-  //           augmentationType:
-  //             results.types?.[index] || `augmentation-${index + 1}`,
-  //         };
-  //       });
-  //     } else if (results.results && Array.isArray(results.results)) {
-  //       // { results: [...] } 형식
-  //       processedResults = results.results.map((result, index) => {
-  //         let imageUrl;
-  //         if (result.image) {
-  //           imageUrl =
-  //             typeof result.image === "string"
-  //               ? result.image
-  //               : URL.createObjectURL(result.image);
-  //         } else if (result.imageBase64) {
-  //           imageUrl = result.imageBase64;
-  //         } else {
-  //           imageUrl = imageBase64; // 원본 이미지 사용
-  //         }
+      if (Array.isArray(results)) {
+        // 배열 형식인 경우
+        processedResults = results.map((result, index) => {
+          let imageUrl;
+          if (result.imageUrl) {
+            imageUrl = result.imageUrl;
+          } else if (result.imageBase64) {
+            imageUrl = result.imageBase64;
+          } else if (result.imageBlob) {
+            imageUrl = URL.createObjectURL(result.imageBlob);
+          } else if (typeof result === "string") {
+            // base64 문자열인 경우
+            imageUrl = result;
+          } else {
+            // Blob인 경우
+            imageUrl = URL.createObjectURL(result);
+          }
 
-  //         return {
-  //           id: `augmented-${index}`,
-  //           imageUrl: imageUrl,
-  //           labels: result.labels || labels,
-  //           augmentationType: result.type || `augmentation-${index + 1}`,
-  //         };
-  //       });
-  //     } else {
-  //       // 단일 결과인 경우
-  //       processedResults = [
-  //         {
-  //           id: "augmented-0",
-  //           imageUrl: typeof results === "string" ? results : imageBase64,
-  //           labels: labels,
-  //           augmentationType: "augmentation-1",
-  //         },
-  //       ];
-  //     }
+          return {
+            id: `augmented-${index}`,
+            imageUrl: imageUrl,
+            labels: result.labels || labels,
+            augmentationType:
+              result.type ||
+              result.augmentationType ||
+              `augmentation-${index + 1}`,
+          };
+        });
+      } else if (results.images && Array.isArray(results.images)) {
+        // { images: [...], labels: [...] } 형식
+        processedResults = results.images.map((image, index) => {
+          const imageUrl =
+            typeof image === "string" ? image : URL.createObjectURL(image);
+          return {
+            id: `augmented-${index}`,
+            imageUrl: imageUrl,
+            labels: results.labels?.[index] || labels,
+            augmentationType:
+              results.types?.[index] || `augmentation-${index + 1}`,
+          };
+        });
+      } else if (results.results && Array.isArray(results.results)) {
+        // { results: [...] } 형식
+        processedResults = results.results.map((result, index) => {
+          let imageUrl;
+          if (result.image) {
+            imageUrl =
+              typeof result.image === "string"
+                ? result.image
+                : URL.createObjectURL(result.image);
+          } else if (result.imageBase64) {
+            imageUrl = result.imageBase64;
+          } else {
+            imageUrl = imageBase64; // 원본 이미지 사용
+          }
 
-  //     setAugmentedResults(processedResults);
-  //     useToastStore
-  //       .getState()
-  //       .addToast(
-  //         `${processedResults.length}개의 증강 이미지가 생성되었습니다.`,
-  //         "success"
-  //       );
-  //   } catch (error) {
-  //     console.error("Augmentation error:", error);
-  //     useToastStore
-  //       .getState()
-  //       .addToast("증강 처리 중 오류가 발생했습니다.", "error");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+          return {
+            id: `augmented-${index}`,
+            imageUrl: imageUrl,
+            labels: result.labels || labels,
+            augmentationType: result.type || `augmentation-${index + 1}`,
+          };
+        });
+      } else {
+        // 단일 결과인 경우
+        processedResults = [
+          {
+            id: "augmented-0",
+            imageUrl: typeof results === "string" ? results : imageBase64,
+            labels: labels,
+            augmentationType: "augmentation-1",
+          },
+        ];
+      }
+
+      setAugmentedResults(processedResults);
+      useToastStore
+        .getState()
+        .addToast(
+          `${processedResults.length}개의 증강 이미지가 생성되었습니다.`,
+          "success"
+        );
+    } catch (error) {
+      console.error("Augmentation error:", error);
+      useToastStore
+        .getState()
+        .addToast("증강 처리 중 오류가 발생했습니다.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSendToTraining = async () => {
     if (augmentedResults.length === 0) {
@@ -377,7 +378,7 @@ export default function DataAugmentation() {
       <div>
         <PageHeader title={"Data Augmentation"} description={"Project_1"} />
         <p className="description">
-          증강된 이미지들을 확인하고 AI 모델 학습에 사용하세요.
+          Review the augmented images and use them for AI model training.
         </p>
       </div>
 
@@ -389,7 +390,7 @@ export default function DataAugmentation() {
         {loading ? (
           <LoadingSection>
             <div className="spinner"></div>
-            <div>이미지 증강 처리 중...</div>
+            <div>Image augmentation in progress...</div>
           </LoadingSection>
         ) : (
           <ResultsSection>
@@ -401,7 +402,7 @@ export default function DataAugmentation() {
                   padding: "60px",
                 }}
               >
-                증강된 이미지가 없습니다.
+                No augmented images available.
               </div>
             ) : (
               <>
@@ -416,9 +417,9 @@ export default function DataAugmentation() {
                       </div>
                       <div className="info">
                         <div className="label-count">
-                          라벨 수: {result.labels?.length || 0}
+                          Number of labels: {result.labels?.length || 0}
                         </div>
-                        <div>증강 타입: {result.augmentationType}</div>
+                        <div>Augmentation type: {result.augmentationType}</div>
                       </div>
                     </ResultCard>
                   ))}
@@ -430,10 +431,12 @@ export default function DataAugmentation() {
                     onClick={handleSendToTraining}
                     disabled={sending}
                   >
-                    {sending ? "전송 중..." : "AI 모델 학습용으로 전송"}
+                    {sending
+                      ? "Uploading..."
+                      : "Uploading for AI model training"}
                   </button>
                   <button className="secondary" onClick={loadAndAugment}>
-                    다시 증강하기
+                    Re-augment
                   </button>
                 </ActionButtons>
               </>
@@ -452,7 +455,7 @@ export default function DataAugmentation() {
               }
             }}
           >
-            프로젝트로 돌아가기 {RightArrowIcon}
+            Return to the project. {RightArrowIcon}
           </button>
         </Navigation>
       </Main>

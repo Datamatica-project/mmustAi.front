@@ -19,9 +19,9 @@ const Button = styled(Link)`
   font-weight: 700;
   border-radius: 10px;
 `;
-export default function IconButton({ icon, onClick, title, to = "/" }) {
+export default function IconButton({ icon, title, to = "/" }) {
   return (
-    <Button to={to} onClick={onClick}>
+    <Button to={to}>
       <div>{icon}</div>
       <span>{title}</span>
     </Button>

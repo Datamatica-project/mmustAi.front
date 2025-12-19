@@ -12,13 +12,12 @@ export const classes = [
   { id: "0", color: "red", name: "car", objectCount: 0 },
   { id: "1", color: "blue", name: "truck", objectCount: 0 },
   { id: "2", color: "green", name: "bus", objectCount: 0 },
-  { id: "3", color: "yellow", name: "Bus", objectCount: 0 },
-  { id: "4", color: "cyan", name: "special_vehicle", objectCount: 0 },
-  { id: "5", color: "pink", name: "motorcycle", objectCount: 0 },
-  { id: "6", color: "purple", name: "bicycle", objectCount: 0 },
-  { id: "7", color: "orange", name: "pedestrian", objectCount: 0 },
-  { id: "8", color: "brown", name: "traffic_sign", objectCount: 0 },
-  { id: "9", color: "gray", name: "traffic_light", objectCount: 0 },
+  // { id: "3", color: "cyan", name: "special_vehicle", objectCount: 0 },
+  { id: "4", color: "pink", name: "motorcycle", objectCount: 0 },
+  { id: "5", color: "purple", name: "bicycle", objectCount: 0 },
+  { id: "6", color: "orange", name: "pedestrian", objectCount: 0 },
+  { id: "7", color: "brown", name: "traffic_sign", objectCount: 0 },
+  { id: "8", color: "gray", name: "traffic_light", objectCount: 0 },
 ];
 
 export const objects = [

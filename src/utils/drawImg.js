@@ -249,7 +249,7 @@ export async function prepareCutout(
 }
 
 export function flattenComposite({ bgCanvasRef }) {
-  const bgCanvas = bgCanvasRef.current;
+  const bgCanvas = bgCanvasRef;
   const img = document.querySelector(".target-image");
   if (!bgCanvas || !img) return;
 
@@ -293,11 +293,11 @@ export async function exportComposite(
 ) {
   const imageBlob = await flattenComposite({ bgCanvasRef });
   const imageUrl = URL.createObjectURL(imageBlob);
-  const image = new Image();
-  image.src = imageUrl;
-  image.onload = () => {
-    console.log(image);
-  };
+  // const image = new Image();
+  // image.src = imageUrl;
+  // image.onload = () => {
+  //   console.log(image);
+  // };
 
   const canvas = bgCanvasRef.current;
 

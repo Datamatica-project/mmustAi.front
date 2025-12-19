@@ -550,15 +550,15 @@ export default function SyntheticBackground() {
   };
 
   const handleNext = () => {
-    console.log(placedObjects);
     if (placedObjects.length === 0) {
       useToastStore
         .getState()
         .addToast("Please place at least one object.", "error");
       return;
     }
-    exportComposite(bgCanvasRef, placedObjects, cutoutCacheRef);
-    navigate("/synthetic-data/data-augmentation");
+
+    exportComposite(bgCanvasRef.current, placedObjects, cutoutCacheRef);
+    // navigate("/synthetic-data/data-augmentation");
   };
 
   // 🔹 현재 배경 + 컷아웃 합성 결과 기준으로 bbox 계산 (COCO/YOLO 라벨용)
