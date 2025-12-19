@@ -9,6 +9,7 @@ import Task from "../pages/Task";
 import SyntheticData from "../pages/SyntheticData";
 import SyntheticLayout from "../pages/SyntheticLayout";
 import SyntheticBackground from "../pages/SyntheticBackground";
+import DataAugmentation from "../pages/DataAugmentation";
 
 const Loader = styled.div`
   height: 100vh;
@@ -48,6 +49,7 @@ const Router = ({ isAuthFailed }) => {
           <Route path="/synthetic-data" element={<SyntheticLayout />}>
             <Route index element={<SyntheticData />} /> {/* 1단계 */}
             <Route path="background" element={<SyntheticBackground />} />
+            <Route path="data-augmentation" element={<DataAugmentation />} />
             {/* 2단계 */}
           </Route>
         </Route>

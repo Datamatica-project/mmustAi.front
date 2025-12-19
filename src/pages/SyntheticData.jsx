@@ -450,6 +450,7 @@ export default function SyntheticData() {
           toggleStatusButton
         );
 
+        // 히스토리 스택 업데이트
         setMaskHistory((prev) => {
           const newHistory = prev.slice(0, historyIndex + 1); // redo 내용 잘라냄
           newHistory.push(mergedMask);

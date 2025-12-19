@@ -4,13 +4,30 @@ import PageHeader from "../components/organisms/PageHeader";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import { LeftArrowIcon, RightArrowIcon } from "../components/icons/Icons";
-import { PlusIcon, ScissorsIcon } from "../components/icons/Project";
 import {
-  cutoutDB,
-  drawCutoutOnBackground,
+  PlusIcon,
+  RemoveIcon,
+  ScissorsIcon,
+} from "../components/icons/Project";
+import { cutoutDB } from "../utils/indexDB";
+import {
   drawCutoutThumbnail,
-  getMaskFromIndexedDB,
-} from "../utils/indexDB";
+  drawCutoutOnBackground,
+  prepareCutout,
+  exportComposite,
+} from "../utils/drawImg";
+import { computeCompositeBBoxes } from "../utils/labelUtils";
+import { ScaleMouseMove, TransformScale } from "../utils/scale";
+import { RotateMouseMove, TransformRotate } from "../utils/rotate";
+import { getCanvasPos } from "../utils/coordinate";
+import { isOnRotateHandle } from "../utils/rotate";
+import { isOnScaleHandle } from "../utils/scale";
+import {
+  isInsideObject,
+  updateCanvasCursor,
+  updateHoverCursor,
+} from "../utils/mousecursorUtil";
+import { useToastStore } from "../store/toastStore";
 
 const Container = styled.div`
   .description {
@@ -216,23 +233,56 @@ const Sidebar = styled.aside`
       border: 2px solid #f62579;
     }
   }
+  .remove-button {
+    background-color: transparent;
+    border: 1px solid #3b3c5d;
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: 500;
+    padding: 10px 20px;
+    display: flex;
+    gap: 5px;
+    margin-left: auto;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: inherit;
+
+    &:hover {
+      background-color: #3b3c5d;
+      color: #ffffff;
+    }
+  }
 `;
 
 export default function SyntheticBackground() {
   const ProjectName = "Project_1";
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const bgCanvasRef = useRef(null); // 배경 캔버스 참조
   const [bgImage, setBgImage] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
-  const [cutouts, setCutouts] = useState([]); // 이미지 메타데이터
-  const bgCanvasRef = useRef(null); // 배경 캔버스 참조
+  const [cutouts, setCutouts] = useState([]); // 원본 컷아웃 메타데이터
+  const [placedObjects, setPlacedObjects] = useState([]); // 실제 배치된 객체들
+  const [activePlacedId, setActivePlacedId] = useState(null); // 현재 선택된 배치 객체
+  const cutoutCacheRef = useRef(new Map());
+  const [, forceRender] = useState(0);
   // 사이드바에서 선택된 컷아웃 (아직 배치 안 됨)
   const [activeCutout, setActiveCutout] = useState(null);
-  // 실제 배경에 배치된 객체들
-  const [placedObjects, setPlacedObjects] = useState([]);
+  const isDraggingRef = useRef(false); // 드래그 중인지 여부
+  const dragOffsetRef = useRef({ x: 0, y: 0 }); // 드래그 중 오프셋
 
-  const isPlacingRef = useRef(false);
-  const dragPosRef = useRef({ x: 0, y: 0 });
+  // 스케일 조절 관련 상태
+  const isScalingRef = useRef(false);
+  const startScaleRef = useRef(1);
+  const startDistanceRef = useRef(0);
+  const scaleCenterRef = useRef(null);
+
+  // 회전 조절 관련 상태
+  const isRotatingRef = useRef(false);
+  const startAngleRef = useRef(0);
+  const startRotateRef = useRef(0);
 
   useEffect(() => {
     // 캔버스 크기 === 이미지 크기로 조정
@@ -263,49 +313,49 @@ export default function SyntheticBackground() {
         canvas,
         cutout: obj,
         transform: obj,
+        activePlacedId,
+        cutoutCacheRef,
       });
     });
-  }, [placedObjects, bgImage]);
+  }, [placedObjects, bgImage, activePlacedId]);
+
+  useEffect(() => {
+    cutouts.forEach((cutout) => {
+      prepareCutout(cutout.id, cutout.bbox, cutoutCacheRef, forceRender);
+    });
+  }, [cutouts]);
 
   // 썸네일 이미지 클릭
   const handleSelectCoutout = (cutout) => {
     setSelectedImage(cutout.id);
 
-    // 컷아웃 추가 State
-    // setPlacedObjects((prev) => [
-    //   ...prev,
-    //   {
-    //     id: cutout.id,
-    //     classId: cutout.classId,
-    //     bbox: cutout.bbox,
-    //     x: 30,
-    //     y: 30,
-    //     scale: 0.3,
-    //     rotate: 0,
-    //   },
-    // ]);
     setActiveCutout(cutout);
   };
 
+  // 컷아웃 삭제
   const handleDeleteCutout = async () => {
     if (!activeCutout) return;
 
     const id = activeCutout.id;
 
-    // 1️⃣ sessionStorage 삭제
+    //  sessionStorage 삭제
     const prev = JSON.parse(sessionStorage.getItem("cutoutSources")) || [];
     const next = prev.filter((c) => c.id !== id);
     sessionStorage.setItem("cutoutSources", JSON.stringify(next));
     setCutouts(next);
 
-    // 2️⃣ IndexedDB 삭제
+    //  IndexedDB 삭제
     await cutoutDB.delete("images", id);
     await cutoutDB.delete("masks", id);
 
-    // 3️⃣ 배경에 배치된 객체도 제거
+    //  배경에 배치된 객체도 제거
     setPlacedObjects((prev) => prev.filter((obj) => obj.sourceId !== id));
 
-    // 4️⃣ 선택 해제
+    useToastStore
+      .getState()
+      .addToast("Cutout deleted successfully.", "success");
+
+    //  선택 해제
     setActiveCutout(null);
     setSelectedImage(null);
   };
@@ -321,7 +371,13 @@ export default function SyntheticBackground() {
   };
 
   // 배경 캔버스에 컷아웃 드래그 시작
-  const handleCanvasDrop = (e) => {
+  const handleCanvasDrop = async (e) => {
+    if (!bgImage) {
+      useToastStore
+        .getState()
+        .addToast("Please select a background image first.", "error");
+      return;
+    }
     e.preventDefault();
 
     const data = e.dataTransfer.getData("application/cutout");
@@ -344,6 +400,8 @@ export default function SyntheticBackground() {
     const x = mouseX - width / 2;
     const y = mouseY - height / 2;
 
+    await prepareCutout(cutout.id, cutout.bbox, cutoutCacheRef);
+
     setPlacedObjects((prev) => [
       ...prev,
       {
@@ -359,11 +417,187 @@ export default function SyntheticBackground() {
     ]);
   };
 
+  const handleCanvasMouseDown = (e) => {
+    const canvas = bgCanvasRef.current;
+    if (!canvas) return;
+
+    const { x, y } = getCanvasPos(e, canvas);
+    const objects = [...placedObjects].reverse();
+
+    // 1️⃣ 회전 핸들
+    const rotateTarget = objects.find((obj) =>
+      isOnRotateHandle(obj, x, y, cutoutCacheRef)
+    );
+    if (rotateTarget) {
+      TransformRotate(
+        rotateTarget,
+        x,
+        y,
+        canvas,
+        setActivePlacedId,
+        isRotatingRef,
+        startAngleRef,
+        startRotateRef
+      );
+      return;
+    }
+
+    // 2️⃣ 스케일 핸들
+    const scaleTarget = objects.find((obj) =>
+      isOnScaleHandle(obj, x, y, cutoutCacheRef)
+    );
+    if (scaleTarget) {
+      TransformScale(
+        scaleTarget,
+        x,
+        y,
+        canvas,
+        setActivePlacedId,
+        updateCanvasCursor,
+        scaleCenterRef,
+        isScalingRef,
+        startDistanceRef,
+        startScaleRef
+      );
+      return;
+    }
+
+    // 3️⃣ 바디 (이동) - 마스크 기준 tight bbox로 판단
+    const bodyTarget = objects.find((obj) =>
+      isInsideObject(obj, x, y, cutoutCacheRef)
+    );
+    if (!bodyTarget) {
+      setActivePlacedId(null);
+      updateCanvasCursor(canvas, "default");
+      return;
+    }
+
+    // 바운딩 박스 시각화를 위해 선택 상태로 설정
+    setActivePlacedId(bodyTarget.id);
+    isDraggingRef.current = true;
+
+    dragOffsetRef.current = {
+      x: x - bodyTarget.x,
+      y: y - bodyTarget.y,
+    };
+  };
+
+  const handleCanvasMouseMove = (e) => {
+    if (!activePlacedId) return;
+
+    const canvas = bgCanvasRef.current;
+    if (!canvas) return;
+
+    const { x, y } = getCanvasPos(e, canvas);
+
+    // 🔹 스케일 조절 중
+    if (isScalingRef.current) {
+      ScaleMouseMove(
+        canvas,
+        x,
+        y,
+        setPlacedObjects,
+        activePlacedId,
+        startDistanceRef,
+        startScaleRef,
+        scaleCenterRef
+      );
+      return;
+    }
+
+    // 🔹 회전 조절 중
+    if (isRotatingRef.current) {
+      RotateMouseMove(
+        canvas,
+        x,
+        y,
+        setPlacedObjects,
+        activePlacedId,
+        startAngleRef,
+        startRotateRef
+      );
+      return;
+    }
+
+    // 🔹 드래그 중
+    if (isDraggingRef.current) {
+      updateCanvasCursor(canvas, "move");
+      setPlacedObjects((prev) =>
+        prev.map((obj) =>
+          obj.id === activePlacedId
+            ? {
+                ...obj,
+                x: x - dragOffsetRef.current.x,
+                y: y - dragOffsetRef.current.y,
+              }
+            : obj
+        )
+      );
+      updateCanvasCursor(canvas, "move");
+    }
+    updateHoverCursor(canvas, x, y, placedObjects, cutoutCacheRef);
+  };
+
+  const handleCanvasMouseUp = () => {
+    isDraggingRef.current = false;
+    isScalingRef.current = false;
+    isRotatingRef.current = false;
+
+    const canvas = bgCanvasRef.current;
+    if (canvas) {
+      canvas.style.cursor = "default";
+    }
+  };
+
+  const handleNext = () => {
+    console.log(placedObjects);
+    if (placedObjects.length === 0) {
+      useToastStore
+        .getState()
+        .addToast("Please place at least one object.", "error");
+      return;
+    }
+    exportComposite(bgCanvasRef, placedObjects, cutoutCacheRef);
+    navigate("/synthetic-data/data-augmentation");
+  };
+
+  // 🔹 현재 배경 + 컷아웃 합성 결과 기준으로 bbox 계산 (COCO/YOLO 라벨용)
+  const handleExportLabels = () => {
+    const canvas = bgCanvasRef.current;
+    if (!canvas) return;
+
+    // 세션 스토리지에서 원본 이미지 크기 가져오기
+    const cutoutSources =
+      JSON.parse(sessionStorage.getItem("cutoutSources")) || [];
+    // 첫 번째 항목의 image 크기를 사용 (또는 배경 이미지에 해당하는 항목)
+    // 사용자가 "2번 이미지"라고 했으므로 인덱스 1 사용 (0-based)
+    const originalImage = cutoutSources[1]?.image || cutoutSources[0]?.image;
+    if (!originalImage || !originalImage.width || !originalImage.height) {
+      console.error("원본 이미지 크기를 찾을 수 없습니다.");
+      return;
+    }
+
+    const labels = computeCompositeBBoxes({
+      placedObjects,
+      cutoutCacheRef,
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
+      originalImageWidth: originalImage.width,
+      originalImageHeight: originalImage.height,
+      alphaThreshold: 0, // alpha > 0 인 픽셀을 객체로 간주
+    });
+
+    // TODO: labels를 파일로 저장하거나 서버로 전송하는 로직을 여기에 추가
+    console.log("Exported labels (COCO/YOLO style):", labels);
+  };
+
   return (
-    <Container>
+    <Container onDragOver={(e) => e.preventDefault()}>
       <div>
         <PageHeader title={"Synthetic data"} description={ProjectName} />
-        <p className="description">Segment the image to extract objects.</p>
+        <p className="description">
+          Place segmented objects onto backgrounds to build synthetic images.
+        </p>
       </div>
       <Main>
         <Sidebar>
@@ -372,24 +606,32 @@ export default function SyntheticBackground() {
             {cutouts.map((cutout, index) => (
               <li
                 key={index}
-                draggable={true}
+                draggable
                 className={selectedImage === cutout.id ? "selected" : ""}
                 onClick={() => handleSelectCoutout(cutout)}
                 onDragStart={(e) => handleDragStart(e, cutout)}
+                onDragOver={(e) => e.preventDefault()}
               >
                 <canvas
                   width={160}
                   height={160}
                   ref={(el) => {
                     if (el) {
-                      drawCutoutThumbnail(el, cutout);
+                      drawCutoutThumbnail({
+                        canvas: el,
+                        cutout,
+                        cutoutCacheRef,
+                      });
                     }
                   }}
                 />
               </li>
             ))}
           </ul>
-          <button onClick={handleDeleteCutout}>Remove</button>
+          <button className="remove-button" onClick={handleDeleteCutout}>
+            {RemoveIcon}
+            Remove
+          </button>
         </Sidebar>
         <section>
           <Header>
@@ -413,17 +655,17 @@ export default function SyntheticBackground() {
           </Header>
           <ImageContainer className="image-container">
             <img
-              src={bgImage || "/testImg2.jpg"}
+              src={bgImage || "/placeholder.png"}
               alt="background"
               className="target-image"
             />
             <canvas
               ref={bgCanvasRef}
               className="mask-canvas"
-              //   onMouseDown={handleCanvasMouseDown}
-              //   onMouseMove={handleCanvasMouseMove}
-              //   onMouseUp={handleCanvasMouseUp}
-
+              onMouseDown={handleCanvasMouseDown}
+              onMouseMove={handleCanvasMouseMove}
+              onMouseUp={handleCanvasMouseUp}
+              onMouseLeave={handleCanvasMouseUp}
               onDragOver={(e) => e.preventDefault()} // 필수
               onDrop={handleCanvasDrop}
             />
@@ -433,7 +675,8 @@ export default function SyntheticBackground() {
               <button onClick={() => navigate("/synthetic-data/")}>
                 {LeftArrowIcon}Prev
               </button>
-              <button>{RightArrowIcon}Next</button>
+              <button onClick={() => handleNext()}>{RightArrowIcon}Next</button>
+              {/* <button onClick={handleExportLabels}>Export labels</button> */}
             </Navigation>
           </footer>
         </section>

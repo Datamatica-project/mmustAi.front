@@ -30,7 +30,7 @@ export async function handleCutout(fullMask) {
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
     // 원본 이미지 그리기
     ctx.drawImage(img, 0, 0, width, height);
