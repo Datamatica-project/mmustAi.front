@@ -131,14 +131,14 @@ export default function ProjectCard({ project }) {
     <Card to={`/project/${project.id}`}>
       <CardHeader>
         <div>
-          <h2>{project.title}</h2>
+          <h2>{project.name}</h2>
           <p>{project.description}</p>
         </div>
         <div className="role-container">
-          <span className="date">{project.date}</span>
+          <span className="date">{project.createdAt.split("T")[0]}</span>
           <Taglabel
-            label={project.role}
-            color={RoleColors[project.role] || "#3A245D"}
+            label={project.role || "PM"}
+            color={RoleColors[project.role || "PM"] || "#3A245D"}
           />
         </div>
       </CardHeader>
@@ -146,21 +146,21 @@ export default function ProjectCard({ project }) {
         <div className="progress-bar-container">
           <div className="progress-bar-text">
             <span>Task Progress</span>
-            <span>{project.progress}% Completed</span>
+            <span>{project.totalProgressRate}% Completed</span>
           </div>
           <div className="progress-bar">
             <div
               className="progress-bar-fill"
-              style={{ width: `${project.progress || 0}%` }}
+              style={{ width: `${project.totalProgressRate}%` }}
             ></div>
           </div>
         </div>
         <div className="Tags-container">
-          {project.tags.map((tag) => (
+          {project.labelNames.map((tag, index) => (
             <Taglabel
-              key={tag.id}
-              label={tag.name}
-              color={TagColors[tag.name] || "#3A245D"}
+              key={index}
+              label={tag}
+              color={TagColors[tag] || "#3A245D"}
             />
           ))}
         </div>

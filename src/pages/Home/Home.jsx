@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
 import {
   SuitCaseIcon,
@@ -12,7 +12,7 @@ import {
 import IconButton from "../../components/atoms/IconButton";
 import ProjectCard from "../../components/molecules/ProjectCard";
 import { useNavigate } from "react-router-dom";
-
+import { getProjects } from "../../api/Project";
 // Todo: 프로젝트 데이터 받아오기, map 함수로 교체하여 사용하기
 const Container = styled.div`
   width: 100%;
@@ -28,13 +28,13 @@ const Container = styled.div`
 `;
 
 const Title = styled.h1`
-  font-size: 32px;
+  font-size: 25px;
   font-weight: 700;
   line-height: 2;
 `;
 
 const Description = styled.p`
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: #a7a7a7;
   margin-bottom: 24px;
@@ -54,7 +54,7 @@ const TabList = styled.ul`
     cursor: pointer;
 
     padding: 10px 0;
-    font-size: 20px;
+    font-size: 15px;
     font-weight: 700;
     color: #4f5973;
     display: flex;
@@ -138,13 +138,14 @@ const Main = styled.main`
 export default function Home() {
   const [selectTab, setSelectTab] = useState(0);
   const [search, setSearch] = useState("");
+  const [projects, setProjects] = useState([]);
   const navigate = useNavigate();
   const TabTitles = [
-    "All Projects",
-    "ProjectManager",
-    "Labeler",
-    "Reviewer",
-    "Synthetic Data Operator",
+    "All Projects", // "All"
+    "ProjectManager", // "PM"
+    "Labeler", // "Labeler"
+    "Reviewer", // "Reviewer"
+    "Synthetic Data Operator", // "SDO"
   ];
   const TabIcons = [
     SuitCaseIcon,
@@ -153,6 +154,32 @@ export default function Home() {
     Clipboard2CheckIcon,
     RobotIcon,
   ];
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      const response = await getProjects();
+
+      setProjects(response.data.items);
+    };
+    fetchProjects();
+  }, []);
+
+  // 검색어에 따라 프로젝트 필터링 (useMemo 사용 - 더 효율적)
+  const filteredProjects = useMemo(() => {
+    if (!search.trim()) {
+      return projects;
+    }
+    const searchLower = search.toLowerCase();
+    return projects.filter((project) => {
+      // 프로젝트 이름, 설명 등에서 검색
+      const nameMatch = project.name?.toLowerCase().includes(searchLower);
+      const descMatch = project.description
+        ?.toLowerCase()
+        .includes(searchLower);
+      return nameMatch || descMatch;
+    });
+  }, [projects, search]);
+
   const data = [
     {
       id: 1,
@@ -217,7 +244,7 @@ export default function Home() {
       </header>
       <h2 className="recent-projects">Recent Projects</h2>
       <Main>
-        {data.map((project) => (
+        {filteredProjects.map((project) => (
           <ProjectCard key={project.id} project={project} />
         ))}
       </Main>

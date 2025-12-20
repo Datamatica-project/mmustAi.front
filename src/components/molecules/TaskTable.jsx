@@ -25,15 +25,6 @@ export default function TaskTable({
 }) {
   return (
     <Table className="task-table">
-      {/* <ColGroup>
-        <col />
-        <col />
-        <col />
-        <col />
-        <col />
-        <col />
-      </ColGroup> */}
-
       <Thead>
         <tr>
           <th>No.</th>
@@ -46,7 +37,7 @@ export default function TaskTable({
       </Thead>
 
       <Tbody>
-        {value.map((item, index) => {
+        {value?.map((item, index) => {
           const rowNumber = (page - 1) * pageSize + index + 1;
           return (
             <tr key={index}>
@@ -57,12 +48,16 @@ export default function TaskTable({
                 </StyledLink>
               </td>
               <td>
-                {item.current}/{item.total}
+                {item.completedJobCount}/{item.jobCount}
               </td>
               <td>
-                {<ProgressBar value={(item.current / item.total) * 100} />}
+                {
+                  <ProgressBar
+                    value={(item.completedJobCount / item.jobCount) * 100}
+                  />
+                }
               </td>
-              <td>{<StatusBadge status={item.status} />}</td>
+              <td>{<StatusBadge status={item.status.toLowerCase()} />}</td>
               <td>{<ThreeDotsMenu />}</td>
             </tr>
           );

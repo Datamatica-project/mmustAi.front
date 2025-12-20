@@ -71,16 +71,16 @@ export default function BestWorker({ value }) {
     <BestWorkerContainer>
       <Header>
         <h3>Best Worker</h3>
-        <span>total {value.length}</span>
+        <span>total {value?.totalCount || 0}</span>
       </Header>
       <List>
-        {value.map((item, index) => (
+        {value?.workers?.map((item, index) => (
           <li className="bestWorker__item" key={index}>
             <span className="bestWorker__number">{index + 1}</span>
             <div className="bestWorker__info">
-              <p>{item.email}</p>
+              <p>{item.worker}</p>
               <p>
-                {item.name} <span>{item.cost} images</span>
+                <span>{item.completedJobsCount} images</span>
               </p>
             </div>
           </li>

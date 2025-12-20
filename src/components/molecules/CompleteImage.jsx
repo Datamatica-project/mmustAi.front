@@ -19,11 +19,21 @@ const CompleteImageContainer = styled.div`
   }
 `;
 
-export default function CompleteImage({ data }) {
+export default function CompleteImage({ data, type }) {
+  let total, approved;
+
+  if (type === "project") {
+    total = data.totalJobCount;
+    approved = data.approvedJobCount;
+  } else {
+    total = data.jobCount;
+    approved = data.completedJobCount;
+  }
+  const percentage = approved / total;
   return (
     <CompleteImageContainer className="dataBlock complete">
-      <DonutChart $percentage={data.completed / data.total} />
-      <span className="dataBlock__value">{data.completed} images</span>{" "}
+      <DonutChart $percentage={percentage || 0} />
+      <span className="dataBlock__value">{approved || 0} images</span>
       <span className="dataBlock__label">completed</span>
     </CompleteImageContainer>
   );

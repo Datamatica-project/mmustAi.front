@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
+import { useParams } from "react-router-dom";
 import ImageTable from "../components/molecules/ImageTable";
 import TaskInfo from "../components/molecules/TaskInfo";
 import { ImageData } from "../data";
+import { getTaskImgList, getTaskStatistics } from "../api/Project";
 
 const Title = styled.h1`
   font-size: 32px;
@@ -38,32 +40,59 @@ const TaskContent = styled.div`
 `;
 
 export default function Task() {
+  /**
+   *  taskId: 태스크 아이디
+   * jobCount: 토탈 이미지,
+   * completedJobCount
+   * inProgressJobCount
+   * waitingJobCount
+   * approvedJobCount
+   * rejectedJobCount
+   */
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const TaskData = {
-    name: "Task 1",
-    projectName: "Project 1",
-    total: 100,
-    completed: 90,
-  };
+
+  const params = useParams();
+  const [taskData, setTaskData] = useState(null);
+  const [taskImgList, setTaskImgList] = useState(null);
+
+  useEffect(() => {
+    const fetchTask = async () => {
+      const response = await getTaskStatistics(params.taskId);
+      setTaskData(response.data);
+    };
+    fetchTask();
+  }, []);
+
+  useEffect(() => {
+    const fetchTaskImgList = async () => {
+      const listData = await getTaskImgList(params.taskId);
+
+      setTaskImgList(listData.data);
+    };
+    fetchTaskImgList();
+  }, [page, pageSize]);
 
   return (
     <main>
       <TaskHeader>
         <div className="task-header-wrapper">
-          <Title>{TaskData.name}</Title>
-          <Description>{TaskData.projectName}</Description>
+          <Title>{taskData?.name}</Title>
+          <Description>{taskData?.projectName}</Description>
         </div>
-        <span className="task-total-image">{TaskData.total} images</span>
+        <span className="task-total-image">{taskData?.total} images</span>
       </TaskHeader>
       <TaskContent>
-        <ImageTable
-          imageData={ImageData}
-          page={page}
-          pageSize={pageSize}
-          setPage={setPage}
-        />
-        <TaskInfo data={TaskData} />
+        {taskImgList && (
+          <ImageTable
+            imageData={taskImgList || []}
+            page={page}
+            pageSize={pageSize}
+            setPage={setPage}
+          />
+        )}
+
+        <TaskInfo data={taskData} />
       </TaskContent>
     </main>
   );

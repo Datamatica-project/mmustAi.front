@@ -18,12 +18,20 @@ const ImageTableContainer = styled.div`
   }
 `;
 const StyledLink = styled(Link)`
+  display: block;
   color: white;
-  text-decoration: none;
   text-decoration: underline;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 70%;
 `;
 export default function ImageTable({ imageData, page, pageSize, setPage }) {
-  const paginateDate = imageData.slice((page - 1) * pageSize, page * pageSize);
+  const paginateDate = imageData?.items?.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
+
   return (
     <ImageTableContainer>
       <h3>image list</h3>
@@ -36,22 +44,22 @@ export default function ImageTable({ imageData, page, pageSize, setPage }) {
           </tr>
         </Thead>
         <Tbody>
-          {paginateDate.map((item, index) => {
+          {paginateDate?.map((item, index) => {
             const rowNumber = (page - 1) * pageSize + index + 1;
             return (
               <tr key={index}>
                 <td>{rowNumber.toString().padStart(2, "0")}</td>
-                <td>
+                <td className="file-name">
                   <StyledLink to={`/labeling`}>{item.fileName}</StyledLink>
                 </td>
-                <td>{<StatusBadge status={item.status} />}</td>
+                <td>{<StatusBadge status={item.status.toLowerCase()} />}</td>
               </tr>
             );
           })}
         </Tbody>
       </Table>
       <Pagination
-        total={imageData.length}
+        total={imageData.items.length}
         page={page}
         pageSize={pageSize}
         onChange={setPage}

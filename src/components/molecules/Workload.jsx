@@ -43,8 +43,8 @@ const WorkloadContainer = styled.div`
   }
 `;
 export default function Workload({ value }) {
-  const targetUnlabelled = value.unlabelled;
-  const targetRejected = value.rejected;
+  const targetUnlabelled = value?.inProgressJobCount || 0;
+  const targetRejected = value?.rejectedJobCount || 0;
   const targetTotal = targetUnlabelled + targetRejected;
 
   const [animatedUnlabelled, setAnimatedUnlabelled] = useState(0);

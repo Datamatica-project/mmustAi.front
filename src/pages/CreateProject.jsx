@@ -3,6 +3,7 @@ import styled from "styled-components";
 import PageHeader from "../components/organisms/PageHeader";
 import { LeftArrowIcon } from "../components/icons/Icons";
 import { useNavigate } from "react-router-dom";
+import { createProject } from "../api/Project";
 
 const Wrapper = styled.div`
   min-height: 100vh;
@@ -126,7 +127,6 @@ const ClassesBox = styled.div`
   border-radius: 10px;
   border: 1px solid #f62579;
   padding: 16px;
-  height: 180px;
   overflow-y: auto;
   display: flex;
   flex-wrap: wrap;
@@ -220,22 +220,22 @@ export default function CreateProject() {
   const [labelName, setLabelName] = useState("");
   const [labelColor, setLabelColor] = useState("#697689");
   const [classes, setClasses] = useState([
-    { name: "car", color: "#8A4A4A" }, // red → 톤 다운
-    { name: "truck", color: "#4A5A8A" }, // blue
-    { name: "bus", color: "#4A8A5A" }, // green
-    { name: "special_vehicle", color: "#4A8A8A" }, // cyan (옵션)
-    { name: "motorcycle", color: "#8A4A7A" }, // pink
-    { name: "bicycle", color: "#6C4A8A" }, // purple
-    { name: "pedestrian", color: "#8A6A4A" }, // orange
-    { name: "traffic_sign", color: "#7A5A4A" }, // brown
-    { name: "traffic_light", color: "#6A6A6A" }, // gray
+    { name: "car", hexColor: "#8A4A4A" }, // red → 톤 다운
+    { name: "truck", hexColor: "#4A5A8A" }, // blue
+    { name: "bus", hexColor: "#4A8A5A" }, // green
+    { name: "special_vehicle", hexColor: "#4A8A8A" }, // cyan (옵션)
+    { name: "motorcycle", hexColor: "#8A4A7A" }, // pink
+    { name: "bicycle", hexColor: "#6C4A8A" }, // purple
+    { name: "pedestrian", hexColor: "#8A6A4A" }, // orange
+    { name: "traffic_sign", hexColor: "#7A5A4A" }, // brown
+    { name: "traffic_light", hexColor: "#6A6A6A" }, // gray
   ]);
 
   const handleAddClass = () => {
     if (!labelName.trim()) return;
     setClasses((prev) => [
       ...prev,
-      { name: labelName.trim(), color: labelColor },
+      { name: labelName.trim(), hexColor: labelColor },
     ]);
     setLabelName("");
   };
@@ -244,7 +244,7 @@ export default function CreateProject() {
     setClasses((prev) => prev.filter((c) => c.name !== name));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const payload = {
       projectName,
       description,
@@ -253,7 +253,11 @@ export default function CreateProject() {
       imagesPerTask,
       classes,
     };
-    console.log("Create project payload:", payload);
+    const response = await createProject(payload);
+    console.log("Create project response:", response);
+    if (response.resultCode === "SUCCESS") {
+      navigate(-1);
+    }
     // TODO: 실제 프로젝트 생성 API 호출 후 프로젝트 상세 페이지로 이동
   };
 
@@ -308,13 +312,23 @@ export default function CreateProject() {
                 />
               </div>
               <div>
-                <Label>Images per Task</Label>
+                <Label>Images per Task (최대 1000)</Label>
                 <Input
                   type="number"
                   min={1}
+                  max={1000}
                   placeholder="Images per Task"
                   value={imagesPerTask}
-                  onChange={(e) => setImagesPerTask(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // 최대값 1000 제한
+                    if (
+                      value === "" ||
+                      (Number(value) >= 1 && Number(value) <= 1000)
+                    ) {
+                      setImagesPerTask(value);
+                    }
+                  }}
                 />
               </div>
             </FormRow>
@@ -340,7 +354,7 @@ export default function CreateProject() {
 
             <ClassesBox>
               {classes.map((cls) => (
-                <ClassChip key={cls.name} color={cls.color}>
+                <ClassChip key={cls.name} color={cls.hexColor}>
                   <span>{cls.name}</span>
                   <RemoveChip onClick={() => handleRemoveClass(cls.name)}>
                     ✕

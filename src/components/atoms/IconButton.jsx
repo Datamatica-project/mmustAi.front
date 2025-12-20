@@ -10,12 +10,12 @@ const Button = styled(Link)`
 
   display: flex;
   gap: 10px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   align-items: center;
   justify-content: center;
   color: #ffffff;
 
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 700;
   border-radius: 10px;
 `;

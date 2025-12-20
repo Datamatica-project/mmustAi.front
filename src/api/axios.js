@@ -12,7 +12,8 @@ export const samApi = axios.create({
 
 // 토큰(JWT 등)을 헤더에 직접 실어서 인증을 유지하는 구조일때 사용
 api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token;
+  // const token = useAuthStore.getState().token;
+  const token = localStorage.getItem("accessToken");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

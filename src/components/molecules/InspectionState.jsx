@@ -32,26 +32,35 @@ const InspectionStateContainer = styled.div`
 `;
 
 export default function InspectionState({ value }) {
+  const DataState = {
+    total:
+      value?.approvedJobCount +
+        value?.waitingJobCount +
+        value?.rejectedJobCount || 0,
+    approved: value?.approvedJobCount || 0,
+    waiting: value?.waitingJobCount || 0,
+    rejected: value?.rejectedJobCount || 0,
+  };
   return (
     <InspectionStateContainer>
       <h3>Inspection status</h3>
       <p>
-        from<span>{value.labelled}</span> labelled images
+        from<span>{DataState["total"]}</span> labelled images
       </p>
       <div className="inspection-graph-container">
         <InspectionGraph
-          labelled={value.labelled}
-          value={value.watingReview}
+          labelled={DataState["total"]}
+          value={DataState["waiting"]}
           tag="Awaiting"
         />
         <InspectionGraph
-          labelled={value.labelled}
-          value={value.completed}
+          labelled={DataState["total"]}
+          value={DataState["approved"]}
           tag="Completed"
         />
         <InspectionGraph
-          labelled={value.labelled}
-          value={value.rejected}
+          labelled={DataState["total"]}
+          value={DataState["rejected"]}
           tag="Rejected"
         />
       </div>

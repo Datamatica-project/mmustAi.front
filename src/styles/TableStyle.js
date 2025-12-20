@@ -25,4 +25,8 @@ export const Tbody = styled.tbody`
     padding-bottom: 15px;
     text-align: center;
   }
+  & .file-name {
+    display: flex;
+    justify-content: center;
+  }
 `;

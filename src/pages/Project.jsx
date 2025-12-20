@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import ChartBlock from "../components/molecules/ChartBlock";
 import InspectionState from "../components/molecules/InspectionState";
@@ -6,9 +6,10 @@ import Workload from "../components/molecules/Workload";
 import BestWorker from "../components/molecules/BestWorker";
 import CompleteImage from "../components/molecules/CompleteImage";
 import TaskTable from "../components/molecules/TaskTable";
-import { data, peopleCost, TaskList } from "../data";
+import { peopleCost, TaskList } from "../data";
 import Pagination from "../components/common/Pagination";
 import { Link, useParams } from "react-router-dom";
+import { getBestWorker, getProject, getProjectTasks } from "../api/Project";
 
 const Title = styled.h1`
   font-size: 32px;
@@ -119,19 +120,45 @@ const TaskContainer = styled.div`
 `;
 
 export default function Project() {
+  /**
+   * 
+  projectId : 프로젝트 ID
+  totalTaskCount : 총 태스크 개수 (10개)
+  totalJobCount : 총 작업(이미지) 개수 (1000개)
+  approvedJobCount : 라벨 완료 + 검수 완료된 총 작업 개수 (500개)
+  notApprovedJobCount : 라벨 미완료 + 검수 대기 중 + 검수 결과 탈락처리 된 총 작업 개수
+  inProgressJobCount : 라벨 완료 처리 안된 작업 개수 (300개)
+  rejectedJobCount : 검수 결과 탈락처리 된 총 작업 개수 (50개)
+  waitingJobCount : 검수 대기 중인 총 작업 개수 (150개)
+   */
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const params = useParams();
-
+  const [data, setData] = useState(null);
+  const [bestWorkerData, setBestWorkerData] = useState(null);
+  const [projectTasksData, setProjectTasksData] = useState(null);
   // 페이지네이션 데이터 추출 (0, 10), (10, 20), (20, 30), ...
   const paginateDate = TaskList.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    const fetchProject = async () => {
+      const response = await getProject(params.projectId);
+      const BestWorkerData = await getBestWorker(params.projectId);
+      const ProjectTasksData = await getProjectTasks(params.projectId);
+      console.log(ProjectTasksData);
+      setData(response.data);
+      setBestWorkerData(BestWorkerData.data);
+      setProjectTasksData(ProjectTasksData.data);
+    };
+    fetchProject();
+  }, []);
 
   return (
     <main>
       <Header>
         <div>
-          <Title>{data.name}</Title>
-          <Description>{data.description}</Description>
+          <Title>{"Project_1"}</Title>
+          <Description>{"This is a description of the project."}</Description>
         </div>
         <div className="button-group">
           <button className="button">Auto Labeling</button>
@@ -144,14 +171,23 @@ export default function Project() {
         <h2>overview</h2>
         <div className="dataBlockContainer">
           <section className="left">
-            <CompleteImage data={data} />
+            {data && <CompleteImage data={data} type="project" />}
           </section>
 
           <section className="center">
             <div>
-              <ChartBlock value={data.total} label="total images" />
-              <ChartBlock value={data.labelled} label="Labelled images" />
-              <ChartBlock value={data.unlabelled} label="Unlabelled images" />
+              <ChartBlock
+                value={data?.totalJobCount || 0}
+                label="total images"
+              />
+              <ChartBlock
+                value={data?.totalJobCount - data?.inProgressJobCount || 0}
+                label="Labelled images"
+              />
+              <ChartBlock
+                value={data?.inProgressJobCount || 0}
+                label="Unlabelled images"
+              />
             </div>
 
             <div>
@@ -161,20 +197,20 @@ export default function Project() {
           </section>
 
           <section className="right">
-            <BestWorker value={peopleCost} />
+            <BestWorker value={bestWorkerData} />
           </section>
         </div>
       </Overview>
       <TaskContainer>
         <h2>Task list</h2>
         <TaskTable
-          value={paginateDate}
+          value={projectTasksData}
           page={page}
           pageSize={pageSize}
           projectId={params.projectId}
         />
         <Pagination
-          total={TaskList.length}
+          total={projectTasksData?.length || 1}
           page={page}
           pageSize={pageSize}
           onChange={setPage}

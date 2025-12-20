@@ -44,16 +44,19 @@ export default function TaskInfo({ data }) {
     <TaskInfoContainer>
       <div className="task-info__statistics">
         <h3>Statistics</h3>
-        <CompleteImage data={data} />
+        {data && <CompleteImage data={data} type="task" />}
       </div>
       <div>
         <h3>work status</h3>
         <StatusGrid>
-          <TopSummaryCard total={100} />
-          <StatusCard status="In progress" count={2} />
-          <StatusCard status="Waiting" count={3} />
-          <StatusCard status="Approved" count={4} />
-          <StatusCard status="Rejected" count={5} />
+          <TopSummaryCard total={data?.jobCount || 0} />
+          <StatusCard
+            status="In progress"
+            count={data?.inProgressJobCount || 0}
+          />
+          <StatusCard status="Waiting" count={data?.waitingJobCount || 0} />
+          <StatusCard status="Approved" count={data?.approvedJobCount || 0} />
+          <StatusCard status="Rejected" count={data?.rejectedJobCount || 0} />
         </StatusGrid>
       </div>
     </TaskInfoContainer>

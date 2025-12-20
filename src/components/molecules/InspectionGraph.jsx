@@ -51,7 +51,12 @@ export default function InspectionGraph({ labelled, value, tag }) {
     },
   };
 
-  const targetPercentage = Math.round((value / labelled) * 100);
+  let targetPercentage;
+  if (value === 0 && labelled === 0) {
+    targetPercentage = 0;
+  } else {
+    targetPercentage = Math.round((value / labelled) * 100);
+  }
   const [animatedPercentage, setAnimatedPercentage] = useState(0);
 
   useEffect(() => {
