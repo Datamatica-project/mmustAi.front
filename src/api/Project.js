@@ -109,3 +109,73 @@ export const getTaskImgList = async (taskId) => {
     throw error;
   }
 };
+
+/**
+ * 프로젝트에 팀원 초대
+ * @param {string} projectId - 프로젝트 ID
+ * @param {Array} members - 초대할 멤버 배열 [{ email, role }, ...]
+ * @returns {Promise}
+ */
+export const inviteMembers = async (projectId, members) => {
+  try {
+    const response = await api.post(`/api/v1/projects/${projectId}/invite`, {
+      members: members,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error inviting members:", error);
+    throw error;
+  }
+};
+
+/**
+ * 오토라벨링 시작
+ * @param {string} projectId - 프로젝트 ID
+ * @returns {Promise}
+ */
+export const startAutoLabeling = async (projectId) => {
+  try {
+    const response = await api.post(
+      `/api/v1/projects/${projectId}/auto-labeling/start`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error starting auto labeling:", error);
+    throw error;
+  }
+};
+
+/**
+ * 오토라벨링 상태 조회
+ * @param {string} projectId - 프로젝트 ID
+ * @returns {Promise}
+ */
+export const getAutoLabelingStatus = async (projectId) => {
+  try {
+    const response = await api.get(
+      `/api/v1/projects/${projectId}/auto-labeling/status`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error getting auto labeling status:", error);
+    throw error;
+  }
+};
+
+/**
+ * 오토라벨링 Cycle 결과 조회
+ * @param {string} projectId - 프로젝트 ID
+ * @param {number} cycleIndex - 사이클 번호 (1, 2, 3)
+ * @returns {Promise}
+ */
+export const getAutoLabelingCycleResult = async (projectId, cycleIndex) => {
+  try {
+    const response = await api.get(
+      `/api/v1/projects/${projectId}/auto-labeling/cycle/${cycleIndex}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error getting cycle result:", error);
+    throw error;
+  }
+};

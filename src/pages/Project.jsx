@@ -6,6 +6,9 @@ import Workload from "../components/molecules/Workload";
 import BestWorker from "../components/molecules/BestWorker";
 import CompleteImage from "../components/molecules/CompleteImage";
 import TaskTable from "../components/molecules/TaskTable";
+import AddImageModal from "../components/molecules/AddImageModal";
+import InviteMemberModal from "../components/molecules/InviteMemberModal";
+import AutoLabelingModal from "../components/molecules/AutoLabelingModal";
 import { peopleCost, TaskList } from "../data";
 import Pagination from "../components/common/Pagination";
 import { Link, useParams } from "react-router-dom";
@@ -137,6 +140,12 @@ export default function Project() {
   const [data, setData] = useState(null);
   const [bestWorkerData, setBestWorkerData] = useState(null);
   const [projectTasksData, setProjectTasksData] = useState(null);
+
+  // 모달 상태
+  const [isAddImageModalOpen, setIsAddImageModalOpen] = useState(false);
+  const [isInviteMemberModalOpen, setIsInviteMemberModalOpen] = useState(false);
+  const [isAutoLabelingModalOpen, setIsAutoLabelingModalOpen] = useState(false);
+
   // 페이지네이션 데이터 추출 (0, 10), (10, 20), (20, 30), ...
   const paginateDate = TaskList.slice((page - 1) * pageSize, page * pageSize);
 
@@ -161,10 +170,27 @@ export default function Project() {
           <Description>{"This is a description of the project."}</Description>
         </div>
         <div className="button-group">
-          <button className="button">Auto Labeling</button>
+          <button
+            className="button"
+            onClick={() => setIsAutoLabelingModalOpen(true)}
+          >
+            Auto Labeling
+          </button>
           <StyledLink to="/synthetic-data" className="button">
             Synthetic Data
           </StyledLink>
+          <button
+            className="button"
+            onClick={() => setIsAddImageModalOpen(true)}
+          >
+            Add Images
+          </button>
+          <button
+            className="button"
+            onClick={() => setIsInviteMemberModalOpen(true)}
+          >
+            Invite Members
+          </button>
         </div>
       </Header>
       <Overview>
@@ -216,6 +242,52 @@ export default function Project() {
           onChange={setPage}
         />
       </TaskContainer>
+
+      {/* 이미지 추가 모달 */}
+      <AddImageModal
+        isOpen={isAddImageModalOpen}
+        onClose={() => setIsAddImageModalOpen(false)}
+        projectId={params.projectId}
+        onUploadComplete={() => {
+          // 프로젝트 데이터 새로고침
+          const fetchProject = async () => {
+            const response = await getProject(params.projectId);
+            setData(response.data);
+          };
+          fetchProject();
+        }}
+      />
+
+      {/* 팀원 초대 모달 */}
+      <InviteMemberModal
+        isOpen={isInviteMemberModalOpen}
+        onClose={() => setIsInviteMemberModalOpen(false)}
+        projectId={params.projectId}
+        onInviteComplete={() => {
+          // 프로젝트 데이터 새로고침
+          const fetchProject = async () => {
+            const response = await getProject(params.projectId);
+            setData(response.data);
+          };
+          fetchProject();
+        }}
+      />
+
+      {/* 오토라벨링 모달 */}
+      <AutoLabelingModal
+        isOpen={isAutoLabelingModalOpen}
+        onClose={() => setIsAutoLabelingModalOpen(false)}
+        projectId={params.projectId}
+        projectData={data}
+        onComplete={() => {
+          // 프로젝트 데이터 새로고침
+          const fetchProject = async () => {
+            const response = await getProject(params.projectId);
+            setData(response.data);
+          };
+          fetchProject();
+        }}
+      />
     </main>
   );
 }

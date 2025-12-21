@@ -36,7 +36,6 @@ const CardHeader = styled.div`
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 300px;
   }
   .role-container {
     top: 10px;
@@ -127,6 +126,12 @@ export default function ProjectCard({ project }) {
     SDO: "#7209B7 ",
   };
 
+  const RoleMapping = {
+    PM: "PM",
+    WORKER: "Labeler",
+    INSPECTOR: "Reviewer",
+  };
+
   return (
     <Card to={`/project/${project.id}`}>
       <CardHeader>
@@ -137,8 +142,8 @@ export default function ProjectCard({ project }) {
         <div className="role-container">
           <span className="date">{project.createdAt.split("T")[0]}</span>
           <Taglabel
-            label={project.role || "PM"}
-            color={RoleColors[project.role || "PM"] || "#3A245D"}
+            label={RoleMapping[project.role] || "PM"}
+            color={RoleColors[RoleMapping[project.role]] || "#3A245D"}
           />
         </div>
       </CardHeader>
@@ -156,7 +161,7 @@ export default function ProjectCard({ project }) {
           </div>
         </div>
         <div className="Tags-container">
-          {project.labelNames.map((tag, index) => (
+          {project.labelNames?.map((tag, index) => (
             <Taglabel
               key={index}
               label={tag}

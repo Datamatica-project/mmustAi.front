@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import styled from "styled-components";
 import PageHeader from "../components/organisms/PageHeader";
 import { LeftArrowIcon } from "../components/icons/Icons";
 import { useNavigate } from "react-router-dom";
 import { createProject } from "../api/Project";
+import { uploadFile, uploadMultipleFiles } from "../utils/uploadUtils";
+import { useToastStore } from "../store/toastStore";
 
 const Wrapper = styled.div`
   min-height: 100vh;
@@ -70,9 +72,6 @@ const SectionTitle = styled.h3`
 
 const FormRow = styled.div`
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-grow: 1;
 
   gap: 20px;
   margin-bottom: 16px;
@@ -91,8 +90,9 @@ const Label = styled.label`
 `;
 
 const Input = styled.input`
+  box-sizing: border-box;
   width: 100%;
-  border-radius: 999px;
+  border-radius: 10px;
   border: 1px solid #ea257f;
   background-color: #1c1d2f;
   color: #ffffff;
@@ -106,6 +106,7 @@ const Input = styled.input`
 `;
 
 const TextArea = styled.textarea`
+  box-sizing: border-box;
   width: 100%;
   border-radius: 16px;
   border: 1px solid #ea257f;
@@ -206,16 +207,147 @@ const CreateButton = styled.button`
   &:hover {
     background-color: #d41e66;
   }
+
+  &:disabled {
+    background-color: #5b5d75;
+    cursor: not-allowed;
+  }
+`;
+
+const UploadSection = styled.div`
+  margin-bottom: 24px;
+`;
+
+const TabButtons = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+`;
+
+const TabButton = styled.button`
+  flex: 1;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid ${(props) => (props.active ? "#f62579" : "#3b3c5d")};
+  background-color: ${(props) => (props.active ? "#f62579" : "transparent")};
+  color: ${(props) => (props.active ? "#ffffff" : "#b6b5c5")};
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: #f62579;
+  }
+`;
+
+const UploadArea = styled.div`
+  border: 2px dashed ${(props) => (props.dragging ? "#f62579" : "#3b3c5d")};
+  border-radius: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  background-color: ${(props) => (props.dragging ? "#2a1b2d" : "#151624")};
+  transition: all 0.2s;
+  cursor: pointer;
+
+  &:hover {
+    border-color: #f62579;
+    background-color: #2a1b2d;
+  }
+`;
+
+const UploadInput = styled.input`
+  display: none;
+`;
+
+const UploadText = styled.div`
+  color: #b6b5c5;
+  font-size: 14px;
+  margin-top: 10px;
+`;
+
+const FileList = styled.div`
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+`;
+
+const FileItem = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: #1c1d2f;
+  border-radius: 8px;
+  border: 1px solid #3b3c5d;
+`;
+
+const FileInfo = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const FileName = styled.span`
+  font-size: 12px;
+  color: #ffffff;
+  font-weight: 500;
+`;
+
+const ProgressBar = styled.div`
+  width: 100%;
+  height: 4px;
+  background-color: #3b3c5d;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+`;
+
+const ProgressFill = styled.div`
+  height: 100%;
+  background-color: #f62579;
+  transition: width 0.3s ease;
+  width: ${(props) => props.progress || 0}%;
+`;
+
+const FileStatus = styled.span`
+  font-size: 11px;
+  color: ${(props) => {
+    if (props.status === "success") return "#46eb83";
+    if (props.status === "error") return "#f62579";
+    return "#b6b5c5";
+  }};
+`;
+
+const RemoveFileButton = styled.button`
+  border: none;
+  background: transparent;
+  color: #f62579;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 8px;
+  margin-left: 8px;
 `;
 
 export default function CreateProject() {
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+  const zipInputRef = useRef(null);
 
   const [projectName, setProjectName] = useState("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
-  const [targetImages, setTargetImages] = useState("");
   const [imagesPerTask, setImagesPerTask] = useState("");
+
+  // 업로드 관련 상태
+  const [uploadMethod, setUploadMethod] = useState("individual"); // "individual" | "zip"
+  const [uploadFiles, setUploadFiles] = useState([]); // { file, fileId, progress, status }
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [labelName, setLabelName] = useState("");
   const [labelColor, setLabelColor] = useState("#697689");
@@ -244,21 +376,198 @@ export default function CreateProject() {
     setClasses((prev) => prev.filter((c) => c.name !== name));
   };
 
+  // 파일 선택 처리
+  const handleFileSelect = (files) => {
+    const fileArray = Array.from(files);
+    const newFiles = fileArray.map((file) => ({
+      file,
+      fileId: null,
+      progress: 0,
+      status: "pending", // pending, uploading, success, error
+    }));
+    setUploadFiles((prev) => [...prev, ...newFiles]);
+  };
+
+  // 개별 파일 선택
+  const handleIndividualFileChange = (e) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleFileSelect(files);
+    }
+    e.target.value = ""; // 같은 파일 재선택 가능하도록
+  };
+
+  // ZIP 파일 선택
+  const handleZipFileChange = (e) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const zipFile = files[0];
+      if (!zipFile.name.endsWith(".zip")) {
+        useToastStore
+          .getState()
+          .addToast("ZIP 파일만 업로드 가능합니다.", "error");
+        return;
+      }
+      handleFileSelect([zipFile]);
+    }
+    e.target.value = "";
+  };
+
+  // 드래그 앤 드롭
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    if (uploadMethod === "individual") {
+      const files = Array.from(e.dataTransfer.files).filter((file) =>
+        file.type.startsWith("image/")
+      );
+      if (files.length > 0) {
+        handleFileSelect(files);
+      }
+    } else {
+      const files = Array.from(e.dataTransfer.files).filter((file) =>
+        file.name.endsWith(".zip")
+      );
+      if (files.length > 0) {
+        handleFileSelect(files);
+      }
+    }
+  };
+
+  // 파일 업로드 시작
+  const handleStartUpload = async () => {
+    if (uploadFiles.length === 0) {
+      useToastStore
+        .getState()
+        .addToast("업로드할 파일을 선택해주세요.", "error");
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      if (uploadMethod === "individual") {
+        // 개별 파일 업로드
+        const fileIds = await uploadMultipleFiles(
+          uploadFiles.map((item) => item.file),
+          (fileIndex, progress) => {
+            setUploadFiles((prev) =>
+              prev.map((item, index) =>
+                index === fileIndex
+                  ? { ...item, progress, status: "uploading" }
+                  : item
+              )
+            );
+          },
+          5 // 동시 업로드 5개로 제한
+        );
+
+        // fileId 업데이트
+        setUploadFiles((prev) =>
+          prev.map((item, index) => ({
+            ...item,
+            fileId: fileIds[index] || null,
+            status: fileIds[index] ? "success" : "error",
+            progress: fileIds[index] ? 100 : 0,
+          }))
+        );
+
+        useToastStore
+          .getState()
+          .addToast(`${fileIds.length}개 파일 업로드 완료`, "success");
+      } else {
+        // ZIP 파일 업로드
+        const zipFile = uploadFiles[0].file;
+        const fileId = await uploadFile(zipFile, (progress) => {
+          setUploadFiles((prev) =>
+            prev.map((item) => ({
+              ...item,
+              progress,
+              status: "uploading",
+            }))
+          );
+        });
+
+        setUploadFiles((prev) =>
+          prev.map((item) => ({
+            ...item,
+            fileId,
+            status: "success",
+            progress: 100,
+          }))
+        );
+
+        useToastStore.getState().addToast("ZIP 파일 업로드 완료", "success");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      useToastStore
+        .getState()
+        .addToast("업로드 중 오류가 발생했습니다.", "error");
+      setUploadFiles((prev) =>
+        prev.map((item) => ({
+          ...item,
+          status: item.status === "uploading" ? "error" : item.status,
+        }))
+      );
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // 파일 제거
+  const handleRemoveFile = (index) => {
+    setUploadFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async () => {
+    // 업로드된 fileId 추출
+    const uploadedFileIds = uploadFiles
+      .filter((item) => item.status === "success" && item.fileId)
+      .map((item) => item.fileId);
+
+    if (uploadedFileIds.length === 0) {
+      useToastStore
+        .getState()
+        .addToast("최소 1개 이상의 파일을 업로드해주세요.", "error");
+      return;
+    }
+
     const payload = {
       projectName,
       description,
       startDate,
-      targetImages,
       imagesPerTask,
       classes,
+      uploadedFileIds,
     };
-    const response = await createProject(payload);
-    console.log("Create project response:", response);
-    if (response.resultCode === "SUCCESS") {
-      navigate(-1);
+
+    try {
+      const response = await createProject(payload);
+      console.log("Create project response:", response);
+      if (response.resultCode === "SUCCESS") {
+        useToastStore
+          .getState()
+          .addToast("프로젝트가 생성되었습니다.", "success");
+        navigate(-1);
+      }
+    } catch (error) {
+      console.error("Create project error:", error);
+      useToastStore
+        .getState()
+        .addToast("프로젝트 생성 중 오류가 발생했습니다.", "error");
     }
-    // TODO: 실제 프로젝트 생성 API 호출 후 프로젝트 상세 페이지로 이동
   };
 
   return (
@@ -301,16 +610,7 @@ export default function CreateProject() {
                   onChange={(e) => setStartDate(e.target.value)}
                 />
               </div>
-              <div>
-                <Label>Target Number of Images</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  placeholder="Target Number of Images"
-                  value={targetImages}
-                  onChange={(e) => setTargetImages(e.target.value)}
-                />
-              </div>
+
               <div>
                 <Label>Images per Task (최대 1000)</Label>
                 <Input
@@ -332,6 +632,107 @@ export default function CreateProject() {
                 />
               </div>
             </FormRow>
+
+            {/* Image Upload Section */}
+            <SectionTitle>Image Upload</SectionTitle>
+            <UploadSection>
+              <TabButtons>
+                <TabButton
+                  active={uploadMethod === "individual"}
+                  onClick={() => setUploadMethod("individual")}
+                >
+                  개별 파일 선택
+                </TabButton>
+                <TabButton
+                  active={uploadMethod === "zip"}
+                  onClick={() => setUploadMethod("zip")}
+                >
+                  ZIP 파일 업로드
+                </TabButton>
+              </TabButtons>
+
+              <UploadArea
+                dragging={isDragging}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => {
+                  if (uploadMethod === "individual") {
+                    fileInputRef.current?.click();
+                  } else {
+                    zipInputRef.current?.click();
+                  }
+                }}
+              >
+                <UploadInput
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleIndividualFileChange}
+                />
+                <UploadInput
+                  ref={zipInputRef}
+                  type="file"
+                  accept=".zip"
+                  onChange={handleZipFileChange}
+                />
+                <div
+                  style={{
+                    fontSize: "16px",
+                    color: "#ffffff",
+                    marginBottom: "8px",
+                  }}
+                >
+                  {uploadMethod === "individual"
+                    ? "📁 이미지 파일을 선택하거나 드래그하세요"
+                    : "📦 ZIP 파일을 선택하거나 드래그하세요"}
+                </div>
+                <UploadText>
+                  {uploadMethod === "individual"
+                    ? "여러 이미지 파일을 한 번에 선택할 수 있습니다"
+                    : "압축된 이미지 파일을 업로드합니다"}
+                </UploadText>
+              </UploadArea>
+
+              {uploadFiles.length > 0 && (
+                <>
+                  <FileList>
+                    {uploadFiles.map((item, index) => (
+                      <FileItem key={index}>
+                        <FileInfo>
+                          <FileName>{item.file.name}</FileName>
+                          <ProgressBar>
+                            <ProgressFill progress={item.progress} />
+                          </ProgressBar>
+                          <FileStatus status={item.status}>
+                            {item.status === "pending" && "대기 중"}
+                            {item.status === "uploading" &&
+                              `업로드 중... ${item.progress}%`}
+                            {item.status === "success" && "완료"}
+                            {item.status === "error" && "실패"}
+                          </FileStatus>
+                        </FileInfo>
+                        <RemoveFileButton
+                          onClick={() => handleRemoveFile(index)}
+                        >
+                          ✕
+                        </RemoveFileButton>
+                      </FileItem>
+                    ))}
+                  </FileList>
+                  {uploadFiles.some((item) => item.status === "pending") && (
+                    <AddButton
+                      onClick={handleStartUpload}
+                      disabled={isUploading}
+                      style={{ marginTop: "12px", width: "100%" }}
+                    >
+                      {isUploading ? "업로드 중..." : "업로드 시작"}
+                    </AddButton>
+                  )}
+                </>
+              )}
+            </UploadSection>
 
             {/* Define Classes */}
             <SectionTitle>Define Classes</SectionTitle>
@@ -363,7 +764,17 @@ export default function CreateProject() {
               ))}
             </ClassesBox>
 
-            <CreateButton onClick={handleSubmit}>Create Project</CreateButton>
+            <CreateButton
+              onClick={handleSubmit}
+              disabled={
+                !projectName ||
+                uploadFiles.filter((item) => item.status === "success")
+                  .length === 0 ||
+                classes.length === 0
+              }
+            >
+              Create Project
+            </CreateButton>
           </div>
         </Card>
       </PageContainer>

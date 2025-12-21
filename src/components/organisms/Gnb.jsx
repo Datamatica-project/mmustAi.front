@@ -1,7 +1,8 @@
 import React from "react";
 import styled from "styled-components";
 import logoPng from "../../assets/image/datamatica_Logo.png";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { useAuthStore } from "../../store/authStore";
 
 const Nav = styled.nav`
   position: fixed;
@@ -17,6 +18,9 @@ const Nav = styled.nav`
   gap: 30px;
   a {
     margin: 0 auto;
+  }
+  .logout-container {
+    margin-top: auto;
   }
   ul {
     display: flex;
@@ -46,9 +50,25 @@ const NavLinks = styled(NavLink)`
     background: #ffffff1c;
     border-radius: 5px;
   }
+
+  &.logout-button {
+    font-weight: 700;
+    border-bottom: 2px solid #ea257f;
+  }
 `;
 
 export default function Gnb() {
+  const navigate = useNavigate();
+  const { clearToken } = useAuthStore();
+
+  const handleLogout = (e) => {
+    e.preventDefault();
+    // 1. 토큰 삭제 (Zustand 상태 + localStorage)
+    clearToken();
+    // 2. 로그인 페이지로 이동
+    navigate("/login");
+  };
+
   return (
     <Nav>
       <Link to="/login">
@@ -63,6 +83,18 @@ export default function Gnb() {
         </li>
         <li>
           <NavLinks to="/inspection">Inspection</NavLinks>
+        </li>
+      </ul>
+
+      <ul className="logout-container">
+        <li>
+          <NavLinks
+            to="/login"
+            className="logout-button"
+            onClick={handleLogout}
+          >
+            Logout
+          </NavLinks>
         </li>
       </ul>
     </Nav>

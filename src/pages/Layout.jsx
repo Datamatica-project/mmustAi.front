@@ -2,6 +2,7 @@ import React from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import Gnb from "../components/organisms/Gnb";
 import styled from "styled-components";
+import { useAuthStore } from "../store/authStore";
 
 const Container = styled.div`
   display: flex;
@@ -24,9 +25,12 @@ const Main = styled.main`
 
 export default function Layout() {
   const location = useLocation();
-  // if (location.pathname === "/") {
-  //   return <Navigate to="/login" replace />;
-  // }
+  const { token } = useAuthStore();
+
+  // 로그인 페이지가 아닌데 토큰이 없으면 로그인 페이지로 리다이렉트
+  if (!token && location.pathname !== "/login") {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <Container>

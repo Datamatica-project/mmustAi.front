@@ -7,6 +7,12 @@ import AuthForm from "../molecules/AuthForm";
 import AuthLinks from "../molecules/AuthLinks";
 import { usePostLogin } from "../../hooks/useUser";
 import { useAuthStore } from "../../store/authStore";
+/**
+ * 로그인 관리 방식
+ * Zustand 상태 관리 방식 사용
+ * token 관리
+ * 로그인 성공 시 token 저장
+ */
 
 const Container = styled.div`
   height: 100vh;
