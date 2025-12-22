@@ -13,7 +13,6 @@ import { api } from "./axios";
 
 // 청크 파일 업로드 초기화
 export const initChunkUpload = async (fileInfo, CHUNK_SIZE) => {
-  console.log(fileInfo, CHUNK_SIZE);
   const fileData = fileInfo.map((file) => {
     return {
       filename: file.file.name,
@@ -69,8 +68,6 @@ export const uploadChunk = async (
  * @returns {Promise} { fileId, status, storedFilename, ... }
  */
 export const completeChunkUpload = async (fileId) => {
-  console.log(fileId);
-
   try {
     const response = await api.post(
       `/api/v1/files/upload/complete?fileId=${fileId}`
@@ -135,7 +132,7 @@ export const uploadFilesUnified = async (
  * @returns {string} 이미지 URL
  */
 export const getFileUrlByName = async (fileName) => {
-  console.log(fileName);
+  console.log("fileName", fileName);
   try {
     const response = await api.get(
       `/api/v1/images/view?filename=${fileName}&type=PROJECT`,

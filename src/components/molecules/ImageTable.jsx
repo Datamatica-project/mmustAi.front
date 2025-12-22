@@ -28,7 +28,7 @@ const StyledLink = styled(Link)`
 `;
 export default function ImageTable({ imageData, page, pageSize, setPage }) {
   const { projectId, taskId } = useParams();
-  console.log(imageData);
+
   const paginateDate = imageData?.items?.slice(
     (page - 1) * pageSize,
     page * pageSize
@@ -53,7 +53,7 @@ export default function ImageTable({ imageData, page, pageSize, setPage }) {
                 <td>{rowNumber.toString().padStart(2, "0")}</td>
                 <td className="file-name">
                   <StyledLink
-                    to={`/project/${projectId}/task/${taskId}/labeling/${item.fileName}/${item.fileId}`}
+                    to={`/project/${projectId}/task/${taskId}/labeling/${item.id}`}
                     // state={{ fileId: item.fileId, fileName: item.fileName }}
                   >
                     {item.fileName}

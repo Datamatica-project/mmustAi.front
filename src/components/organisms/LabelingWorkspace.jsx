@@ -214,7 +214,7 @@ const EditModalButton = styled.button`
   }
 `;
 
-export default function LabelingWorkspace({ fileId, fileName }) {
+export default function LabelingWorkspace({ fileId, fileName, jobData }) {
   const [selectButton, setSelectButton] = useState("Bounding Box");
   const [selectedClass, setSelectedClass] = useState(null);
   const [imageRef, setImageRef] = useState(null);
@@ -266,11 +266,9 @@ export default function LabelingWorkspace({ fileId, fileName }) {
     setYoloLabels((prev) => {
       const updated = [...prev, yoloFormat];
       // 모든 바운딩 박스를 콘솔에 출력
-      console.log("=== YOLO Format Labels ===");
       updated.forEach((label, index) => {
         console.log(`${label.join(" ")}`);
       });
-      console.log("=========================");
       return updated;
     });
   };
@@ -281,10 +279,10 @@ export default function LabelingWorkspace({ fileId, fileName }) {
     return labeledObjects[selectedClass] || [];
   };
 
-  const labelingButtonsOptions = [
-    { icon: BBoxIcon, title: "Bounding Box" },
-    { icon: PolygonIcon, title: "Polygon" },
-  ];
+  // const labelingButtonsOptions = [
+  //   { icon: BBoxIcon, title: "Bounding Box" },
+  //   { icon: PolygonIcon, title: "Polygon" },
+  // ];
 
   // 이름 수정 모달 상태
   const [editingObject, setEditingObject] = useState(null);
@@ -360,9 +358,10 @@ export default function LabelingWorkspace({ fileId, fileName }) {
   // 이미지 URL 로드
   useEffect(() => {
     const fetchImageUrl = async () => {
-      if (fileName) {
+      if (jobData.fileName) {
         // fileName만 있으면 파일명으로 이미지 URL 생성
-        const objectUrl = await getFileUrlByName(fileName);
+
+        const objectUrl = await getFileUrlByName(jobData.fileName);
 
         setImageUrl(objectUrl);
       } else {
@@ -371,7 +370,7 @@ export default function LabelingWorkspace({ fileId, fileName }) {
       }
     };
     fetchImageUrl();
-  }, [fileName]);
+  }, [fileName, jobData]);
 
   return (
     <Section>
@@ -467,6 +466,7 @@ export default function LabelingWorkspace({ fileId, fileName }) {
             onBoundingBoxComplete={handleBoundingBoxComplete}
             imageRef={imageRef}
             deletedShapeIds={deletedShapeIds}
+            jobData={jobData}
           />
           <img
             ref={setImageRef}

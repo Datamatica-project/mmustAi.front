@@ -288,6 +288,7 @@ export default function InviteMemberModal({
   onClose,
   projectId,
   onInviteComplete,
+  projectTasksData,
 }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("LABELER");
@@ -295,6 +296,7 @@ export default function InviteMemberModal({
   const [availableMembers, setAvailableMembers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [tasks, setTasks] = useState("");
 
   useEffect(() => {
     if (!isOpen) return; // 모달이 열려있을 때만 실행
@@ -302,7 +304,7 @@ export default function InviteMemberModal({
     const fetchMembers = async () => {
       try {
         const response = await getMembers();
-        console.log(response);
+
         // response.data.items에서 이메일 목록 추출
         if (response?.data?.items) {
           const emails = response.data.items.map((item) => item.email);
@@ -390,8 +392,7 @@ export default function InviteMemberModal({
     }
 
     try {
-      console.log(projectId, members);
-      await inviteMembers(projectId, members);
+      await inviteMembers(projectId, members, tasks);
       useToastStore
         .getState()
         .addToast(`${members.length} members invited successfully`, "success");
@@ -470,6 +471,17 @@ export default function InviteMemberModal({
               {ROLE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
+                </option>
+              ))}
+            </Select>
+          </InputGroup>
+          <InputGroup>
+            <Label>Tasks</Label>
+            <Select value={tasks} onChange={(e) => setTasks(e.target.value)}>
+              <option value="">Select Task</option>
+              {projectTasksData.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
                 </option>
               ))}
             </Select>

@@ -154,7 +154,7 @@ export default function Project() {
       const response = await getProject(params.projectId);
       const BestWorkerData = await getBestWorker(params.projectId);
       const ProjectTasksData = await getProjectTasks(params.projectId);
-      console.log(ProjectTasksData);
+
       setData(response.data);
       setBestWorkerData(BestWorkerData.data);
       setProjectTasksData(ProjectTasksData.data);
@@ -271,6 +271,7 @@ export default function Project() {
           };
           fetchProject();
         }}
+        projectTasksData={projectTasksData}
       />
 
       {/* 오토라벨링 모달 */}

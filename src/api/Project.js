@@ -115,16 +115,16 @@ export const getTaskImgList = async (taskId) => {
  * @param {Array} members - 초대할 멤버 배열 [{ email, role }, ...]
  * @returns {Promise}
  */
-export const inviteMembers = async (projectId, members) => {
+export const inviteMembers = async (projectId, members, tasks) => {
   const VisitData = {
-    email: members.email,
-    role: members.role,
-    projectId: projectId,
+    email: members[0].email,
+    role: members[0].role,
+    projectId: +projectId,
+    taskId: +tasks,
   };
+  console.log(VisitData);
   try {
-    const response = await api.post(`/api/v1/users/invite`, {
-      members: members,
-    });
+    const response = await api.post(`/api/v1/users/invite`, VisitData);
     return response.data;
   } catch (error) {
     console.error("Error inviting members:", error);
@@ -200,7 +200,6 @@ export const getMembers = async (projectId) => {
 };
 
 export const deleteProjectFile = async (projectId) => {
-  console.log(projectId);
   try {
     const response = await api.delete(`/api/v1/projects/${projectId}`);
     return response.data;

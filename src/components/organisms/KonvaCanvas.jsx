@@ -23,6 +23,7 @@ export default function KonvaCanvas({
   onBoundingBoxComplete,
   imageRef,
   deletedShapeIds = [],
+  jobData,
 }) {
   const containerRef = useRef(null);
   const [size, setSize] = useState({ width: 790, height: 600 });
@@ -320,7 +321,8 @@ export default function KonvaCanvas({
   };
 
   // 라벨 저장
-  const handleLabelSave = () => {
+  const handleLabelSave = async () => {
+    // 예외처리
     if (labelData.className === "No Class" || labelData.objectName === "") {
       alert("Please select a class and enter an object name");
       return;
@@ -331,7 +333,7 @@ export default function KonvaCanvas({
       (cls) => cls.name === labelData.className
     );
     const classColor = selectedClass?.color || "#f62579";
-
+    let yoloFormat;
     // 바운딩 박스인 경우 색상 업데이트
     if (currentShape?.type === "boundingBox") {
       // shapes 배열에서 해당 바운딩 박스 찾아서 색상 업데이트
@@ -343,7 +345,8 @@ export default function KonvaCanvas({
         )
       );
 
-      const yoloFormat = convertToYOLOFormat(
+      // YOLO 형식으로 변환
+      yoloFormat = convertToYOLOFormat(
         {
           x: currentShape.x,
           y: currentShape.y,
@@ -352,6 +355,7 @@ export default function KonvaCanvas({
         },
         labelData.className
       );
+
       console.log(`YOLO Format: [${yoloFormat.join(", ")}]`);
 
       // 콜백 함수가 있으면 호출
@@ -365,13 +369,20 @@ export default function KonvaCanvas({
       }
     }
 
-    // postObjectLabel(jobId, labelId, labelData.objectName);
+    const response = await postObjectLabel(
+      jobId,
+      labelData.id,
+      yoloFormat,
+      labelData
+    );
+    console.log(response);
 
     setLabelData({
       className: "No Class",
       objectName: "",
       id: `obj_${Date.now()}`,
     });
+
     setShowTooltip(false);
   };
 

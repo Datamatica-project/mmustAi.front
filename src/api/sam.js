@@ -1,7 +1,6 @@
 import { samApi } from "./axios";
 
 export const segmentImage = async (image, points, labels) => {
-  console.log({ image, points, labels });
   try {
     const response = await samApi.post("/segment/point", {
       image,
@@ -17,7 +16,6 @@ export const segmentImage = async (image, points, labels) => {
 
 export const segmentImageBbox = async (image, bbox) => {
   try {
-    console.log("bbox", bbox);
     const response = await samApi.post("/segment/bbox", {
       image,
       bbox,

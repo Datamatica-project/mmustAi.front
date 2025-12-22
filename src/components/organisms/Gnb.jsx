@@ -57,6 +57,11 @@ const NavLinks = styled(NavLink)`
   }
 `;
 
+const GoBackButton = styled(NavLinks)`
+  font-weight: 700;
+  border-bottom: 2px solid #ea257f;
+`;
+
 export default function Gnb() {
   const navigate = useNavigate();
   const { clearToken } = useAuthStore();
@@ -69,20 +74,24 @@ export default function Gnb() {
     navigate("/login");
   };
 
+  const handleGoBack = (e) => {
+    e.preventDefault();
+    navigate(-1);
+  };
+
   return (
     <Nav>
       <Link to="/login">
         <img src={logoPng} alt="logo" width={70} height={70} />
       </Link>
       <ul>
+        {window.location.pathname !== "/" && (
+          <li>
+            <GoBackButton onClick={handleGoBack}>go back</GoBackButton>
+          </li>
+        )}
         <li>
           <NavLinks to="/">Home</NavLinks>
-        </li>
-        <li>
-          <NavLinks to="/labeling">Labeling</NavLinks>
-        </li>
-        <li>
-          <NavLinks to="/inspection">Inspection</NavLinks>
         </li>
       </ul>
 

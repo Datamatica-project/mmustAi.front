@@ -4,14 +4,16 @@ import Taglabel from "../atoms/Taglabel";
 import { Link } from "react-router-dom";
 import { deleteProjectFile } from "../../api/Project";
 import { useToastStore } from "../../store/toastStore";
+import DotMenuButton from "./DotMenuButton";
 
 const Card = styled(Link)`
+  position: relative;
   cursor: pointer;
   text-decoration: none;
   display: flex;
   gap: 20px;
   flex-direction: column;
-  padding: 23px;
+  padding: 35px;
   background-color: #21213d;
   border-radius: 15px;
 `;
@@ -109,6 +111,12 @@ const CardBody = styled.div`
   }
 `;
 
+const DotMenuButtonContainer = styled.div`
+  position: relative;
+  top: 0px;
+  right: 0px;
+`;
+
 export default function ProjectCard({ project, onDelete }) {
   const TagColors = {
     tree: "#243447",
@@ -129,7 +137,7 @@ export default function ProjectCard({ project, onDelete }) {
   };
 
   const RoleMapping = {
-    PROJECTMANAGER: "PM",
+    PROJECT_MANAGER: "PM",
     WORKER: "Labeler",
     REVIEWER: "REVIEWER",
   };
@@ -140,7 +148,7 @@ export default function ProjectCard({ project, onDelete }) {
 
     try {
       const res = await deleteProjectFile(project.id);
-      console.log(res);
+
       // 백엔드 응답 구조에 따라 조건 체크
       if (!res.resultCode || res.resultCode === "SUCCESS") {
         // 상위에서 리스트 갱신하도록 콜백 호출
@@ -177,6 +185,10 @@ export default function ProjectCard({ project, onDelete }) {
             color={RoleColors[RoleMapping[project.role]] || "#3A245D"}
           />
         </div>
+        <DotMenuButton
+          // handleEditClick={handleEditClick}
+          handleDeleteClick={handleDeleteClick}
+        />
       </CardHeader>
       <CardBody>
         <div className="progress-bar-container">
@@ -192,20 +204,13 @@ export default function ProjectCard({ project, onDelete }) {
           </div>
         </div>
         <div className="Tags-container">
-          {project.labelNames?.map((tag, index) => (
+          {project.labelInfos?.map((tag, index) => (
             <Taglabel
               key={index}
-              label={tag}
-              color={TagColors[tag] || "#3A245D"}
+              label={tag.name}
+              color={TagColors[tag.hexColor] || tag.hexColor || "#3A245D"}
             />
           ))}
-          <button
-            type="button"
-            className="delete-btn"
-            onClick={handleDeleteClick}
-          >
-            삭제
-          </button>
         </div>
       </CardBody>
     </Card>

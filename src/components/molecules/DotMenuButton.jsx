@@ -133,12 +133,14 @@ export default function DotMenuButton({ handleEditClick, handleDeleteClick }) {
       </MenuButton>
       {isMenuOpen && (
         <DropdownMenu className={`${isMenuOpen ? "open" : "close"}`}>
-          <li>
-            <button onClick={(e) => handleEditClick(e)}>
-              {EditIcon}
-              <span>수정</span>
-            </button>
-          </li>
+          {handleEditClick && (
+            <li>
+              <button onClick={(e) => handleEditClick(e)}>
+                {EditIcon}
+                <span>수정</span>
+              </button>
+            </li>
+          )}
           <li>
             <button onClick={(e) => handleDeleteClick(e)}>
               {DeleteIcon}

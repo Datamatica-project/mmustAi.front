@@ -47,7 +47,7 @@ const Router = ({ isAuthFailed }) => {
           <Route path="/project/:projectId" element={<Project />} />
           <Route path="/project/:projectId/task/:taskId" element={<Task />} />
           <Route
-            path="/project/:projectId/task/:taskId/labeling/:fileName/:jobId"
+            path="/project/:projectId/task/:taskId/labeling/:jobId"
             element={<Labeling />}
           />
           <Route path="/inspection" element={<Inspection />} />

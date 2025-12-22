@@ -159,7 +159,7 @@ export default function Home() {
   useEffect(() => {
     const fetchProjects = async () => {
       const response = await getProjects();
-      console.log(response.data);
+
       setProjects(response.data.items);
     };
     fetchProjects();
