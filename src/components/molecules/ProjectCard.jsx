@@ -2,6 +2,8 @@ import React from "react";
 import styled from "styled-components";
 import Taglabel from "../atoms/Taglabel";
 import { Link } from "react-router-dom";
+import { deleteProjectFile } from "../../api/Project";
+import { useToastStore } from "../../store/toastStore";
 
 const Card = styled(Link)`
   cursor: pointer;
@@ -107,7 +109,7 @@ const CardBody = styled.div`
   }
 `;
 
-export default function ProjectCard({ project }) {
+export default function ProjectCard({ project, onDelete }) {
   const TagColors = {
     tree: "#243447",
     person: "#1F3B2F",
@@ -122,14 +124,43 @@ export default function ProjectCard({ project }) {
   const RoleColors = {
     PM: "#F62579",
     Labeler: "#219EBC  ",
-    Reviewer: "#06A77D ",
+    REVIEWER: "#06A77D ",
     SDO: "#7209B7 ",
   };
 
   const RoleMapping = {
-    PM: "PM",
+    PROJECTMANAGER: "PM",
     WORKER: "Labeler",
-    INSPECTOR: "Reviewer",
+    REVIEWER: "REVIEWER",
+  };
+
+  const handleDeleteClick = async (e) => {
+    e.preventDefault(); // 카드(Link) 클릭으로 페이지 이동 막기
+    e.stopPropagation();
+
+    try {
+      const res = await deleteProjectFile(project.id);
+      console.log(res);
+      // 백엔드 응답 구조에 따라 조건 체크
+      if (!res.resultCode || res.resultCode === "SUCCESS") {
+        // 상위에서 리스트 갱신하도록 콜백 호출
+        onDelete();
+
+        useToastStore
+          .getState()
+          .addToast("프로젝트 삭제에 성공했습니다.", "success");
+      } else {
+        console.error("Delete failed:", res);
+        useToastStore
+          .getState()
+          .addToast("프로젝트 삭제에 실패했습니다.", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      useToastStore
+        .getState()
+        .addToast("프로젝트 삭제 중 오류가 발생했습니다.", "error");
+    }
   };
 
   return (
@@ -168,6 +199,13 @@ export default function ProjectCard({ project }) {
               color={TagColors[tag] || "#3A245D"}
             />
           ))}
+          <button
+            type="button"
+            className="delete-btn"
+            onClick={handleDeleteClick}
+          >
+            삭제
+          </button>
         </div>
       </CardBody>
     </Card>

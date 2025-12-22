@@ -3,9 +3,6 @@ import { initChunkUpload, uploadChunk, completeChunkUpload } from "../api/File";
 // 청크 크기 (2MB)
 const CHUNK_SIZE = 2 * 1024 * 1024;
 
-/**
- * 파일을 base64로 변환
- */
 const fileToBase64 = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -19,9 +16,6 @@ const fileToBase64 = (file) => {
   });
 };
 
-/**
- * 파일을 청크로 분할하여 읽기
- */
 const readChunk = (file, chunkIndex, chunkSize) => {
   return new Promise((resolve, reject) => {
     const start = chunkIndex * chunkSize;
@@ -38,16 +32,8 @@ const readChunk = (file, chunkIndex, chunkSize) => {
   });
 };
 
-/**
- * 단일 파일 업로드 (청크 방식)
- * @param {File} file - 업로드할 파일
- * @param {Function} onProgress - 진행률 콜백 (progress) => void
- * @returns {Promise<string>} fileId
- */
-export const uploadFile = async (file, onProgress = null) => {
+const initFileUpload = async (file) => {
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-
-  // 1. Init
   const initResponse = await initChunkUpload({
     filename: file.name,
     fileSize: file.size,
@@ -60,8 +46,13 @@ export const uploadFile = async (file, onProgress = null) => {
   if (!fileId) {
     throw new Error("Failed to get fileId from init response");
   }
+  return fileId;
+};
 
-  // 2. Upload chunks (순차)
+const uploadFileChunks = async (file, fileId, onProgress = null) => {
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+  // Upload chunks (순차)
   for (let chunkNumber = 0; chunkNumber < totalChunks; chunkNumber++) {
     const chunkData = await readChunk(file, chunkNumber, CHUNK_SIZE);
     const chunkResponse = await uploadChunk(
@@ -79,57 +70,68 @@ export const uploadFile = async (file, onProgress = null) => {
     }
   }
 
-  // 3. Complete
-  const completeResponse = await completeChunkUpload(fileId);
+  // Complete는 uploadMultipleFiles에서 별도로 호출
   return fileId;
 };
 
-/**
- * 여러 파일 업로드 (병렬 처리, 동시 업로드 제한)
- * @param {File[]} files - 업로드할 파일 배열
- * @param {Function} onFileProgress - 파일별 진행률 콜백 (fileIndex, progress) => void
- * @param {number} concurrency - 동시 업로드 파일 수 (기본 5)
- * @returns {Promise<string[]>} fileId 배열
- */
-export const uploadMultipleFiles = async (
-  files,
-  onFileProgress,
-  concurrency = 5
-) => {
-  const fileIds = [];
-  const uploadQueue = [...files];
+export const uploadFile = async (file, onProgress = null) => {
+  const fileId = await initFileUpload(file);
+  await uploadFileChunks(file, fileId, onProgress);
+  // 파일 병합 요청
+  await completeChunkUpload(fileId);
+  return fileId;
+};
 
-  // 동시 업로드 제한을 위한 세마포어 패턴
-  const uploadFileWithIndex = async (file, index) => {
+export const uploadMultipleFiles = async (files, onFileProgress) => {
+  if (files.length === 0) return [];
+
+  const fileIds = [];
+
+  // 각 파일을 순차적으로 처리 (단일 파일 업로드와 동일한 로직)
+  for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
+    const file = files[fileIndex];
+
     try {
+      // 각 파일마다: init → 청크 업로드 → complete
       const fileId = await uploadFile(file, (progress) => {
+        // 파일별 진행률 콜백
         if (onFileProgress) {
-          onFileProgress(index, progress);
+          onFileProgress(fileIndex, progress);
         }
       });
-      return { index, fileId, success: true };
-    } catch (error) {
-      console.error(`File ${index} upload failed:`, error);
-      return { index, fileId: null, success: false, error };
-    }
-  };
 
-  // 동시 업로드 제한
-  const results = [];
-  for (let i = 0; i < uploadQueue.length; i += concurrency) {
-    const batch = uploadQueue.slice(i, i + concurrency);
-    const batchResults = await Promise.all(
-      batch.map((file, batchIndex) => uploadFileWithIndex(file, i + batchIndex))
-    );
-    results.push(...batchResults);
+      fileIds[fileIndex] = fileId;
+    } catch (error) {
+      console.error(`File ${fileIndex} (${file.name}) upload failed:`, error);
+      fileIds[fileIndex] = null;
+      // 에러가 발생해도 다음 파일 계속 처리
+    }
   }
 
-  // 성공한 파일들의 fileId만 반환
-  results.forEach((result) => {
-    if (result.success && result.fileId) {
-      fileIds[result.index] = result.fileId;
-    }
-  });
+  // 원래 인덱스 순서대로 반환 (null 포함)
+  return fileIds;
+};
 
-  return fileIds.filter((id) => id != null);
+export const createFileChunks = (files, chunkSize) => {
+  const file = files[0].file;
+  const chunks = [];
+  let offset = 0;
+  let chunkNumber = 0;
+
+  while (offset < file.size) {
+    const end = Math.min(offset + chunkSize, file.size);
+    const chunk = file.slice(offset, end); // File.slice()로 청크 생성
+
+    chunks.push({
+      number: chunkNumber, // 0부터 시작하는 청크 번호
+      data: chunk, // Blob 객체
+      size: chunk.size,
+      offset: offset,
+    });
+
+    offset = end;
+    chunkNumber++;
+  }
+
+  return chunks;
 };

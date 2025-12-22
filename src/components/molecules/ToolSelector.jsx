@@ -6,6 +6,7 @@ const Container = styled.div`
   display: flex;
   gap: 16px;
 `;
+
 export default function ToolSelector({ buttons, currentValue, onChange }) {
   return (
     <Container>

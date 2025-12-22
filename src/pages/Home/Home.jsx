@@ -139,6 +139,7 @@ export default function Home() {
   const [selectTab, setSelectTab] = useState(0);
   const [search, setSearch] = useState("");
   const [projects, setProjects] = useState([]);
+  const [refresh, setRefresh] = useState(false);
   const navigate = useNavigate();
   const TabTitles = [
     "All Projects", // "All"
@@ -162,23 +163,47 @@ export default function Home() {
       setProjects(response.data.items);
     };
     fetchProjects();
-  }, []);
+  }, [refresh]);
 
-  // 검색어에 따라 프로젝트 필터링 (useMemo 사용 - 더 효율적)
+  // 탭과 검색어에 따라 프로젝트 필터링 (useMemo 사용 - 더 효율적)
   const filteredProjects = useMemo(() => {
-    if (!search.trim()) {
-      return projects;
+    let filtered = projects;
+
+    // 탭에 따른 필터링
+    if (selectTab !== 0) {
+      // 0: All Projects - 필터링 없음
+      // 1: ProjectManager - role === "PROJECTMANAGER"
+      // 2: Labeler - role === "WORKER"
+      // 3: Reviewer - role === "REVIEWER"
+      // 4: Synthetic Data Operator - role === "SYNTHETIC_DATA_OPERATOR"
+      const roleMapping = {
+        1: "PROJECTMANAGER",
+        2: "WORKER",
+        3: "REVIEWER",
+        4: "SYNTHETIC_DATA_OPERATOR",
+      };
+
+      const targetRole = roleMapping[selectTab];
+      if (targetRole) {
+        filtered = filtered.filter((project) => project.role === targetRole);
+      }
     }
-    const searchLower = search.toLowerCase();
-    return projects.filter((project) => {
-      // 프로젝트 이름, 설명 등에서 검색
-      const nameMatch = project.name?.toLowerCase().includes(searchLower);
-      const descMatch = project.description
-        ?.toLowerCase()
-        .includes(searchLower);
-      return nameMatch || descMatch;
-    });
-  }, [projects, search]);
+
+    // 검색어에 따른 필터링
+    if (search.trim()) {
+      const searchLower = search.toLowerCase();
+      filtered = filtered.filter((project) => {
+        // 프로젝트 이름, 설명 등에서 검색
+        const nameMatch = project.name?.toLowerCase().includes(searchLower);
+        const descMatch = project.description
+          ?.toLowerCase()
+          .includes(searchLower);
+        return nameMatch || descMatch;
+      });
+    }
+
+    return filtered;
+  }, [projects, search, selectTab]);
 
   const data = [
     {
@@ -245,7 +270,11 @@ export default function Home() {
       <h2 className="recent-projects">Recent Projects</h2>
       <Main>
         {filteredProjects.map((project) => (
-          <ProjectCard key={project.id} project={project} />
+          <ProjectCard
+            key={project.id}
+            project={project}
+            onDelete={() => setRefresh((prev) => !prev)}
+          />
         ))}
       </Main>
     </Container>

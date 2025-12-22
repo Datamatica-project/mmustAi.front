@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useToastStore } from "../../store/toastStore";
-import { inviteMembers } from "../../api/Project";
+import { getMembers, inviteMembers } from "../../api/Project";
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -178,6 +178,57 @@ const RemoveButton = styled.button`
   margin-left: 8px;
 `;
 
+const DropdownContainer = styled.div`
+  position: relative;
+  width: 100%;
+`;
+
+const DropdownInput = styled(Input)`
+  cursor: pointer;
+`;
+
+const DropdownList = styled.div`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #1c1d2f;
+  border: 1px solid #ea257f;
+  border-radius: 8px;
+  margin-top: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+`;
+
+const DropdownItem = styled.div`
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #ffffff;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #2c2e44;
+  }
+
+  &:first-child {
+    border-radius: 8px 8px 0 0;
+  }
+
+  &:last-child {
+    border-radius: 0 0 8px 8px;
+  }
+`;
+
+const EmptyMessage = styled.div`
+  padding: 10px 14px;
+  font-size: 14px;
+  color: #7b7d95;
+  text-align: center;
+`;
+
 const ActionButtons = styled.div`
   display: flex;
   gap: 12px;
@@ -222,14 +273,14 @@ const Button = styled.button`
 const ROLE_OPTIONS = [
   { value: "LABELER", label: "Labeler" },
   { value: "REVIEWER", label: "Reviewer" },
-  { value: "SYNTHETIC_DATA_OPERATOR", label: "Synthetic Data Operator" },
+  // { value: "SYNTHETIC_DATA_OPERATOR", label: "Synthetic Data Operator" },
 ];
 
 const ROLE_LABELS = {
   PROJECT_MANAGER: "Project Manager",
   LABELER: "Labeler",
   REVIEWER: "Reviewer",
-  SYNTHETIC_DATA_OPERATOR: "Synthetic Data Operator",
+  // SYNTHETIC_DATA_OPERATOR: "Synthetic Data Operator",
 };
 
 export default function InviteMemberModal({
@@ -241,28 +292,89 @@ export default function InviteMemberModal({
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("LABELER");
   const [members, setMembers] = useState([]);
+  const [availableMembers, setAvailableMembers] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return; // 모달이 열려있을 때만 실행
+
+    const fetchMembers = async () => {
+      try {
+        const response = await getMembers();
+        console.log(response);
+        // response.data.items에서 이메일 목록 추출
+        if (response?.data?.items) {
+          const emails = response.data.items.map((item) => item.email);
+          setAvailableMembers(emails);
+        }
+      } catch (error) {
+        console.error("Failed to fetch members:", error);
+      }
+    };
+    fetchMembers();
+  }, [isOpen]);
+  // 드롭다운 외부 클릭 시 닫기
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (isDropdownOpen && !e.target.closest("[data-dropdown-container]")) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isDropdownOpen]);
+
+  // 검색어로 필터링된 이메일 목록
+  const filteredEmails = availableMembers.filter((email) =>
+    email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (!isOpen) return null;
 
+  const handleEmailSelect = (selectedEmail) => {
+    setEmail(selectedEmail);
+    setSearchQuery("");
+    setIsDropdownOpen(false);
+  };
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    setEmail(value);
+    setIsDropdownOpen(true);
+  };
+
   const handleAddMember = () => {
     if (!email.trim()) {
-      useToastStore.getState().addToast("Please enter email.", "error");
+      useToastStore
+        .getState()
+        .addToast("Please select or enter email.", "error");
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      useToastStore.getState().addToast("Invalid email format.", "error");
+    // 선택된 이메일이 목록에 있는지 확인 (선택 사항)
+    if (!availableMembers.includes(email.trim())) {
+      useToastStore
+        .getState()
+        .addToast("Please select an email from the list.", "error");
       return;
     }
 
-    if (members.some((m) => m.email === email)) {
+    if (members.some((m) => m.email === email.trim())) {
       useToastStore.getState().addToast("Email already added.", "error");
       return;
     }
 
     setMembers((prev) => [...prev, { email: email.trim(), role }]);
     setEmail("");
+    setSearchQuery("");
+    setIsDropdownOpen(false);
   };
 
   const handleRemoveMember = (email) => {
@@ -278,6 +390,7 @@ export default function InviteMemberModal({
     }
 
     try {
+      console.log(projectId, members);
       await inviteMembers(projectId, members);
       useToastStore
         .getState()
@@ -298,8 +411,10 @@ export default function InviteMemberModal({
 
   const handleClose = () => {
     setEmail("");
+    setSearchQuery("");
     setRole("LABELER");
     setMembers([]);
+    setIsDropdownOpen(false);
     onClose();
   };
 
@@ -315,17 +430,39 @@ export default function InviteMemberModal({
           <SectionTitle>Add New Member</SectionTitle>
           <InputGroup>
             <Label>Email</Label>
-            <Input
-              type="email"
-              placeholder="example@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === "Enter") {
-                  handleAddMember();
-                }
-              }}
-            />
+            <DropdownContainer data-dropdown-container>
+              <DropdownInput
+                type="text"
+                placeholder="Search or select email..."
+                value={searchQuery || email}
+                onChange={handleSearchChange}
+                onFocus={() => setIsDropdownOpen(true)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    handleAddMember();
+                  }
+                }}
+              />
+              {isDropdownOpen && filteredEmails.length > 0 && (
+                <DropdownList>
+                  {filteredEmails
+                    .filter((email) => !members.some((m) => m.email === email))
+                    .map((emailItem) => (
+                      <DropdownItem
+                        key={emailItem}
+                        onClick={() => handleEmailSelect(emailItem)}
+                      >
+                        {emailItem}
+                      </DropdownItem>
+                    ))}
+                </DropdownList>
+              )}
+              {isDropdownOpen && filteredEmails.length === 0 && (
+                <DropdownList>
+                  <EmptyMessage>No matching emails found</EmptyMessage>
+                </DropdownList>
+              )}
+            </DropdownContainer>
           </InputGroup>
           <InputGroup>
             <Label>Role</Label>

@@ -2,7 +2,7 @@ import React from "react";
 import StatusBadge from "../atoms/StatusBadge";
 import { Table, Thead, Tbody } from "../../styles/TableStyle";
 import styled from "styled-components";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import Pagination from "../common/Pagination";
 
 const ImageTableContainer = styled.div`
@@ -27,6 +27,8 @@ const StyledLink = styled(Link)`
   width: 70%;
 `;
 export default function ImageTable({ imageData, page, pageSize, setPage }) {
+  const { projectId, taskId } = useParams();
+  console.log(imageData);
   const paginateDate = imageData?.items?.slice(
     (page - 1) * pageSize,
     page * pageSize
@@ -50,7 +52,12 @@ export default function ImageTable({ imageData, page, pageSize, setPage }) {
               <tr key={index}>
                 <td>{rowNumber.toString().padStart(2, "0")}</td>
                 <td className="file-name">
-                  <StyledLink to={`/labeling`}>{item.fileName}</StyledLink>
+                  <StyledLink
+                    to={`/project/${projectId}/task/${taskId}/labeling/${item.fileName}/${item.fileId}`}
+                    // state={{ fileId: item.fileId, fileName: item.fileName }}
+                  >
+                    {item.fileName}
+                  </StyledLink>
                 </td>
                 <td>{<StatusBadge status={item.status.toLowerCase()} />}</td>
               </tr>

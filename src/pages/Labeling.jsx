@@ -1,5 +1,6 @@
 import React from "react";
 import styled from "styled-components";
+import { useLocation, useParams } from "react-router-dom";
 import PageHeader from "../components/organisms/PageHeader";
 import LabelingWorkspace from "../components/organisms/LabelingWorkspace";
 
@@ -10,12 +11,15 @@ const Container = styled.div`
 `;
 
 export default function Labeling() {
-  const title = "Task 1";
+  const location = useLocation();
+  const { fileName, fileId } = useParams();
+  const title = fileName || "Task 1";
   const description = "Project_1";
+
   return (
     <Container>
       <PageHeader title={title} description={description} />
-      <LabelingWorkspace />
+      <LabelingWorkspace fileId={fileId} fileName={fileName} />
     </Container>
   );
 }

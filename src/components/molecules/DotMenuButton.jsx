@@ -7,6 +7,7 @@ const DotMenuButtonContainer = styled.div`
   top: 10px;
   right: 10px;
   width: fit-content;
+  z-index: 999;
 `;
 const MenuButton = styled.button`
   position: relative;

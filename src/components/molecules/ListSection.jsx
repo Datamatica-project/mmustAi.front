@@ -16,7 +16,7 @@ const Container = styled.div`
 
   .List {
     box-sizing: border-box;
-    max-height: 200px;
+    height: 200px;
     overflow-y: auto;
     transition: max-height 0.3s ease-in-out;
 

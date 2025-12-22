@@ -4,8 +4,14 @@ import PageHeader from "../components/organisms/PageHeader";
 import { LeftArrowIcon } from "../components/icons/Icons";
 import { useNavigate } from "react-router-dom";
 import { createProject } from "../api/Project";
-import { uploadFile, uploadMultipleFiles } from "../utils/uploadUtils";
+import {
+  createFileChunks,
+  uploadFile,
+  uploadMultipleFiles,
+} from "../utils/uploadUtils";
 import { useToastStore } from "../store/toastStore";
+import { uploadFilesUnified } from "../api/File";
+import { ChunkUploadCalculator } from "../utils/chunkCalculator";
 
 const Wrapper = styled.div`
   min-height: 100vh;
@@ -228,9 +234,9 @@ const TabButton = styled.button`
   flex: 1;
   padding: 8px 16px;
   border-radius: 8px;
-  border: 1px solid ${(props) => (props.active ? "#f62579" : "#3b3c5d")};
-  background-color: ${(props) => (props.active ? "#f62579" : "transparent")};
-  color: ${(props) => (props.active ? "#ffffff" : "#b6b5c5")};
+  border: 1px solid ${(props) => (props.$active ? "#f62579" : "#3b3c5d")};
+  background-color: ${(props) => (props.$active ? "#f62579" : "transparent")};
+  color: ${(props) => (props.$active ? "#ffffff" : "#b6b5c5")};
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
@@ -242,11 +248,11 @@ const TabButton = styled.button`
 `;
 
 const UploadArea = styled.div`
-  border: 2px dashed ${(props) => (props.dragging ? "#f62579" : "#3b3c5d")};
+  border: 2px dashed ${(props) => (props.$dragging ? "#f62579" : "#3b3c5d")};
   border-radius: 12px;
   padding: 40px 20px;
   text-align: center;
-  background-color: ${(props) => (props.dragging ? "#2a1b2d" : "#151624")};
+  background-color: ${(props) => (props.$dragging ? "#2a1b2d" : "#151624")};
   transition: all 0.2s;
   cursor: pointer;
 
@@ -311,14 +317,14 @@ const ProgressFill = styled.div`
   height: 100%;
   background-color: #f62579;
   transition: width 0.3s ease;
-  width: ${(props) => props.progress || 0}%;
+  width: ${(props) => props.$progress || 0}%;
 `;
 
 const FileStatus = styled.span`
   font-size: 11px;
   color: ${(props) => {
-    if (props.status === "success") return "#46eb83";
-    if (props.status === "error") return "#f62579";
+    if (props.$status === "success") return "#46eb83";
+    if (props.$status === "error") return "#f62579";
     return "#b6b5c5";
   }};
 `;
@@ -457,58 +463,81 @@ export default function CreateProject() {
     setIsUploading(true);
 
     try {
-      if (uploadMethod === "individual") {
-        // 개별 파일 업로드
-        const fileIds = await uploadMultipleFiles(
-          uploadFiles.map((item) => item.file),
-          (fileIndex, progress) => {
-            setUploadFiles((prev) =>
-              prev.map((item, index) =>
-                index === fileIndex
-                  ? { ...item, progress, status: "uploading" }
-                  : item
-              )
-            );
-          },
-          5 // 동시 업로드 5개로 제한
-        );
+      // 통합 업로드 API 사용 (개별 파일과 ZIP 파일 모두 동일한 방식)
+      const files = uploadFiles.map((item) => item.file);
 
-        // fileId 업데이트
-        setUploadFiles((prev) =>
-          prev.map((item, index) => ({
-            ...item,
-            fileId: fileIds[index] || null,
-            status: fileIds[index] ? "success" : "error",
-            progress: fileIds[index] ? 100 : 0,
-          }))
-        );
+      // 각 파일에 대해 순차적으로 업로드 처리
+      for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
+        const file = files[fileIndex];
 
+        try {
+          // 진행률 업데이트 (업로드 시작)
+          setUploadFiles((prev) =>
+            prev.map((item, index) =>
+              index === fileIndex
+                ? { ...item, progress: 0, status: "uploading" }
+                : item
+            )
+          );
+
+          // 통합 업로드 API 호출
+          const response = await uploadFilesUnified(
+            [file],
+            "PROJECT",
+            (progressFileIndex, progress) => {
+              // 진행률 업데이트
+              setUploadFiles((prev) =>
+                prev.map((item, index) =>
+                  index === fileIndex
+                    ? { ...item, progress, status: "uploading" }
+                    : item
+                )
+              );
+            }
+          );
+
+          // 응답에서 fileId 추출 (successFileIds 배열의 첫 번째 요소 사용)
+          const fileId =
+            response.data?.successFileIds?.[0] ||
+            response.data?.fileIds?.[0] ||
+            response.data?.fileId ||
+            response.fileId;
+
+          // fileId 업데이트 (해당 파일만)
+          setUploadFiles((prev) =>
+            prev.map((item, index) =>
+              index === fileIndex
+                ? {
+                    ...item,
+                    fileId: fileId,
+                    status: "success",
+                    progress: 100,
+                  }
+                : item
+            )
+          );
+        } catch (error) {
+          console.error(
+            `File ${fileIndex} (${file.name}) upload failed:`,
+            error
+          );
+          // 해당 파일을 에러 상태로 표시
+          setUploadFiles((prev) =>
+            prev.map((item, index) =>
+              index === fileIndex ? { ...item, status: "error" } : item
+            )
+          );
+        }
+      }
+
+      // 모든 파일 업로드 완료
+      const successCount = uploadFiles.filter(
+        (item) => item.status === "success"
+      ).length;
+      if (successCount > 0) {
         useToastStore
           .getState()
-          .addToast(`${fileIds.length}개 파일 업로드 완료`, "success");
-      } else {
-        // ZIP 파일 업로드
-        const zipFile = uploadFiles[0].file;
-        const fileId = await uploadFile(zipFile, (progress) => {
-          setUploadFiles((prev) =>
-            prev.map((item) => ({
-              ...item,
-              progress,
-              status: "uploading",
-            }))
-          );
-        });
-
-        setUploadFiles((prev) =>
-          prev.map((item) => ({
-            ...item,
-            fileId,
-            status: "success",
-            progress: 100,
-          }))
-        );
-
-        useToastStore.getState().addToast("ZIP 파일 업로드 완료", "success");
+          .addToast(`${successCount}개 파일 업로드 완료`, "success");
       }
     } catch (error) {
       console.error("Upload error:", error);
@@ -532,10 +561,14 @@ export default function CreateProject() {
   };
 
   const handleSubmit = async () => {
+    console.log("All uploadFiles:", uploadFiles);
+
     // 업로드된 fileId 추출
     const uploadedFileIds = uploadFiles
       .filter((item) => item.status === "success" && item.fileId)
       .map((item) => item.fileId);
+
+    console.log("Extracted uploadedFileIds:", uploadedFileIds);
 
     if (uploadedFileIds.length === 0) {
       useToastStore
@@ -638,13 +671,13 @@ export default function CreateProject() {
             <UploadSection>
               <TabButtons>
                 <TabButton
-                  active={uploadMethod === "individual"}
+                  $active={uploadMethod === "individual"}
                   onClick={() => setUploadMethod("individual")}
                 >
                   개별 파일 선택
                 </TabButton>
                 <TabButton
-                  active={uploadMethod === "zip"}
+                  $active={uploadMethod === "zip"}
                   onClick={() => setUploadMethod("zip")}
                 >
                   ZIP 파일 업로드
@@ -652,7 +685,7 @@ export default function CreateProject() {
               </TabButtons>
 
               <UploadArea
-                dragging={isDragging}
+                $dragging={isDragging}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
@@ -703,9 +736,9 @@ export default function CreateProject() {
                         <FileInfo>
                           <FileName>{item.file.name}</FileName>
                           <ProgressBar>
-                            <ProgressFill progress={item.progress} />
+                            <ProgressFill $progress={item.progress} />
                           </ProgressBar>
-                          <FileStatus status={item.status}>
+                          <FileStatus $status={item.status}>
                             {item.status === "pending" && "대기 중"}
                             {item.status === "uploading" &&
                               `업로드 중... ${item.progress}%`}

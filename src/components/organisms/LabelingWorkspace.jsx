@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import UserInfo from "../molecules/UserInfo";
 import ToolSelector from "../molecules/ToolSelector";
@@ -15,6 +15,7 @@ import {
 } from "../icons/Icons";
 import { classes, objects } from "../../data";
 import KonvaCanvas from "./KonvaCanvas";
+import { getFileUrlByName } from "../../api/File";
 
 const Section = styled.section`
   display: flex;
@@ -25,6 +26,16 @@ const Aside = styled.aside`
   display: flex;
   flex-direction: column;
   gap: 20px;
+`;
+
+const DescriptionText = styled.p`
+  font-size: 14px;
+  color: #b6b5c5;
+  line-height: 1.5;
+  margin: 0;
+  padding: 10px 0;
+
+  max-width: 300px;
 `;
 const Header = styled.header`
   display: flex;
@@ -124,14 +135,243 @@ const Navigation = styled.nav`
   }
 `;
 
-export default function LabelingWorkspace() {
-  const [selectButton, setSelectButton] = useState("Polygon");
+const EditModal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`;
+
+const EditModalContent = styled.div`
+  background-color: #3b3c5d;
+  padding: 30px;
+  border-radius: 10px;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+`;
+
+const EditModalTitle = styled.h3`
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+`;
+
+const EditModalInput = styled.input`
+  padding: 10px;
+  border: 2px solid #5b5d75;
+  border-radius: 5px;
+  background-color: #2a2b3d;
+  color: #fff;
+  font-size: 14px;
+  font-family: inherit;
+
+  &:focus {
+    outline: none;
+    border-color: #f62579;
+  }
+`;
+
+const EditModalButtons = styled.div`
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+`;
+
+const EditModalButton = styled.button`
+  padding: 8px 16px;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition-duration: 150ms;
+
+  &.cancel {
+    background-color: transparent;
+    border: 2px solid #5b5d75;
+    color: #fff;
+    &:hover {
+      background-color: #5b5d75;
+    }
+  }
+
+  &.save {
+    background-color: #f62579;
+    border: none;
+    color: #fff;
+    &:hover {
+      background-color: #e01f6b;
+    }
+  }
+`;
+
+export default function LabelingWorkspace({ fileId, fileName }) {
+  const [selectButton, setSelectButton] = useState("Bounding Box");
   const [selectedClass, setSelectedClass] = useState(null);
+  const [imageRef, setImageRef] = useState(null);
+  const [yoloLabels, setYoloLabels] = useState([]);
+  // 클래스별로 저장된 오브젝트들: { [classId]: [{ id, name, yoloFormat, className }] }
+  const [labeledObjects, setLabeledObjects] = useState({});
+  // 클래스별 오브젝트 개수: { [classId]: number }
+  const [classObjectCounts, setClassObjectCounts] = useState({});
+  const [imageUrl, setImageUrl] = useState(null);
+  // Konva 상에서 삭제할 바운딩 박스 id 목록
+  const [deletedShapeIds, setDeletedShapeIds] = useState([]);
+
+  // 바운딩 박스 완성 시 YOLO 형식으로 변환하여 저장
+  const handleBoundingBoxComplete = (
+    yoloFormat,
+    className,
+    objectName,
+    shapeId
+  ) => {
+    // 클래스 ID 찾기
+    const classItem = classes.find((cls) => cls.name === className);
+    const classId = classItem ? classItem.id : "0";
+
+    // 새로운 오브젝트 생성
+    const newObject = {
+      // Konva shape id와 동일하게 사용
+      id: shapeId || `obj_${Date.now()}_${Math.random()}`,
+      name: objectName || `Object ${Date.now()}`,
+      yoloFormat,
+      className,
+    };
+
+    // 클래스별로 오브젝트 저장
+    setLabeledObjects((prev) => {
+      const updated = {
+        ...prev,
+        [classId]: [...(prev[classId] || []), newObject],
+      };
+      return updated;
+    });
+
+    // 클래스별 오브젝트 개수 업데이트
+    setClassObjectCounts((prev) => ({
+      ...prev,
+      [classId]: (prev[classId] || 0) + 1,
+    }));
+
+    // YOLO 라벨도 저장
+    setYoloLabels((prev) => {
+      const updated = [...prev, yoloFormat];
+      // 모든 바운딩 박스를 콘솔에 출력
+      console.log("=== YOLO Format Labels ===");
+      updated.forEach((label, index) => {
+        console.log(`${label.join(" ")}`);
+      });
+      console.log("=========================");
+      return updated;
+    });
+  };
+
+  // 선택된 클래스의 오브젝트들 가져오기
+  const getSelectedClassObjects = () => {
+    if (!selectedClass) return [];
+    return labeledObjects[selectedClass] || [];
+  };
 
   const labelingButtonsOptions = [
-    { icon: PolygonIcon, title: "Polygon" },
     { icon: BBoxIcon, title: "Bounding Box" },
+    { icon: PolygonIcon, title: "Polygon" },
   ];
+
+  // 이름 수정 모달 상태
+  const [editingObject, setEditingObject] = useState(null);
+  const [editName, setEditName] = useState("");
+
+  const handleEditClick = (objId) => {
+    const obj = getSelectedClassObjects().find((o) => o.id === objId);
+    if (obj) {
+      setEditingObject(obj);
+      setEditName(obj.name);
+    }
+  };
+
+  const handleDeleteClick = (objId) => {
+    // labeledObjects에서 오브젝트 삭제
+    setLabeledObjects((prev) => {
+      const updated = { ...prev };
+      if (updated[selectedClass]) {
+        updated[selectedClass] = updated[selectedClass].filter(
+          (obj) => obj.id !== objId
+        );
+      }
+      return updated;
+    });
+
+    // 클래스별 오브젝트 개수 업데이트
+    setClassObjectCounts((prev) => ({
+      ...prev,
+      [selectedClass]: Math.max((prev[selectedClass] || 0) - 1, 0),
+    }));
+
+    // YOLO 라벨에서도 제거 (해당 오브젝트의 yoloFormat 찾아서 제거)
+    setYoloLabels((prev) => {
+      const obj = getSelectedClassObjects().find((o) => o.id === objId);
+      if (obj && obj.yoloFormat) {
+        return prev.filter(
+          (label) => label.join(" ") !== obj.yoloFormat.join(" ")
+        );
+      }
+      return prev;
+    });
+
+    // Konva 상에서도 해당 바운딩 박스 제거되도록 id 기록
+    setDeletedShapeIds((prev) => [...prev, objId]);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingObject || !editName.trim()) {
+      alert("이름을 입력해주세요.");
+      return;
+    }
+
+    // labeledObjects에서 오브젝트 이름 업데이트
+    setLabeledObjects((prev) => {
+      const updated = { ...prev };
+      if (updated[selectedClass]) {
+        updated[selectedClass] = updated[selectedClass].map((obj) =>
+          obj.id === editingObject.id ? { ...obj, name: editName.trim() } : obj
+        );
+      }
+      return updated;
+    });
+
+    setEditingObject(null);
+    setEditName("");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingObject(null);
+    setEditName("");
+  };
+
+  // 이미지 URL 로드
+  useEffect(() => {
+    const fetchImageUrl = async () => {
+      if (fileName) {
+        // fileName만 있으면 파일명으로 이미지 URL 생성
+        const objectUrl = await getFileUrlByName(fileName);
+
+        setImageUrl(objectUrl);
+      } else {
+        //없으면 기본 placeholder 이미지
+        setImageUrl("https://picsum.photos/800/600");
+      }
+    };
+    fetchImageUrl();
+  }, [fileName]);
 
   return (
     <Section>
@@ -140,39 +380,65 @@ export default function LabelingWorkspace() {
         {/* 작업자 정보 */}
         <UserInfo role="Labeler" userName="John Doe" />
         {/* 작업 도구 선택 */}
-        <ToolSelector
+        {/* <ToolSelector
           buttons={labelingButtonsOptions}
           currentValue={selectButton}
           onChange={setSelectButton}
-        />
+        /> */}
+        <DescriptionText>
+          You can label by drawing a bounding box through click and drag
+        </DescriptionText>
         {/* 클래스 목록 */}
         <ListSection title={"Classes"}>
-          {classes.map((cls) => (
-            <ClassLabel
-              key={cls.id}
-              type="Class"
-              color={cls.color}
-              name={cls.name}
-              isSelected={selectedClass === cls.id}
-              onClick={() => setSelectedClass(cls.id)}
-            >
-              <span className="objectCount">{cls.objectCount}</span>
-            </ClassLabel>
-          ))}
+          {classes.map((cls) => {
+            const objectCount = classObjectCounts[cls.id] || 0;
+            return (
+              <ClassLabel
+                key={cls.id}
+                type="Class"
+                color={cls.color}
+                name={cls.name}
+                isSelected={selectedClass === cls.id}
+                onClick={() => setSelectedClass(cls.id)}
+              >
+                <span className="objectCount">{objectCount}</span>
+              </ClassLabel>
+            );
+          })}
         </ListSection>
 
         {/* 클래스별 각 객체 목록 */}
         <ListSection title={"Objects"}>
-          {objects.map((obj) => (
-            <ClassLabel
-              key={obj.id}
-              type="Object"
-              color={obj.color}
-              name={obj.name}
-            >
-              <DotMenuButton />
-            </ClassLabel>
-          ))}
+          {selectedClass ? (
+            getSelectedClassObjects().length > 0 ? (
+              getSelectedClassObjects().map((obj) => {
+                const classItem = classes.find(
+                  (cls) => cls.id === selectedClass
+                );
+                return (
+                  <ClassLabel
+                    key={obj.id}
+                    type="Object"
+                    color={classItem?.color || "red"}
+                    name={obj.name}
+                  >
+                    <DotMenuButton
+                      handleEditClick={() => handleEditClick(obj.id)}
+                      handleDeleteClick={() => handleDeleteClick(obj.id)}
+                    />
+                  </ClassLabel>
+                );
+              })
+            ) : (
+              <DescriptionText style={{ padding: "10px" }}>
+                No objects for this class yet
+              </DescriptionText>
+            )
+          ) : (
+            <DescriptionText style={{ padding: "10px" }}>
+              Select a class to view objects
+            </DescriptionText>
+          )}
         </ListSection>
       </Aside>
 
@@ -181,7 +447,7 @@ export default function LabelingWorkspace() {
         {/* 헤더 */}
         <Header>
           <div className="file-info">
-            <h3>Image001.jpg</h3>
+            <h3>{fileName || "Image001.jpg"}</h3>
             <p>1 hour ago</p>
           </div>
           <div className="action-buttons">
@@ -195,8 +461,29 @@ export default function LabelingWorkspace() {
         {/* 이미지 컨테이너 */}
         <ImageContainer className="image-container">
           {/* 캔버스 */}
-          <KonvaCanvas selectButton={selectButton} classes={classes} />
-          <img src="https://picsum.photos/800/600" alt="placeholder" />
+          <KonvaCanvas
+            selectButton={selectButton}
+            classes={classes}
+            onBoundingBoxComplete={handleBoundingBoxComplete}
+            imageRef={imageRef}
+            deletedShapeIds={deletedShapeIds}
+          />
+          <img
+            ref={setImageRef}
+            src={imageUrl || "https://picsum.photos/800/600"}
+            alt={fileName || "placeholder"}
+            onLoad={(e) => {
+              // 이미지 로드 완료 시 원본 크기 정보 전달
+              if (e.target.naturalWidth && e.target.naturalHeight) {
+                // KonvaCanvas에 이미지 크기 정보 전달 (추후 구현)
+              }
+            }}
+            onError={(e) => {
+              // 이미지 로드 실패 시 placeholder 이미지로 대체
+              console.error("Failed to load image:", imageUrl);
+              e.target.src = "https://picsum.photos/800/600";
+            }}
+          />
         </ImageContainer>
 
         {/* 하단 네비게이션 */}
@@ -208,6 +495,37 @@ export default function LabelingWorkspace() {
           </Navigation>
         </footer>
       </main>
+
+      {/* 이름 수정 모달 */}
+      {editingObject && (
+        <EditModal onClick={handleCancelEdit}>
+          <EditModalContent onClick={(e) => e.stopPropagation()}>
+            <EditModalTitle>오브젝트 이름 수정</EditModalTitle>
+            <EditModalInput
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  handleSaveEdit();
+                } else if (e.key === "Escape") {
+                  handleCancelEdit();
+                }
+              }}
+              autoFocus
+              placeholder="오브젝트 이름을 입력하세요"
+            />
+            <EditModalButtons>
+              <EditModalButton className="cancel" onClick={handleCancelEdit}>
+                취소
+              </EditModalButton>
+              <EditModalButton className="save" onClick={handleSaveEdit}>
+                저장
+              </EditModalButton>
+            </EditModalButtons>
+          </EditModalContent>
+        </EditModal>
+      )}
     </Section>
   );
 }

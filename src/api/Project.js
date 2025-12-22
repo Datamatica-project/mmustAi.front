@@ -24,7 +24,6 @@ export const createProject = async (projectData) => {
     uploadedFileIds: projectData.uploadedFileIds || [],
     files: projectData.files || [],
   };
-  console.log(Data);
   try {
     const response = await api.post("/api/v1/projects", Data);
     return response.data;
@@ -117,8 +116,13 @@ export const getTaskImgList = async (taskId) => {
  * @returns {Promise}
  */
 export const inviteMembers = async (projectId, members) => {
+  const VisitData = {
+    email: members.email,
+    role: members.role,
+    projectId: projectId,
+  };
   try {
-    const response = await api.post(`/api/v1/projects/${projectId}/invite`, {
+    const response = await api.post(`/api/v1/users/invite`, {
       members: members,
     });
     return response.data;
@@ -176,6 +180,32 @@ export const getAutoLabelingCycleResult = async (projectId, cycleIndex) => {
     return response.data;
   } catch (error) {
     console.error("Error getting cycle result:", error);
+    throw error;
+  }
+};
+
+export const getMembers = async (projectId) => {
+  try {
+    const response = await api.get(`/api/v1/users`, {
+      params: {
+        page: 1,
+        size: 100,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error getting members:", error);
+    throw error;
+  }
+};
+
+export const deleteProjectFile = async (projectId) => {
+  console.log(projectId);
+  try {
+    const response = await api.delete(`/api/v1/projects/${projectId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting task image:", error);
     throw error;
   }
 };
