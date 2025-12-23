@@ -12,7 +12,13 @@ import AutoLabelingModal from "../components/molecules/AutoLabelingModal";
 import { peopleCost, TaskList } from "../data";
 import Pagination from "../components/common/Pagination";
 import { Link, useParams } from "react-router-dom";
-import { getBestWorker, getProject, getProjectTasks } from "../api/Project";
+import {
+  getBestWorker,
+  getProject,
+  getProjects,
+  getProjectTasks,
+} from "../api/Project";
+import { useProjectRolesStore } from "../store/authStore";
 
 const Title = styled.h1`
   font-size: 32px;
@@ -145,9 +151,26 @@ export default function Project() {
   const [isAddImageModalOpen, setIsAddImageModalOpen] = useState(false);
   const [isInviteMemberModalOpen, setIsInviteMemberModalOpen] = useState(false);
   const [isAutoLabelingModalOpen, setIsAutoLabelingModalOpen] = useState(false);
+  const { projectRoles, setProjectRoles } = useProjectRolesStore();
 
   // 페이지네이션 데이터 추출 (0, 10), (10, 20), (20, 30), ...
   const paginateDate = TaskList.slice((page - 1) * pageSize, page * pageSize);
+
+  // 사용자 역할 탐색 로직 (추후 변경)
+  // 모든 프로젝트중에서 같은 projectId를 가진 프로젝트의 역할을 찾아서 저장
+  // 비 효율적이므로 나중에 get요청으로 한번에 받도록 변경할것.
+  useEffect(() => {
+    const fetchProjects = async () => {
+      const response = await getProjects();
+
+      const projectRoles = response.data.items.find(
+        (item) => item.id === +params.projectId
+      );
+
+      setProjectRoles(projectRoles.role);
+    };
+    fetchProjects();
+  }, [params.projectId]);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -160,7 +183,7 @@ export default function Project() {
       setProjectTasksData(ProjectTasksData.data);
     };
     fetchProject();
-  }, []);
+  }, [params.projectId]);
 
   return (
     <main>

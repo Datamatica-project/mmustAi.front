@@ -50,7 +50,10 @@ const Router = ({ isAuthFailed }) => {
             path="/project/:projectId/task/:taskId/labeling/:jobId"
             element={<Labeling />}
           />
-          <Route path="/inspection" element={<Inspection />} />
+          <Route
+            path="/project/:projectId/task/:taskId/reviewing/:jobId"
+            element={<Inspection />}
+          />
           <Route path="/synthetic-data" element={<SyntheticLayout />}>
             <Route index element={<SyntheticData />} /> {/* 1단계 */}
             <Route path="background" element={<SyntheticBackground />} />

@@ -78,7 +78,7 @@ export default function KonvaCanvas({
   const [labelData, setLabelData] = useState({
     className: "No Class",
     objectName: "",
-    id: `obj_${Date.now()}`,
+    id: 0,
   });
 
   const { jobId } = useParams();
@@ -332,7 +332,8 @@ export default function KonvaCanvas({
     const selectedClass = classes.find(
       (cls) => cls.name === labelData.className
     );
-    const classColor = selectedClass?.color || "#f62579";
+
+    const classColor = selectedClass?.hexColor || "#f62579";
     let yoloFormat;
     // 바운딩 박스인 경우 색상 업데이트
     if (currentShape?.type === "boundingBox") {
@@ -356,8 +357,6 @@ export default function KonvaCanvas({
         labelData.className
       );
 
-      console.log(`YOLO Format: [${yoloFormat.join(", ")}]`);
-
       // 콜백 함수가 있으면 호출
       if (onBoundingBoxComplete) {
         onBoundingBoxComplete(
@@ -375,12 +374,11 @@ export default function KonvaCanvas({
       yoloFormat,
       labelData
     );
-    console.log(response);
 
     setLabelData({
       className: "No Class",
       objectName: "",
-      id: `obj_${Date.now()}`,
+      id: 0,
     });
 
     setShowTooltip(false);
@@ -400,7 +398,7 @@ export default function KonvaCanvas({
     setLabelData({
       className: "No Class",
       objectName: "",
-      id: `obj_${Date.now()}`,
+      id: 0,
     });
   };
 

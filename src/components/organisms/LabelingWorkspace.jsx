@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import UserInfo from "../molecules/UserInfo";
 import ToolSelector from "../molecules/ToolSelector";
@@ -13,9 +14,13 @@ import {
   PolygonIcon,
   BBoxIcon,
 } from "../icons/Icons";
-import { classes, objects } from "../../data";
+import { objects } from "../../data";
 import KonvaCanvas from "./KonvaCanvas";
 import { getFileUrlByName } from "../../api/File";
+import { deleteObject, getObjectsByLabelId, submitJob } from "../../api/Job";
+import { useToastStore } from "../../store/toastStore";
+import { useClassStore } from "../../store/bboxStore";
+import { getTaskImgList } from "../../api/Project";
 
 const Section = styled.section`
   display: flex;
@@ -50,6 +55,10 @@ const Header = styled.header`
     h3 {
       font-size: 24px;
       font-weight: 700;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+      max-width: 300px;
     }
     p {
       font-size: 15px;
@@ -226,6 +235,38 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
   const [imageUrl, setImageUrl] = useState(null);
   // Konva 상에서 삭제할 바운딩 박스 id 목록
   const [deletedShapeIds, setDeletedShapeIds] = useState([]);
+  const [objects, setObjects] = useState([]);
+  const { labelInfos } = useClassStore();
+  const { projectId, taskId, jobId } = useParams();
+  const [taskImgList, setTaskImgList] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchTaskImgList = async () => {
+      const listData = await getTaskImgList(taskId);
+      setTaskImgList(listData.data?.items || []);
+
+      const index =
+        listData.data?.items?.findIndex((item) => item.id === +jobId) ?? -1;
+      setCurrentIndex(index >= 0 ? index : 0);
+    };
+    fetchTaskImgList();
+  }, [taskId, jobId]);
+
+  const handlePrev = () => {
+    if (currentIndex > 0) {
+      const prevItem = taskImgList[currentIndex - 1];
+      navigate(`/project/${projectId}/task/${taskId}/labeling/${prevItem.id}`);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentIndex < taskImgList.length - 1) {
+      const nextItem = taskImgList[currentIndex + 1];
+      navigate(`/project/${projectId}/task/${taskId}/labeling/${nextItem.id}`);
+    }
+  };
 
   // 바운딩 박스 완성 시 YOLO 형식으로 변환하여 저장
   const handleBoundingBoxComplete = (
@@ -235,7 +276,7 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
     shapeId
   ) => {
     // 클래스 ID 찾기
-    const classItem = classes.find((cls) => cls.name === className);
+    const classItem = labelInfos.find((cls) => cls.name === className);
     const classId = classItem ? classItem.id : "0";
 
     // 새로운 오브젝트 생성
@@ -265,10 +306,6 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
     // YOLO 라벨도 저장
     setYoloLabels((prev) => {
       const updated = [...prev, yoloFormat];
-      // 모든 바운딩 박스를 콘솔에 출력
-      updated.forEach((label, index) => {
-        console.log(`${label.join(" ")}`);
-      });
       return updated;
     });
   };
@@ -296,37 +333,46 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
     }
   };
 
-  const handleDeleteClick = (objId) => {
-    // labeledObjects에서 오브젝트 삭제
-    setLabeledObjects((prev) => {
-      const updated = { ...prev };
-      if (updated[selectedClass]) {
-        updated[selectedClass] = updated[selectedClass].filter(
-          (obj) => obj.id !== objId
-        );
-      }
-      return updated;
-    });
+  const handleDeleteClick = async (objId) => {
+    const response = await deleteObject(objId);
 
-    // 클래스별 오브젝트 개수 업데이트
-    setClassObjectCounts((prev) => ({
-      ...prev,
-      [selectedClass]: Math.max((prev[selectedClass] || 0) - 1, 0),
-    }));
+    if (response.resultCode === "SUCCESS") {
+      setObjects(objects.filter((obj) => obj.id !== objId));
+      useToastStore
+        .getState()
+        .addToast("Object deleted successfully", "success");
+    }
 
-    // YOLO 라벨에서도 제거 (해당 오브젝트의 yoloFormat 찾아서 제거)
-    setYoloLabels((prev) => {
-      const obj = getSelectedClassObjects().find((o) => o.id === objId);
-      if (obj && obj.yoloFormat) {
-        return prev.filter(
-          (label) => label.join(" ") !== obj.yoloFormat.join(" ")
-        );
-      }
-      return prev;
-    });
+    // // labeledObjects에서 오브젝트 삭제
+    // setLabeledObjects((prev) => {
+    //   const updated = { ...prev };
+    //   if (updated[selectedClass]) {
+    //     updated[selectedClass] = updated[selectedClass].filter(
+    //       (obj) => obj.id !== objId
+    //     );
+    //   }
+    //   return updated;
+    // });
 
-    // Konva 상에서도 해당 바운딩 박스 제거되도록 id 기록
-    setDeletedShapeIds((prev) => [...prev, objId]);
+    // // 클래스별 오브젝트 개수 업데이트
+    // setClassObjectCounts((prev) => ({
+    //   ...prev,
+    //   [selectedClass]: Math.max((prev[selectedClass] || 0) - 1, 0),
+    // }));
+
+    // // YOLO 라벨에서도 제거 (해당 오브젝트의 yoloFormat 찾아서 제거)
+    // setYoloLabels((prev) => {
+    //   const obj = getSelectedClassObjects().find((o) => o.id === objId);
+    //   if (obj && obj.yoloFormat) {
+    //     return prev.filter(
+    //       (label) => label.join(" ") !== obj.yoloFormat.join(" ")
+    //     );
+    //   }
+    //   return prev;
+    // });
+
+    // // Konva 상에서도 해당 바운딩 박스 제거되도록 id 기록
+    // setDeletedShapeIds((prev) => [...prev, objId]);
   };
 
   const handleSaveEdit = () => {
@@ -372,6 +418,24 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
     fetchImageUrl();
   }, [fileName, jobData]);
 
+  const handleClassClick = async (cls) => {
+    setSelectedClass(cls.id);
+    const response = await getObjectsByLabelId(cls.id);
+    setObjects(response.data);
+  };
+
+  const handleSubmit = async () => {
+    const response = await submitJob(jobId);
+
+    if (response.resultCode === "SUCCESS") {
+      useToastStore
+        .getState()
+        .addToast("Job submitted successfully", "success");
+    } else {
+      useToastStore.getState().addToast("Failed to submit job", "error");
+    }
+  };
+
   return (
     <Section>
       {/* 왼쪽 사이드바 */}
@@ -389,36 +453,58 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
         </DescriptionText>
         {/* 클래스 목록 */}
         <ListSection title={"Classes"}>
-          {classes.map((cls) => {
-            const objectCount = classObjectCounts[cls.id] || 0;
-            return (
-              <ClassLabel
-                key={cls.id}
-                type="Class"
-                color={cls.color}
-                name={cls.name}
-                isSelected={selectedClass === cls.id}
-                onClick={() => setSelectedClass(cls.id)}
-              >
-                <span className="objectCount">{objectCount}</span>
-              </ClassLabel>
-            );
-          })}
+          {labelInfos
+            .sort((a, b) => a.id - b.id)
+            .map((cls) => {
+              const objectCount = cls.count || 0;
+              return (
+                <ClassLabel
+                  key={cls.id}
+                  type="Class"
+                  color={cls.hexColor}
+                  name={cls.name}
+                  isSelected={selectedClass === cls.id}
+                  onClick={() => handleClassClick(cls)}
+                >
+                  <span className="objectCount">{objectCount}</span>
+                </ClassLabel>
+              );
+            })}
         </ListSection>
 
         {/* 클래스별 각 객체 목록 */}
         <ListSection title={"Objects"}>
           {selectedClass ? (
-            getSelectedClassObjects().length > 0 ? (
-              getSelectedClassObjects().map((obj) => {
-                const classItem = classes.find(
+            // getSelectedClassObjects().length > 0 ? (
+            //   getSelectedClassObjects().map((obj) => {
+            //     const classItem = classes.find(
+            //       (cls) => cls.id === selectedClass
+            //     );
+            //     return (
+            //       <ClassLabel
+            //         key={obj.id}
+            //         type="Object"
+            //         color={classItem?.color || "red"}
+            //         name={obj.name}
+            //       >
+            //         <DotMenuButton
+            //           handleEditClick={() => handleEditClick(obj.id)}
+            //           handleDeleteClick={() => handleDeleteClick(obj.id)}
+            //         />
+            //       </ClassLabel>
+            //     );
+            //   })
+            // )
+            objects.length > 0 ? (
+              objects.map((obj) => {
+                const classItem = labelInfos.find(
                   (cls) => cls.id === selectedClass
                 );
                 return (
                   <ClassLabel
                     key={obj.id}
                     type="Object"
-                    color={classItem?.color || "red"}
+                    color={classItem?.hexColor || "red"}
                     name={obj.name}
                   >
                     <DotMenuButton
@@ -453,7 +539,9 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
             <button className="save-btn">
               {SaveIcon} <span>Save</span>
             </button>
-            <button className="submit-btn">{SubmitIcon}Submit</button>
+            <button className="submit-btn" onClick={handleSubmit}>
+              {SubmitIcon}Submit
+            </button>
           </div>
         </Header>
 
@@ -462,7 +550,7 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
           {/* 캔버스 */}
           <KonvaCanvas
             selectButton={selectButton}
-            classes={classes}
+            classes={labelInfos}
             onBoundingBoxComplete={handleBoundingBoxComplete}
             imageRef={imageRef}
             deletedShapeIds={deletedShapeIds}
@@ -489,9 +577,19 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
         {/* 하단 네비게이션 */}
         <footer>
           <Navigation>
-            <button>{LeftArrowIcon}Prev</button>
-            <span>01/10</span>
-            <button>{RightArrowIcon}Next</button>
+            <button onClick={handlePrev} disabled={currentIndex === 0}>
+              {LeftArrowIcon}Prev
+            </button>
+            <span>
+              {String(currentIndex + 1).padStart(2, "0")}/
+              {String(taskImgList.length).padStart(2, "0")}
+            </span>
+            <button
+              onClick={handleNext}
+              disabled={currentIndex === taskImgList.length - 1}
+            >
+              {RightArrowIcon}Next
+            </button>
           </Navigation>
         </footer>
       </main>

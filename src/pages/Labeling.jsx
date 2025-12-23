@@ -4,6 +4,7 @@ import { useLocation, useParams } from "react-router-dom";
 import PageHeader from "../components/organisms/PageHeader";
 import LabelingWorkspace from "../components/organisms/LabelingWorkspace";
 import { getJob } from "../api/Job";
+import { useClassStore } from "../store/bboxStore";
 
 const Container = styled.div`
   display: flex;
@@ -14,26 +15,27 @@ const Container = styled.div`
 export default function Labeling() {
   const location = useLocation();
   const { fileName, fileId, jobId } = useParams();
-  const title = fileName || "Task 1";
+
   const description = "Project_1";
   const [jobData, setJobData] = useState({});
+  const { labelInfos, setLabelInfos } = useClassStore();
 
-  // 라벨 ID가 없어서 좌표 저장이 불가능한 상황이다.
   useEffect(() => {
     const fetchJob = async () => {
       const response = await getJob(jobId);
-      console.log("response", response);
+
       setJobData(response.data);
+      setLabelInfos(response.data.labelInfos);
     };
     fetchJob();
   }, [jobId]);
 
   return (
     <Container>
-      <PageHeader title={title} description={description} />
+      <PageHeader title={jobData?.fileName} description={jobData?.status} />
       <LabelingWorkspace
         fileId={fileId}
-        fileName={fileName}
+        fileName={jobData?.fileName}
         jobData={jobData}
       />
     </Container>

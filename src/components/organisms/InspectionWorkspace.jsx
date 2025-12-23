@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import UserInfo from "../molecules/UserInfo";
 import InspectorButton from "../molecules/InspectorButton";
@@ -8,12 +8,27 @@ import { classes, objects } from "../../data";
 import NoticeBTN from "../atoms/NoticeBTN";
 import FeedBackModal from "../common/FeedBackModal";
 import { LeftArrowIcon, RightArrowIcon } from "../icons/Icons";
+import { useClassStore } from "../../store/bboxStore";
+import { approveJob, getObjectsByLabelId, rejectJob } from "../../api/Job";
+import { useToastStore } from "../../store/toastStore";
+import { useNavigate, useParams } from "react-router-dom";
+import { getTaskImgList } from "../../api/Project";
 
 const Section = styled.section`
   justify-content: center;
   display: flex;
   flex-direction: row;
   gap: 50px;
+`;
+
+const DescriptionText = styled.p`
+  font-size: 14px;
+  color: #b6b5c5;
+  line-height: 1.5;
+  margin: 0;
+  padding: 10px 0;
+
+  max-width: 300px;
 `;
 
 const Header = styled.header`
@@ -122,19 +137,87 @@ const Aside = styled.aside`
   gap: 20px;
 `;
 
-export default function InspectionWorkspace() {
+export default function InspectionWorkspace({ imageUrl, jobData }) {
   const [selectedClass, setSelectedClass] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedButton, setSelectedButton] = useState(null);
+  const { labelInfos } = useClassStore();
+  const [objects, setObjects] = useState([]);
+  const [feedback, setFeedback] = useState("");
+  const { projectId, taskId, jobId } = useParams();
+  const navigate = useNavigate();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [taskImgList, setTaskImgList] = useState([]);
 
-  const handleClick = (title) => {
-    console.log(title);
+  useEffect(() => {
+    const fetchTaskImgList = async () => {
+      const listData = await getTaskImgList(taskId);
+      setTaskImgList(listData.data?.items || []);
+
+      const index =
+        listData.data?.items?.findIndex((item) => item.id === +jobId) ?? -1;
+      setCurrentIndex(index >= 0 ? index : 0);
+    };
+    fetchTaskImgList();
+  }, [taskId, jobId]);
+
+  const handlePrev = () => {
+    if (currentIndex > 0) {
+      const prevItem = taskImgList[currentIndex - 1];
+      navigate(`/project/${projectId}/task/${taskId}/reviewing/${prevItem.id}`);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentIndex < taskImgList.length - 1) {
+      const nextItem = taskImgList[currentIndex + 1];
+      navigate(`/project/${projectId}/task/${taskId}/reviewing/${nextItem.id}`);
+    }
+  };
+
+  const handleClick = async (title) => {
+    if (title === "Approve") {
+      const response = await approveJob(jobData.id);
+
+      if (response.resultCode === "SUCCESS") {
+        useToastStore
+          .getState()
+          .addToast("Job approved successfully", "success");
+      } else {
+        useToastStore.getState().addToast("Failed to approve job", "error");
+      }
+      navigate(`/project/${projectId}/task/${taskId}`);
+    } else if (title === "Reject") {
+      setIsModalOpen(true);
+    }
   };
 
   const handleNoticeClick = (id) => {
     setIsModalOpen(true);
     setSelectedButton(id);
   };
+
+  const handleClassClick = async (cls) => {
+    setSelectedClass(cls.id);
+    const response = await getObjectsByLabelId(cls.id);
+    setObjects(response.data);
+  };
+
+  const handleSubmit = async (feedback) => {
+    const response = await rejectJob(jobData.id, feedback);
+
+    if (response.resultCode === "SUCCESS") {
+      useToastStore.getState().addToast("Job rejected successfully", "success");
+      setIsModalOpen(false);
+      setSelectedButton(null);
+      setFeedback("");
+    } else {
+      useToastStore.getState().addToast("Failed to reject job", "error");
+    }
+
+    navigate(`/project/${projectId}/task/${taskId}`);
+  };
+
   return (
     <Section>
       {/* 왼쪽 사이드바 */}
@@ -144,39 +227,68 @@ export default function InspectionWorkspace() {
 
         {/* 클래스 목록 */}
         <ListSection title={"Classes"}>
-          {classes.map((cls) => (
-            <ClassLabel
-              key={cls.id}
-              type="Class"
-              color={cls.color}
-              name={cls.name}
-              isSelected={selectedClass === cls.id}
-              onClick={() => setSelectedClass(cls.id)}
-            >
-              <span className="objectCount">{cls.objectCount}</span>
-            </ClassLabel>
-          ))}
+          {labelInfos
+            .sort((a, b) => a.id - b.id)
+            .map((cls) => {
+              const objectCount = cls.count || 0;
+              return (
+                <ClassLabel
+                  key={cls.id}
+                  type="Class"
+                  color={cls.hexColor}
+                  name={cls.name}
+                  isSelected={selectedClass === cls.id}
+                  onClick={() => handleClassClick(cls)}
+                >
+                  <span className="objectCount">{objectCount}</span>
+                </ClassLabel>
+              );
+            })}
         </ListSection>
 
         {/* 객체 목록 */}
         <ListSection title={"Objects"}>
-          {objects.map((obj) => (
-            <ClassLabel
-              key={obj.id}
-              type="Object"
-              color={obj.color}
-              name={obj.name}
-            >
-              <NoticeBTN onClick={() => handleNoticeClick(obj.id)} />
-            </ClassLabel>
-          ))}
+          {selectedClass ? (
+            objects.length > 0 ? (
+              objects.map((obj) => {
+                const classItem = labelInfos.find(
+                  (cls) => cls.id === selectedClass
+                );
+                return (
+                  <ClassLabel
+                    key={obj.id}
+                    type="Object"
+                    color={classItem?.hexColor || "red"}
+                    name={obj.name}
+                  >
+                    {/* <NoticeBTN onClick={() => handleNoticeClick(obj.id)} /> */}
+                  </ClassLabel>
+                );
+              })
+            ) : (
+              <DescriptionText style={{ padding: "10px" }}>
+                No objects for this class yet
+              </DescriptionText>
+            )
+          ) : (
+            <DescriptionText style={{ padding: "10px" }}>
+              Select a class to view objects
+            </DescriptionText>
+          )}
         </ListSection>
         {isModalOpen && (
           <FeedBackModal
-            selectedButton={selectedButton}
             onClose={() => {
               setIsModalOpen(false);
               setSelectedButton(null);
+              setFeedback("");
+            }}
+            onSubmit={() => {
+              handleSubmit(feedback);
+            }}
+            feedback={feedback}
+            handleFeedbackChange={(e) => {
+              setFeedback(e.target.value);
             }}
           />
         )}
@@ -190,15 +302,25 @@ export default function InspectionWorkspace() {
           </div>
         </Header>
         <ImageContainer className="image-container">
-          <img src="https://picsum.photos/800/600" alt="placeholder" />
+          <img src={imageUrl} alt="placeholder" />
         </ImageContainer>
 
         {/* 하단 네비게이션 */}
         <footer>
           <Navigation>
-            <button>{LeftArrowIcon}Prev</button>
-            <span>01/10</span>
-            <button>{RightArrowIcon}Next</button>
+            <button onClick={handlePrev} disabled={currentIndex === 0}>
+              {LeftArrowIcon}Prev
+            </button>
+            <span>
+              {String(currentIndex + 1).padStart(2, "0")}/
+              {String(taskImgList.length).padStart(2, "0")}
+            </span>
+            <button
+              onClick={handleNext}
+              disabled={currentIndex === taskImgList.length - 1}
+            >
+              {RightArrowIcon}Next
+            </button>
           </Navigation>
         </footer>
       </main>

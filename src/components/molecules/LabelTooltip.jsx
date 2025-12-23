@@ -107,7 +107,6 @@ export default function LabelTooltip({
   labelData,
   setLabelData,
 }) {
-  /* const [selectedClass, setSelectedClass] = useState("No Class"); */
   return (
     <Container $x={x} $y={y}>
       <h4>Select Class</h4>
@@ -126,7 +125,7 @@ export default function LabelTooltip({
             <li
               key={cls.id}
               onClick={() =>
-                setLabelData({ ...labelData, className: cls.name })
+                setLabelData({ ...labelData, className: cls.name, id: cls.id })
               }
               className={labelData.className === cls.name ? "selected" : ""}
             >

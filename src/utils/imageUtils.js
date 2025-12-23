@@ -15,7 +15,6 @@ export function imageToBase64(img) {
 }
 
 export async function handleCutout(fullMask) {
-  console.log("fullMask", fullMask);
   try {
     if (!fullMask) {
       alert("먼저 대상을 선택해주세요");

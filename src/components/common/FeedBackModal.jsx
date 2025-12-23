@@ -50,15 +50,26 @@ const Textarea = styled.textarea`
   }
 `;
 
-export default function FeedBackModal({ onClose }) {
+export default function FeedBackModal({
+  onClose,
+  onSubmit,
+  feedback,
+  handleFeedbackChange,
+}) {
   return (
     <ModalBase className="feed-back-modal" onClose={onClose}>
-      <Textarea placeholder="Describe any issues or leave feedback here..." />
+      <Textarea
+        placeholder="Describe any issues or leave feedback here..."
+        value={feedback}
+        onChange={handleFeedbackChange}
+      />
       <ButtonContainer>
         <Button className="cancel-button" onClick={onClose}>
           Cancle
         </Button>
-        <Button className="submit-button">Submit</Button>
+        <Button className="submit-button" onClick={onSubmit}>
+          Submit
+        </Button>
       </ButtonContainer>
     </ModalBase>
   );

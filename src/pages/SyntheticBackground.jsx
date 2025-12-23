@@ -28,6 +28,7 @@ import {
   updateHoverCursor,
 } from "../utils/mousecursorUtil";
 import { useToastStore } from "../store/toastStore";
+import { createSyntheticData } from "../api/syntheticApi";
 
 const Container = styled.div`
   .description {
@@ -385,6 +386,21 @@ export default function SyntheticBackground() {
 
     const cutout = JSON.parse(data);
 
+    // 🔹 classId 가져오기: cutout에 없으면 세션 스토리지에서 찾기
+    let classId = cutout.classId;
+    if (!classId) {
+      const cutoutSources =
+        JSON.parse(sessionStorage.getItem("cutoutSources")) || [];
+      const sourceCutout = cutoutSources.find((c) => c.id === cutout.id);
+      classId = sourceCutout?.classId;
+    }
+
+    // classId가 여전히 없으면 기본값 설정 또는 에러 처리
+    if (!classId) {
+      console.warn(`classId not found for cutout ${cutout.id}`);
+      classId = "0"; // 기본값 또는 에러 처리
+    }
+
     const canvas = bgCanvasRef.current;
     const rect = canvas.getBoundingClientRect();
 
@@ -407,7 +423,7 @@ export default function SyntheticBackground() {
       {
         id: crypto.randomUUID(),
         sourceId: cutout.id,
-        classId: cutout.classId,
+        classId: classId, // 확실히 설정된 classId 사용
         bbox,
         x,
         y,
@@ -549,7 +565,7 @@ export default function SyntheticBackground() {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (placedObjects.length === 0) {
       useToastStore
         .getState()
@@ -557,7 +573,17 @@ export default function SyntheticBackground() {
       return;
     }
 
-    exportComposite(bgCanvasRef.current, placedObjects, cutoutCacheRef);
+    const labels = await exportComposite(
+      bgCanvasRef.current,
+      placedObjects,
+      cutoutCacheRef
+    );
+
+    const result = await createSyntheticData(labels);
+
+    // result.imageUrl을 사용하여 이미지 표시
+    // 예: <img src={result.imageUrl} />
+
     // navigate("/synthetic-data/data-augmentation");
   };
 
@@ -586,9 +612,6 @@ export default function SyntheticBackground() {
       originalImageHeight: originalImage.height,
       alphaThreshold: 0, // alpha > 0 인 픽셀을 객체로 간주
     });
-
-    // TODO: labels를 파일로 저장하거나 서버로 전송하는 로직을 여기에 추가
-    console.log("Exported labels (COCO/YOLO style):", labels);
   };
 
   return (

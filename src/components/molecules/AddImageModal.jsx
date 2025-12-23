@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import styled from "styled-components";
-import { uploadFile, uploadMultipleFiles } from "../../utils/uploadUtils";
+import { uploadFilesUnified } from "../../api/File";
 import { useToastStore } from "../../store/toastStore";
 
 const ModalOverlay = styled.div`
@@ -82,11 +82,11 @@ const TabButton = styled.button`
 `;
 
 const UploadArea = styled.div`
-  border: 2px dashed ${(props) => (props.dragging ? "#f62579" : "#3b3c5d")};
+  border: 2px dashed ${(props) => (props.$dragging ? "#f62579" : "#3b3c5d")};
   border-radius: 12px;
   padding: 40px 20px;
   text-align: center;
-  background-color: ${(props) => (props.dragging ? "#2a1b2d" : "#151624")};
+  background-color: ${(props) => (props.$dragging ? "#2a1b2d" : "#151624")};
   transition: all 0.2s;
   cursor: pointer;
   margin-bottom: 16px;
@@ -300,64 +300,88 @@ export default function AddImageModal({
     if (uploadFiles.length === 0) {
       useToastStore
         .getState()
-        .addToast("Please select files to upload.", "error");
+        .addToast("업로드할 파일을 선택해주세요.", "error");
       return;
     }
 
     setIsUploading(true);
 
     try {
-      if (uploadMethod === "individual") {
-        const fileIds = await uploadMultipleFiles(
-          uploadFiles.map((item) => item.file),
-          (fileIndex, progress) => {
-            setUploadFiles((prev) =>
-              prev.map((item, index) =>
-                index === fileIndex
-                  ? { ...item, progress, status: "uploading" }
-                  : item
-              )
-            );
-          },
-          5
-        );
+      // 통합 업로드 API 사용 (개별 파일과 ZIP 파일 모두 동일한 방식)
+      const files = uploadFiles.map((item) => item.file);
 
-        setUploadFiles((prev) =>
-          prev.map((item, index) => ({
-            ...item,
-            fileId: fileIds[index] || null,
-            status: fileIds[index] ? "success" : "error",
-            progress: fileIds[index] ? 100 : 0,
-          }))
-        );
+      // 각 파일에 대해 순차적으로 업로드 처리
+      for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
+        const file = files[fileIndex];
 
-        useToastStore
-          .getState()
-          .addToast(`${fileIds.length} files uploaded successfully`, "success");
-      } else {
-        const zipFile = uploadFiles[0].file;
-        const fileId = await uploadFile(zipFile, (progress) => {
+        try {
+          // 진행률 업데이트 (업로드 시작)
           setUploadFiles((prev) =>
-            prev.map((item) => ({
-              ...item,
-              progress,
-              status: "uploading",
-            }))
+            prev.map((item, index) =>
+              index === fileIndex
+                ? { ...item, progress: 0, status: "uploading" }
+                : item
+            )
           );
-        });
 
-        setUploadFiles((prev) =>
-          prev.map((item) => ({
-            ...item,
-            fileId,
-            status: "success",
-            progress: 100,
-          }))
-        );
+          // 통합 업로드 API 호출
+          const response = await uploadFilesUnified(
+            [file],
+            "PROJECT",
+            (progressFileIndex, progress) => {
+              // 진행률 업데이트
+              setUploadFiles((prev) =>
+                prev.map((item, index) =>
+                  index === fileIndex
+                    ? { ...item, progress, status: "uploading" }
+                    : item
+                )
+              );
+            }
+          );
 
+          // 응답에서 fileId 추출 (successFileIds 배열의 첫 번째 요소 사용)
+          const fileId =
+            response.data?.successFileIds?.[0] ||
+            response.data?.fileIds?.[0] ||
+            response.data?.fileId ||
+            response.fileId;
+
+          // fileId 업데이트 (해당 파일만)
+          setUploadFiles((prev) =>
+            prev.map((item, index) =>
+              index === fileIndex
+                ? {
+                    ...item,
+                    fileId: fileId,
+                    status: "success",
+                    progress: 100,
+                  }
+                : item
+            )
+          );
+        } catch (error) {
+          console.error(
+            `File ${fileIndex} (${file.name}) upload failed:`,
+            error
+          );
+          // 해당 파일을 에러 상태로 표시
+          setUploadFiles((prev) =>
+            prev.map((item, index) =>
+              index === fileIndex ? { ...item, status: "error" } : item
+            )
+          );
+        }
+      }
+
+      // 모든 파일 업로드 완료
+      const successCount = uploadFiles.filter(
+        (item) => item.status === "success"
+      ).length;
+      if (successCount > 0) {
         useToastStore
           .getState()
-          .addToast("ZIP file upload completed", "success");
+          .addToast(`${successCount}개 파일 업로드 완료`, "success");
       }
 
       if (onUploadComplete) {
@@ -367,7 +391,7 @@ export default function AddImageModal({
       console.error("Upload error:", error);
       useToastStore
         .getState()
-        .addToast("Upload error occurred. Please try again.", "error");
+        .addToast("업로드 중 오류가 발생했습니다.", "error");
       setUploadFiles((prev) =>
         prev.map((item) => ({
           ...item,
@@ -399,21 +423,21 @@ export default function AddImageModal({
 
         <TabButtons>
           <TabButton
-            active={uploadMethod === "individual"}
+            $active={uploadMethod === "individual"}
             onClick={() => setUploadMethod("individual")}
           >
-            Select Individual Files
+            개별 파일 선택
           </TabButton>
           <TabButton
-            active={uploadMethod === "zip"}
+            $active={uploadMethod === "zip"}
             onClick={() => setUploadMethod("zip")}
           >
-            Upload ZIP File
+            ZIP 파일 업로드
           </TabButton>
         </TabButtons>
 
         <UploadArea
-          dragging={isDragging}
+          $dragging={isDragging}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -446,13 +470,13 @@ export default function AddImageModal({
             }}
           >
             {uploadMethod === "individual"
-              ? "📁 Select image files or drag and drop"
-              : "📦 Select ZIP file or drag and drop"}
+              ? "📁 이미지 파일을 선택하거나 드래그하세요"
+              : "📦 ZIP 파일을 선택하거나 드래그하세요"}
           </div>
           <UploadText>
             {uploadMethod === "individual"
-              ? "You can select multiple image files at once"
-              : "Upload compressed image files"}
+              ? "여러 이미지 파일을 한 번에 선택할 수 있습니다"
+              : "압축된 이미지 파일을 업로드합니다"}
           </UploadText>
         </UploadArea>
 
@@ -466,12 +490,12 @@ export default function AddImageModal({
                     <ProgressBar>
                       <ProgressFill progress={item.progress} />
                     </ProgressBar>
-                    <FileStatus status={item.status}>
-                      {item.status === "pending" && "Pending"}
+                    <FileStatus $status={item.status}>
+                      {item.status === "pending" && "대기 중"}
                       {item.status === "uploading" &&
-                        `Uploading... ${item.progress}%`}
-                      {item.status === "success" && "Success"}
-                      {item.status === "error" && "Error"}
+                        `업로드 중... ${item.progress}%`}
+                      {item.status === "success" && "완료"}
+                      {item.status === "error" && "실패"}
                     </FileStatus>
                   </FileInfo>
                   <RemoveFileButton onClick={() => handleRemoveFile(index)}>
@@ -485,8 +509,9 @@ export default function AddImageModal({
                 className="primary"
                 onClick={handleStartUpload}
                 disabled={isUploading}
+                style={{ marginTop: "12px", width: "100%" }}
               >
-                {isUploading ? "Uploading..." : "Upload Start"}
+                {isUploading ? "업로드 중..." : "업로드 시작"}
               </Button>
             )}
           </>
@@ -494,7 +519,7 @@ export default function AddImageModal({
 
         <ActionButtons>
           <Button className="secondary" onClick={handleClose}>
-            Close
+            취소
           </Button>
         </ActionButtons>
       </ModalContent>

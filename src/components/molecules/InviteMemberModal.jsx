@@ -60,6 +60,11 @@ const CloseButton = styled.button`
 
 const Section = styled.div`
   margin-bottom: 24px;
+
+  .description {
+    font-size: 14px;
+    color: #7b7d95;
+  }
 `;
 
 const SectionTitle = styled.h3`
@@ -70,6 +75,7 @@ const SectionTitle = styled.h3`
 `;
 
 const InputGroup = styled.div`
+  margin-top: 16px;
   margin-bottom: 16px;
 `;
 
@@ -159,7 +165,7 @@ const RoleBadge = styled.span`
   font-weight: 700;
   background-color: ${(props) => {
     if (props.role === "PROJECT_MANAGER") return "#f62579";
-    if (props.role === "LABELER") return "#2abcf5";
+    if (props.role === "WORKER") return "#2abcf5";
     if (props.role === "REVIEWER") return "#46eb83";
     if (props.role === "SYNTHETIC_DATA_OPERATOR") return "#f4c37e";
     return "#5b5d75";
@@ -271,14 +277,14 @@ const Button = styled.button`
 `;
 
 const ROLE_OPTIONS = [
-  { value: "LABELER", label: "Labeler" },
+  { value: "WORKER", label: "Labeler" },
   { value: "REVIEWER", label: "Reviewer" },
   // { value: "SYNTHETIC_DATA_OPERATOR", label: "Synthetic Data Operator" },
 ];
 
 const ROLE_LABELS = {
   PROJECT_MANAGER: "Project Manager",
-  LABELER: "Labeler",
+  WORKER: "Labeler",
   REVIEWER: "Reviewer",
   // SYNTHETIC_DATA_OPERATOR: "Synthetic Data Operator",
 };
@@ -291,7 +297,7 @@ export default function InviteMemberModal({
   projectTasksData,
 }) {
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("LABELER");
+  const [role, setRole] = useState("WORKER");
   const [members, setMembers] = useState([]);
   const [availableMembers, setAvailableMembers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -392,7 +398,8 @@ export default function InviteMemberModal({
     }
 
     try {
-      await inviteMembers(projectId, members, tasks);
+      const response = await inviteMembers(projectId, members, tasks);
+
       useToastStore
         .getState()
         .addToast(`${members.length} members invited successfully`, "success");
@@ -403,17 +410,19 @@ export default function InviteMemberModal({
 
       handleClose();
     } catch (error) {
-      console.error("Invite error:", error);
-      useToastStore
-        .getState()
-        .addToast("Invite error occurred. Please try again.", "error");
+      const errorMessage =
+        error.message ||
+        error.response?.data?.message ||
+        "Invite error occurred. Please try again.";
+
+      useToastStore.getState().addToast(errorMessage, "error");
     }
   };
 
   const handleClose = () => {
     setEmail("");
     setSearchQuery("");
-    setRole("LABELER");
+    setRole("WORKER");
     setMembers([]);
     setIsDropdownOpen(false);
     onClose();
@@ -429,6 +438,9 @@ export default function InviteMemberModal({
 
         <Section>
           <SectionTitle>Add New Member</SectionTitle>
+          <p className="description">
+            Each task can only have one labeler and one reviewer assigned.
+          </p>
           <InputGroup>
             <Label>Email</Label>
             <DropdownContainer data-dropdown-container>

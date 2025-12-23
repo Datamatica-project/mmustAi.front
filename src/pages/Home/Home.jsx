@@ -160,6 +160,11 @@ export default function Home() {
     const fetchProjects = async () => {
       const response = await getProjects();
 
+      // 각 프로젝트의 역할을 로컬스토리지에 저장
+      // const projectRoles = JSON.parse(
+      //   localStorage.getItem("projectRoles") || "{}"
+      // );
+
       setProjects(response.data.items);
     };
     fetchProjects();

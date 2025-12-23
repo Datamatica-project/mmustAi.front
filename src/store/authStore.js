@@ -11,3 +11,15 @@ export const useAuthStore = create((set) => ({
     localStorage.removeItem("accessToken");
   },
 }));
+
+export const useProjectRolesStore = create((set) => ({
+  projectRoles: localStorage.getItem("projectRoles") || null,
+  setProjectRoles: (projectRoles) => {
+    set({ projectRoles });
+    localStorage.setItem("projectRoles", JSON.stringify(projectRoles));
+  },
+  clearProjectRoles: () => {
+    set({ projectRoles: null });
+    localStorage.removeItem("projectRoles");
+  },
+}));

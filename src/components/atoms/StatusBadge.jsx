@@ -18,13 +18,17 @@ const Badge = styled.span`
     background-color: rgba(244, 195, 126, 0.45);
     border: 2px solid #f4c37e;
   }
-  &.complete {
+  &.approved {
     background-color: rgba(70, 235, 131, 0.45);
     border: 2px solid #46eb83;
   }
   &.rejected {
     background-color: rgba(244, 68, 104, 0.45);
     border: 2px solid #f44468;
+  }
+  &.waiting {
+    background-color: rgba(163, 126, 244, 0.45);
+    border: 2px solid #a37ef4;
   }
 `;
 export default function StatusBadge({ status }) {

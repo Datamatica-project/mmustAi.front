@@ -296,10 +296,10 @@ export async function exportComposite(
   // const image = new Image();
   // image.src = imageUrl;
   // image.onload = () => {
-  //   console.log(image);
+
   // };
 
-  const canvas = bgCanvasRef.current;
+  const canvas = bgCanvasRef;
 
   // 세션 스토리지에서 원본 이미지 크기 가져오기
   const cutoutSources =
@@ -337,5 +337,6 @@ export async function exportComposite(
   );
 
   // 서버 전송 or 파일 저장
-  console.log(imageUrl, labels);
+
+  return { imageUrl, labels };
 }

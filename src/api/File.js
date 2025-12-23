@@ -132,7 +132,6 @@ export const uploadFilesUnified = async (
  * @returns {string} 이미지 URL
  */
 export const getFileUrlByName = async (fileName) => {
-  console.log("fileName", fileName);
   try {
     const response = await api.get(
       `/api/v1/images/view?filename=${fileName}&type=PROJECT`,

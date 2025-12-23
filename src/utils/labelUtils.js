@@ -109,8 +109,8 @@ export function computeCompositeBBoxes({
 
     // 5️⃣ YOLO 정규화는 원본 이미지 크기 기준으로 계산
     const yoloBBox = {
-      cx: (cocoBBox.x + cocoBBox.width / 2) / originalImageWidth,
-      cy: (cocoBBox.y + cocoBBox.height / 2) / originalImageHeight,
+      x: cocoBBox.x / originalImageWidth,
+      y: cocoBBox.y / originalImageHeight,
       w: cocoBBox.width / originalImageWidth,
       h: cocoBBox.height / originalImageHeight,
     };

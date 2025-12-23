@@ -122,12 +122,20 @@ export const inviteMembers = async (projectId, members, tasks) => {
     projectId: +projectId,
     taskId: +tasks,
   };
-  console.log(VisitData);
+  
   try {
     const response = await api.post(`/api/v1/users/invite`, VisitData);
     return response.data;
   } catch (error) {
     console.error("Error inviting members:", error);
+
+    if (error.response) {
+      const serverMessage =
+        error.response.data?.message ||
+        error.resopnse.data?.errorCode ||
+        "Unknown error";
+      throw new Error(serverMessage);
+    }
     throw error;
   }
 };

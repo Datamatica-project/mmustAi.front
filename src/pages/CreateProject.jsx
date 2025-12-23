@@ -561,14 +561,10 @@ export default function CreateProject() {
   };
 
   const handleSubmit = async () => {
-    console.log("All uploadFiles:", uploadFiles);
-
     // 업로드된 fileId 추출
     const uploadedFileIds = uploadFiles
       .filter((item) => item.status === "success" && item.fileId)
       .map((item) => item.fileId);
-
-    console.log("Extracted uploadedFileIds:", uploadedFileIds);
 
     if (uploadedFileIds.length === 0) {
       useToastStore
@@ -588,7 +584,7 @@ export default function CreateProject() {
 
     try {
       const response = await createProject(payload);
-      console.log("Create project response:", response);
+
       if (response.resultCode === "SUCCESS") {
         useToastStore
           .getState()

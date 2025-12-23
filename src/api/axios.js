@@ -10,6 +10,10 @@ export const samApi = axios.create({
   baseURL: "http://127.0.0.1:8001",
 });
 
+export const opencvApi = axios.create({
+  baseURL: import.meta.env.VITE_OPENCV_API_URL,
+});
+
 // 요청 인터셉터: 토큰을 헤더에 추가
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("accessToken");
