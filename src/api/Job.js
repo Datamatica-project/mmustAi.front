@@ -5,9 +5,9 @@ export const postObjectLabel = async (jobId, labelId, data, labelData) => {
 
   const Data = {
     name: labelData.objectName,
-    workType: "MANUAL_LABELING",
     labelType: "BOUNDING_BOX",
-    jobData: jobDataText,
+    formatType: "YOLO", // 현재는 Yolo만 지원
+    labelData: jobDataText,
   };
   console.log(Data);
   const response = await api.post(

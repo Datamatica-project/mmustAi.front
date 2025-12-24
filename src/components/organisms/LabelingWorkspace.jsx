@@ -19,7 +19,11 @@ import KonvaCanvas from "./KonvaCanvas";
 import { getFileUrlByName } from "../../api/File";
 import { deleteObject, getObjectsByLabelId, submitJob } from "../../api/Job";
 import { useToastStore } from "../../store/toastStore";
-import { useClassStore } from "../../store/bboxStore";
+import {
+  useClassStore,
+  uselabelDataFlagStore,
+  useObjectStore,
+} from "../../store/bboxStore";
 import { getTaskImgList } from "../../api/Project";
 
 const Section = styled.section`
@@ -225,7 +229,8 @@ const EditModalButton = styled.button`
 
 export default function LabelingWorkspace({ fileId, fileName, jobData }) {
   const [selectButton, setSelectButton] = useState("Bounding Box");
-  const [selectedClass, setSelectedClass] = useState(null);
+  const { labelInfos } = useClassStore();
+  const [selectedClass, setSelectedClass] = useState(0);
   const [imageRef, setImageRef] = useState(null);
   const [yoloLabels, setYoloLabels] = useState([]);
   // 클래스별로 저장된 오브젝트들: { [classId]: [{ id, name, yoloFormat, className }] }
@@ -236,11 +241,27 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
   // Konva 상에서 삭제할 바운딩 박스 id 목록
   const [deletedShapeIds, setDeletedShapeIds] = useState([]);
   const [objects, setObjects] = useState([]);
-  const { labelInfos } = useClassStore();
+
   const { projectId, taskId, jobId } = useParams();
   const [taskImgList, setTaskImgList] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const navigate = useNavigate();
+  const { labelDataFlag, setLabelDataFlag } = uselabelDataFlagStore();
+  const { objectsStore, setObjectsStore } = useObjectStore();
+
+  // 선택된 클래스에 대해서 오브젝트 목록 조회
+  useEffect(() => {
+    const fetchObjects = async () => {
+      const response = await getObjectsByLabelId(selectedClass);
+
+      setObjects(response.data);
+    };
+    fetchObjects();
+  }, [selectedClass, labelDataFlag, jobId]);
+
+  const handleClassClick = async (cls) => {
+    setSelectedClass(cls.id);
+  };
 
   useEffect(() => {
     const fetchTaskImgList = async () => {
@@ -338,6 +359,7 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
 
     if (response.resultCode === "SUCCESS") {
       setObjects(objects.filter((obj) => obj.id !== objId));
+      setObjectsStore(objectsStore.filter((obj) => obj.id !== objId));
       useToastStore
         .getState()
         .addToast("Object deleted successfully", "success");
@@ -418,12 +440,6 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
     fetchImageUrl();
   }, [fileName, jobData]);
 
-  const handleClassClick = async (cls) => {
-    setSelectedClass(cls.id);
-    const response = await getObjectsByLabelId(cls.id);
-    setObjects(response.data);
-  };
-
   const handleSubmit = async () => {
     const response = await submitJob(jobId);
 
@@ -456,7 +472,7 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
           {labelInfos
             .sort((a, b) => a.id - b.id)
             .map((cls) => {
-              const objectCount = cls.count || 0;
+              const objectCount = cls.objectInfos.length || 0;
               return (
                 <ClassLabel
                   key={cls.id}

@@ -89,8 +89,8 @@ export default function ImageTable({ imageData, page, pageSize, setPage }) {
                     </StyledLink>
                   ) : (
                     <StyledLink
-                      // to={`/project/${projectId}/task/${taskId}/labeling/${item.id}`}
-                      to={`/project/${projectId}/task/${taskId}/reviewing/${item.id}`}
+                      to={`/project/${projectId}/task/${taskId}/labeling/${item.id}`}
+                      // to={`/project/${projectId}/task/${taskId}/reviewing/${item.id}`}
                       // state={{ fileId: item.fileId, fileName: item.fileName }}
                     >
                       {item.fileName}

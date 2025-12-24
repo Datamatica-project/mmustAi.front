@@ -20,3 +20,15 @@ export const useClassStore = create((set) => ({
   // setClass: (labelInfos) => set({ labelInfos, class: labelInfos }),
   // clearClass: () => set({ labelInfos: [], class: [] }),
 }));
+
+export const uselabelDataFlagStore = create((set) => ({
+  labelDataFlag: false,
+  setLabelDataFlag: (labelDataFlag) => set({ labelDataFlag }),
+  clearLabelDataFlag: () => set({ labelDataFlag: false }),
+}));
+
+export const useObjectStore = create((set) => ({
+  objectsStore: [],
+  setObjectsStore: (objects) => set({ objectsStore: objects }),
+  clearObjectsStore: () => set({ objectsStore: [] }),
+}));

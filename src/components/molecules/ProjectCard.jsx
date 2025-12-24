@@ -194,7 +194,7 @@ export default function ProjectCard({ project, onDelete }) {
         <div className="progress-bar-container">
           <div className="progress-bar-text">
             <span>Task Progress</span>
-            <span>{project.totalProgressRate}% Completed</span>
+            <span>{Math.round(project.totalProgressRate)}% Completed</span>
           </div>
           <div className="progress-bar">
             <div

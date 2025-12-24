@@ -4,6 +4,7 @@ import styled from "styled-components";
 import LabelTooltip from "../molecules/LabelTooltip";
 import { useParams } from "react-router-dom";
 import { postObjectLabel } from "../../api/Job";
+import { uselabelDataFlagStore, useObjectStore } from "../../store/bboxStore";
 
 const Container = styled.div`
   position: absolute;
@@ -80,8 +81,88 @@ export default function KonvaCanvas({
     objectName: "",
     id: 0,
   });
+  const { labelDataFlag, setLabelDataFlag } = uselabelDataFlagStore();
 
   const { jobId } = useParams();
+
+  const { objectsStore } = useObjectStore();
+
+  // YOLO 형식(좌상단 좌표 기준)을 캔버스 좌표로 변환하는 함수
+  // 입력: [classId, normalizedX, normalizedY, normalizedWidth, normalizedHeight] 또는 [normalizedX, normalizedY, normalizedWidth, normalizedHeight]
+  // normalizedX, normalizedY는 좌상단 좌표 (0~1 정규화)
+  const convertYOLOToCanvasCoords = (yoloBbox) => {
+    // classId가 포함되어 있는지 확인 (5개 요소면 classId 포함, 4개면 좌표만)
+    const coords = yoloBbox.length === 5 ? yoloBbox.slice(1) : yoloBbox;
+    const [normalizedX, normalizedY, normalizedWidth, normalizedHeight] =
+      coords;
+
+    // 이미지 원본 크기
+    const imgWidth = imageSize.width || size.width;
+    const imgHeight = imageSize.height || size.height;
+
+    // 정규화된 좌상단 좌표를 이미지 원본 크기로 변환
+    const xPixels = normalizedX * imgWidth;
+    const yPixels = normalizedY * imgHeight;
+    const widthPixels = normalizedWidth * imgWidth;
+    const heightPixels = normalizedHeight * imgHeight;
+
+    // 캔버스 크기로 스케일링 (이미지가 캔버스에 맞춰 표시되는 비율)
+    const scaleX = size.width / imgWidth;
+    const scaleY = size.height / imgHeight;
+
+    // 캔버스 좌표로 변환
+    return {
+      x: xPixels * scaleX,
+      y: yPixels * scaleY,
+      // x: x * scaleX + (boxW * scaleX) / 2,
+      // y: y * scaleY + (boxH * scaleY) / 2,
+      width: widthPixels * scaleX,
+      height: heightPixels * scaleY,
+    };
+  };
+
+  // YOLO 형식으로 변환 (0~1 사이의 비율)
+  const convertToYOLOFormat = (bbox, className) => {
+    // 이미지 원본 크기 (naturalWidth/Height 사용)
+    const imgWidth = imageSize.width || size.width;
+    const imgHeight = imageSize.height || size.height;
+
+    // 바운딩 박스 좌표 정규화 (음수 width/height 처리)
+    const x = Math.min(bbox.x, bbox.x + bbox.width);
+    const y = Math.min(bbox.y, bbox.y + bbox.height);
+    const w = Math.abs(bbox.width);
+    const h = Math.abs(bbox.height);
+
+    // 캔버스 크기와 이미지 원본 크기의 비율 계산
+    const scaleX = imgWidth / size.width;
+    const scaleY = imgHeight / size.height;
+
+    // 캔버스 좌표를 이미지 원본 크기로 변환
+    const originalX = x * scaleX;
+    const originalY = y * scaleY;
+    const originalW = w * scaleX;
+    const originalH = h * scaleY;
+
+    // 좌상단 좌표 기준 형식: [클래스, x, y, width, height] (모두 0~1 사이 정규화)
+    // x, y는 바운딩 박스 좌상단 모서리의 정규화된 좌표
+    const normalizedX = originalX / imgWidth;
+    const normalizedY = originalY / imgHeight;
+
+    const normalizedWidth = originalW / imgWidth;
+    const normalizedHeight = originalH / imgHeight;
+
+    // 클래스 ID 찾기 (classes 배열에서)
+    const classIndex = classes.findIndex((cls) => cls.name === className);
+    const classId = classIndex !== -1 ? classIndex : 0;
+
+    return [
+      classId,
+      normalizedX,
+      normalizedY,
+      normalizedWidth,
+      normalizedHeight,
+    ];
+  };
 
   // 외부에서 전달된 삭제 대상 shape id 목록을 기준으로 도형 제거
   useEffect(() => {
@@ -176,6 +257,9 @@ export default function KonvaCanvas({
 
   // 바운딩 박스 이벤트 핸들러
   const handleMouseDown = (e) => {
+    // 툴팁이 표시 중이면 새로운 박스를 그리지 못하도록 막음 (저장/취소 후에만 다음 박스 그리기 가능)
+    if (showTooltip) return;
+
     const stage = e.target.getStage();
     const point = stage.getPointerPosition();
 
@@ -262,42 +346,6 @@ export default function KonvaCanvas({
     }
   };
 
-  // YOLO 형식으로 변환 (0~1 사이의 비율)
-  const convertToYOLOFormat = (bbox, className) => {
-    // 이미지 원본 크기 (naturalWidth/Height 사용)
-    const imgWidth = imageSize.width || size.width;
-    const imgHeight = imageSize.height || size.height;
-
-    // 바운딩 박스 좌표 정규화 (음수 width/height 처리)
-    const x = Math.min(bbox.x, bbox.x + bbox.width);
-    const y = Math.min(bbox.y, bbox.y + bbox.height);
-    const w = Math.abs(bbox.width);
-    const h = Math.abs(bbox.height);
-
-    // 캔버스 크기와 이미지 원본 크기의 비율 계산
-    const scaleX = imgWidth / size.width;
-    const scaleY = imgHeight / size.height;
-
-    // 캔버스 좌표를 이미지 원본 크기로 변환
-    const originalX = x * scaleX;
-    const originalY = y * scaleY;
-    const originalW = w * scaleX;
-    const originalH = h * scaleY;
-
-    // YOLO 형식: [클래스, center_x, center_y, width, height] (모두 0~1 사이)
-    // center_x, center_y는 바운딩 박스 중심점의 정규화된 좌표
-    const centerX = (originalX + originalW / 2) / imgWidth;
-    const centerY = (originalY + originalH / 2) / imgHeight;
-    const normalizedWidth = originalW / imgWidth;
-    const normalizedHeight = originalH / imgHeight;
-
-    // 클래스 ID 찾기 (classes 배열에서)
-    const classIndex = classes.findIndex((cls) => cls.name === className);
-    const classId = classIndex !== -1 ? classIndex : 0;
-
-    return [classId, centerX, centerY, normalizedWidth, normalizedHeight];
-  };
-
   // 색상을 CSS 색상 이름 또는 hex에서 rgba로 변환 (투명도 포함)
   const colorToRgba = (color, alpha = 0.5) => {
     // CSS 색상 이름인 경우 (hex 코드가 아닌 경우)
@@ -375,6 +423,14 @@ export default function KonvaCanvas({
       labelData
     );
 
+    // 서버 저장 성공 시 shapes에서 해당 shape 제거 (중복 렌더링 방지)
+    // 서버에서 다시 불러올 때 objectsStore에 포함되어 렌더링됨
+    if (currentShape?.id) {
+      setShapes((prevShapes) =>
+        prevShapes.filter((shape) => shape.id !== currentShape.id)
+      );
+    }
+
     setLabelData({
       className: "No Class",
       objectName: "",
@@ -382,6 +438,7 @@ export default function KonvaCanvas({
     });
 
     setShowTooltip(false);
+    setLabelDataFlag(!labelDataFlag);
   };
 
   // 라벨 취소
@@ -445,6 +502,38 @@ export default function KonvaCanvas({
                 );
               }
             })}
+
+          {/* 저장된 객체들 렌더링 (서버에서 불러온 라벨링 데이터) */}
+          {objectsStore?.map((obj, index) => {
+            // labelData.bbox가 있는지 확인
+            if (obj.labelData?.bbox && Array.isArray(obj.labelData.bbox)) {
+              const bbox = obj.labelData.bbox;
+
+              // YOLO 형식으로 변환된 좌표를 캔버스 좌표로 변환
+              const canvasCoords = convertYOLOToCanvasCoords(bbox);
+
+              // 클래스 색상 찾기 (labelData.class_id 또는 obj에 있는 정보 사용)
+              const classId = obj.labelData?.class_id;
+              const classInfo = classes.find((cls) => cls.id === classId);
+              // 클래스에서 찾지 못하면 객체 자체의 hexColor 사용, 없으면 기본색
+              const color = classInfo?.hexColor || obj.hexColor || "#f62579";
+
+              return (
+                <Rect
+                  key={`saved-obj-${obj.id}-${index}`}
+                  x={canvasCoords.x}
+                  y={canvasCoords.y}
+                  width={canvasCoords.width}
+                  height={canvasCoords.height}
+                  stroke={color}
+                  strokeWidth={2}
+                  fill={colorToRgba(color, 0.3)} // 저장된 객체는 약간 투명하게 표시
+                  listening={false} // 클릭 이벤트 비활성화 (저장된 객체는 편집 불가)
+                />
+              );
+            }
+            return null;
+          })}
 
           {newRect && (
             <Rect
