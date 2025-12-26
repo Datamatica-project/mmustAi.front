@@ -9,7 +9,6 @@ export const postObjectLabel = async (jobId, labelId, data, labelData) => {
     formatType: "YOLO", // 현재는 Yolo만 지원
     labelData: jobDataText,
   };
-  console.log(Data);
   const response = await api.post(
     `/api/v1/jobs/${jobId}/labels/${labelId}/objects`,
     Data
@@ -20,6 +19,7 @@ export const postObjectLabel = async (jobId, labelId, data, labelData) => {
 export const getJob = async (jobId) => {
   try {
     const response = await api.get(`/api/v1/jobs/${jobId}`);
+    console.log(response.data, "불러온 작업 데이터");
     return response.data;
   } catch (error) {
     console.error("Error fetching job:", error);

@@ -43,6 +43,16 @@ export const getProjects = async () => {
   }
 };
 
+export const getProjectDetail = async (projectId) => {
+  try {
+    const response = await api.get(`/api/v1/projects/${projectId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting project detail:", error);
+    throw error;
+  }
+};
+
 export const getProject = async (projectId) => {
   try {
     const response = await api.get(
@@ -122,7 +132,7 @@ export const inviteMembers = async (projectId, members, tasks) => {
     projectId: +projectId,
     taskId: +tasks,
   };
-  
+
   try {
     const response = await api.post(`/api/v1/users/invite`, VisitData);
     return response.data;

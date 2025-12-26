@@ -15,6 +15,7 @@ import { Link, useParams } from "react-router-dom";
 import {
   getBestWorker,
   getProject,
+  getProjectDetail,
   getProjects,
   getProjectTasks,
 } from "../api/Project";
@@ -143,6 +144,7 @@ export default function Project() {
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const params = useParams();
+  const [projectDetail, setProjectDetail] = useState(null);
   const [data, setData] = useState(null);
   const [bestWorkerData, setBestWorkerData] = useState(null);
   const [projectTasksData, setProjectTasksData] = useState(null);
@@ -174,13 +176,16 @@ export default function Project() {
 
   useEffect(() => {
     const fetchProject = async () => {
+      const projectDetail = await getProjectDetail(params.projectId);
       const response = await getProject(params.projectId);
       const BestWorkerData = await getBestWorker(params.projectId);
       const ProjectTasksData = await getProjectTasks(params.projectId);
 
+      setProjectDetail(projectDetail.data);
       setData(response.data);
       setBestWorkerData(BestWorkerData.data);
       setProjectTasksData(ProjectTasksData.data);
+      console.log(projectDetail.data);
     };
     fetchProject();
   }, [params.projectId]);
@@ -189,8 +194,8 @@ export default function Project() {
     <main>
       <Header>
         <div>
-          <Title>{"Project_1"}</Title>
-          <Description>{"This is a description of the project."}</Description>
+          <Title>{projectDetail?.name}</Title>
+          <Description>{projectDetail?.description}</Description>
         </div>
         <div className="button-group">
           <button

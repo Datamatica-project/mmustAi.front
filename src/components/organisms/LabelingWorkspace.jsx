@@ -360,6 +360,8 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
     if (response.resultCode === "SUCCESS") {
       setObjects(objects.filter((obj) => obj.id !== objId));
       setObjectsStore(objectsStore.filter((obj) => obj.id !== objId));
+      setLabelDataFlag(!labelDataFlag);
+
       useToastStore
         .getState()
         .addToast("Object deleted successfully", "success");

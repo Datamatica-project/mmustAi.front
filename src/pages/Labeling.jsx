@@ -33,6 +33,7 @@ export default function Labeling() {
       const allObjects = response.data.labelInfos
         .filter((labelInfo) => labelInfo.objectInfos?.length > 0)
         .flatMap((labelInfo) => labelInfo.objectInfos);
+
       setObjectsStore(allObjects);
 
       setLabelInfos(response.data.labelInfos);

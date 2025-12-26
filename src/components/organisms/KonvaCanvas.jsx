@@ -226,6 +226,17 @@ export default function KonvaCanvas({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [mode, showTooltip]);
 
+  // 툴팁 esc로 닫기
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        handleLabelClear();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   // 도형 완성 시 툴팁 표시
   const handleShapeComplete = (shapeData) => {
     let centerX, centerY;
@@ -239,8 +250,34 @@ export default function KonvaCanvas({
       centerY = points.reduce((sum, p) => sum + p.y, 0) / points.length;
     }
 
+    // 툴팁 크기 추정 (대략적인 값, 실제 크기에 맞게 조정 필요)
+    const TOOLTIP_WIDTH = 300; // 툴팁의 대략적인 너비
+    const TOOLTIP_HEIGHT = 330; // 툴팁의 대략적인 높이
+    const PADDING = 10; // 캔버스 경계로부터의 여백
+
+    // 캔버스 경계를 벗어나지 않도록 위치 조정
+    let adjustedX = centerX;
+    let adjustedY = centerY;
+
+    // 오른쪽 경계 체크
+    if (centerX + TOOLTIP_WIDTH > size.width) {
+      adjustedX = size.width - TOOLTIP_WIDTH - PADDING;
+    }
+    // 왼쪽 경계 체크
+    if (centerX < 0) {
+      adjustedX = PADDING;
+    }
+    // 아래쪽 경계 체크
+    if (centerY + TOOLTIP_HEIGHT > size.height) {
+      adjustedY = size.height - TOOLTIP_HEIGHT - PADDING;
+    }
+    // 위쪽 경계 체크
+    if (centerY < 0) {
+      adjustedY = PADDING;
+    }
+
     setShowTooltip(true);
-    setTooltipPosition({ x: centerX, y: centerY });
+    setTooltipPosition({ x: adjustedX, y: adjustedY });
     setCurrentShape(shapeData);
   };
 
@@ -297,12 +334,14 @@ export default function KonvaCanvas({
   // 마우스 업 시 바운딩 박스 완성
   const handleMouseUp = () => {
     if (mode !== "boundingBox") return;
+
     if (newRect) {
       const newShape = {
         type: "boundingBox",
         zIndex: maxZIndex + 1,
         ...newRect,
       };
+
       setShapes([...shapes, newShape]);
       setMaxZIndex(maxZIndex + 1);
 
@@ -422,7 +461,6 @@ export default function KonvaCanvas({
       yoloFormat,
       labelData
     );
-
     // 서버 저장 성공 시 shapes에서 해당 shape 제거 (중복 렌더링 방지)
     // 서버에서 다시 불러올 때 objectsStore에 포함되어 렌더링됨
     if (currentShape?.id) {
@@ -562,7 +600,7 @@ export default function KonvaCanvas({
       {showTooltip && (
         <LabelTooltip
           x={tooltipPosition.x}
-          y={tooltipPosition.y - 50}
+          y={tooltipPosition.y}
           classes={classes}
           onConfirm={handleLabelSave}
           onCancle={handleLabelClear}
