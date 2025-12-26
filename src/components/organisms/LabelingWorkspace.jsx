@@ -255,8 +255,7 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
   // 선택된 클래스에 대해서 오브젝트 목록 조회
   useEffect(() => {
     const fetchObjects = async () => {
-      const response = await getObjectsByLabelId(selectedClass);
-
+      const response = await getObjectsByLabelId(jobId, selectedClass);
       setObjects(response.data);
     };
     fetchObjects();

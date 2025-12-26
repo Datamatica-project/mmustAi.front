@@ -166,6 +166,7 @@ export default function Home() {
       // );
 
       setProjects(response.data.items);
+      // console.log(response.data.items);
     };
     fetchProjects();
   }, [refresh]);
@@ -209,35 +210,6 @@ export default function Home() {
 
     return filtered;
   }, [projects, search, selectTab]);
-
-  const data = [
-    {
-      id: 1,
-      title: "Project_1",
-      description: "Project Description",
-      role: "PM",
-      date: "2025-08-01",
-      progress: 70,
-      tags: [
-        { id: 1, name: "tree" },
-        { id: 2, name: "person" },
-        { id: 3, name: "plant" },
-      ],
-    },
-    {
-      id: 2,
-      title: "Project_2",
-      description: "Project Description",
-      role: "Labeler",
-      date: "2025-08-01",
-      progress: 50,
-      tags: [
-        { id: 1, name: "car" },
-        { id: 2, name: "animal" },
-        { id: 3, name: "ect1" },
-      ],
-    },
-  ];
 
   return (
     <Container>

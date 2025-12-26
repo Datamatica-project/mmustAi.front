@@ -568,7 +568,7 @@ export default function KonvaCanvas({
                   height={canvasCoords.height}
                   stroke={isHighlighted ? "#FFFF00" : color}
                   strokeWidth={isHighlighted ? 3 : 2}
-                  fill={colorToRgba(color, isHighlighted ? 0.5 : 0.3)}
+                  fill={colorToRgba(color, 0.2)}
                   listening={false} // 클릭 이벤트 비활성화 (저장된 객체는 편집 불가)
                 />
               );

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { useToastStore } from "../../store/toastStore";
 import { getMembers, inviteMembers } from "../../api/Project";
+import { getTaskDetail } from "../../api/Task";
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -77,6 +78,53 @@ const SectionTitle = styled.h3`
 const InputGroup = styled.div`
   margin-top: 16px;
   margin-bottom: 16px;
+  .description {
+    font-size: 13px;
+    color: #ffffff;
+    line-height: 1.5;
+    span {
+      font-weight: 500;
+      color: #7b7d95;
+    }
+  }
+`;
+
+// 작업자 할당 정보를 표시하는 카드 스타일
+const AssignedMembersCard = styled.div`
+  margin-top: 12px;
+  padding: 12px;
+  background-color: #1c1d2f;
+  border-radius: 8px;
+  border: 1px solid #2c2e44;
+`;
+
+const AssignedMemberRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid #2c2e44;
+    margin-bottom: 8px;
+    padding-bottom: 12px;
+  }
+`;
+
+const AssignedMemberLabel = styled.span`
+  font-size: 13px;
+  font-weight: 600;
+  color: #7b7d95;
+  min-width: 80px;
+`;
+
+const AssignedMemberValue = styled.span`
+  font-size: 14px;
+  font-weight: 500;
+  color: ${(props) => (props.$isEmpty ? "#7b7d95" : "#ffffff")};
+  font-style: ${(props) => (props.$isEmpty ? "italic" : "normal")};
+  flex: 1;
+  text-align: right;
 `;
 
 const Label = styled.label`
@@ -303,7 +351,10 @@ export default function InviteMemberModal({
   const [searchQuery, setSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [tasks, setTasks] = useState("");
+  const [reviewer, setReviewer] = useState("");
+  const [worker, setWorker] = useState("");
 
+  // 멤버 목록 조회
   useEffect(() => {
     if (!isOpen) return; // 모달이 열려있을 때만 실행
 
@@ -322,12 +373,13 @@ export default function InviteMemberModal({
     };
     fetchMembers();
   }, [isOpen]);
-  // 드롭다운 외부 클릭 시 닫기
 
+  // 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (isDropdownOpen && !e.target.closest("[data-dropdown-container]")) {
         setIsDropdownOpen(false);
+        setTasks("");
       }
     };
 
@@ -428,6 +480,19 @@ export default function InviteMemberModal({
     onClose();
   };
 
+  // 태스크 변경 시 태스크 상세 조회
+  const handleTaskChange = async (e) => {
+    setTasks(e.target.value);
+    if (e.target.value === "") {
+      setReviewer("");
+      setWorker("");
+      return;
+    }
+    const taskDetail = await getTaskDetail(e.target.value);
+    setReviewer(taskDetail.data.reviewerEmail);
+    setWorker(taskDetail.data.workerEmail);
+  };
+
   return (
     <ModalOverlay onClick={handleClose}>
       <ModalContent onClick={(e) => e.stopPropagation()}>
@@ -441,6 +506,33 @@ export default function InviteMemberModal({
           <p className="description">
             Each task can only have one labeler and one reviewer assigned.
           </p>
+          <InputGroup>
+            <Label>Tasks</Label>
+            <Select value={tasks} onChange={(e) => handleTaskChange(e)}>
+              <option value="">Select Task</option>
+              {projectTasksData.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </Select>
+            {tasks && (
+              <AssignedMembersCard>
+                <AssignedMemberRow>
+                  <AssignedMemberLabel>Labeler</AssignedMemberLabel>
+                  <AssignedMemberValue $isEmpty={!worker}>
+                    {worker || "None"}
+                  </AssignedMemberValue>
+                </AssignedMemberRow>
+                <AssignedMemberRow>
+                  <AssignedMemberLabel>Reviewer</AssignedMemberLabel>
+                  <AssignedMemberValue $isEmpty={!reviewer}>
+                    {reviewer || "None"}
+                  </AssignedMemberValue>
+                </AssignedMemberRow>
+              </AssignedMembersCard>
+            )}
+          </InputGroup>
           <InputGroup>
             <Label>Email</Label>
             <DropdownContainer data-dropdown-container>
@@ -487,17 +579,7 @@ export default function InviteMemberModal({
               ))}
             </Select>
           </InputGroup>
-          <InputGroup>
-            <Label>Tasks</Label>
-            <Select value={tasks} onChange={(e) => setTasks(e.target.value)}>
-              <option value="">Select Task</option>
-              {projectTasksData.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name}
-                </option>
-              ))}
-            </Select>
-          </InputGroup>
+
           <Button className="primary" onClick={handleAddMember}>
             Add
           </Button>

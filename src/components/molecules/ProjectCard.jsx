@@ -7,6 +7,7 @@ import { useToastStore } from "../../store/toastStore";
 import DotMenuButton from "./DotMenuButton";
 
 const Card = styled(Link)`
+  box-sizing: border-box;
   position: relative;
   cursor: pointer;
   text-decoration: none;
@@ -16,6 +17,10 @@ const Card = styled(Link)`
   padding: 35px;
   background-color: #21213d;
   border-radius: 15px;
+
+  &.expired {
+    opacity: 0.5;
+  }
 `;
 const CardHeader = styled.div`
   display: flex;
@@ -142,6 +147,14 @@ export default function ProjectCard({ project, onDelete }) {
     REVIEWER: "REVIEWER",
   };
 
+  // 만료된 프로젝트 카드 클릭 시 링크 이동 막고 토스트만 표시
+  const handleExpiredCardClick = (e) => {
+    if (project.expired) {
+      e.preventDefault(); // 링크 이동 방지
+      useToastStore.getState().addToast("This project has expired.", "error");
+    }
+  };
+
   const handleDeleteClick = async (e) => {
     e.preventDefault(); // 카드(Link) 클릭으로 페이지 이동 막기
     e.stopPropagation();
@@ -172,7 +185,11 @@ export default function ProjectCard({ project, onDelete }) {
   };
 
   return (
-    <Card to={`/project/${project.id}`}>
+    <Card
+      to={`/project/${project.id}`}
+      className={`${project.expired ? "expired" : ""}`}
+      onClick={handleExpiredCardClick}
+    >
       <CardHeader>
         <div>
           <h2>{project.name}</h2>

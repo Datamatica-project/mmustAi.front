@@ -36,6 +36,8 @@ export default function Labeling() {
 
       setObjectsStore(allObjects);
 
+      console.log(response);
+
       setLabelInfos(response.data.labelInfos);
     };
     fetchJob();

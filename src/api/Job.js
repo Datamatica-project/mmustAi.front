@@ -27,9 +27,11 @@ export const getJob = async (jobId) => {
   }
 };
 
-export const getObjectsByLabelId = async (labelId) => {
+export const getObjectsByLabelId = async (jobId, labelId) => {
   try {
-    const response = await api.get(`/api/v1/labels/${labelId}/objects`);
+    const response = await api.get(
+      `/api/v1/jobs/${jobId}/labels/${labelId}/objects `
+    );
     return response.data;
   } catch (error) {
     console.error("Error fetching objects by class id:", error);

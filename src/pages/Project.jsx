@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import ChartBlock from "../components/molecules/ChartBlock";
 import InspectionState from "../components/molecules/InspectionState";
@@ -20,6 +20,7 @@ import {
   getProjectTasks,
 } from "../api/Project";
 import { useProjectRolesStore } from "../store/authStore";
+import { useToastStore } from "../store/toastStore";
 
 const Title = styled.h1`
   font-size: 32px;
@@ -185,7 +186,6 @@ export default function Project() {
       setData(response.data);
       setBestWorkerData(BestWorkerData.data);
       setProjectTasksData(ProjectTasksData.data);
-      console.log(projectDetail.data);
     };
     fetchProject();
   }, [params.projectId]);
