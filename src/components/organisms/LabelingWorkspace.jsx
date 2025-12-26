@@ -249,6 +249,9 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
   const { labelDataFlag, setLabelDataFlag } = uselabelDataFlagStore();
   const { objectsStore, setObjectsStore } = useObjectStore();
 
+  // 클릭 시 선택된 오브젝트 ID 상태 추가
+  const [highlightedObjectId, setHighlightedObjectId] = useState(null);
+
   // 선택된 클래스에 대해서 오브젝트 목록 조회
   useEffect(() => {
     const fetchObjects = async () => {
@@ -366,37 +369,6 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
         .getState()
         .addToast("Object deleted successfully", "success");
     }
-
-    // // labeledObjects에서 오브젝트 삭제
-    // setLabeledObjects((prev) => {
-    //   const updated = { ...prev };
-    //   if (updated[selectedClass]) {
-    //     updated[selectedClass] = updated[selectedClass].filter(
-    //       (obj) => obj.id !== objId
-    //     );
-    //   }
-    //   return updated;
-    // });
-
-    // // 클래스별 오브젝트 개수 업데이트
-    // setClassObjectCounts((prev) => ({
-    //   ...prev,
-    //   [selectedClass]: Math.max((prev[selectedClass] || 0) - 1, 0),
-    // }));
-
-    // // YOLO 라벨에서도 제거 (해당 오브젝트의 yoloFormat 찾아서 제거)
-    // setYoloLabels((prev) => {
-    //   const obj = getSelectedClassObjects().find((o) => o.id === objId);
-    //   if (obj && obj.yoloFormat) {
-    //     return prev.filter(
-    //       (label) => label.join(" ") !== obj.yoloFormat.join(" ")
-    //     );
-    //   }
-    //   return prev;
-    // });
-
-    // // Konva 상에서도 해당 바운딩 박스 제거되도록 id 기록
-    // setDeletedShapeIds((prev) => [...prev, objId]);
   };
 
   const handleSaveEdit = () => {
@@ -493,26 +465,6 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
         {/* 클래스별 각 객체 목록 */}
         <ListSection title={"Objects"}>
           {selectedClass ? (
-            // getSelectedClassObjects().length > 0 ? (
-            //   getSelectedClassObjects().map((obj) => {
-            //     const classItem = classes.find(
-            //       (cls) => cls.id === selectedClass
-            //     );
-            //     return (
-            //       <ClassLabel
-            //         key={obj.id}
-            //         type="Object"
-            //         color={classItem?.color || "red"}
-            //         name={obj.name}
-            //       >
-            //         <DotMenuButton
-            //           handleEditClick={() => handleEditClick(obj.id)}
-            //           handleDeleteClick={() => handleDeleteClick(obj.id)}
-            //         />
-            //       </ClassLabel>
-            //     );
-            //   })
-            // )
             objects.length > 0 ? (
               objects.map((obj) => {
                 const classItem = labelInfos.find(
@@ -528,6 +480,8 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
                     <DotMenuButton
                       handleEditClick={() => handleEditClick(obj.id)}
                       handleDeleteClick={() => handleDeleteClick(obj.id)}
+                      setHighlightedObjectId={setHighlightedObjectId}
+                      objId={obj.id}
                     />
                   </ClassLabel>
                 );
@@ -573,6 +527,7 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
             imageRef={imageRef}
             deletedShapeIds={deletedShapeIds}
             jobData={jobData}
+            highlightedObjectId={highlightedObjectId}
           />
           <img
             ref={setImageRef}

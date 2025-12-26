@@ -25,6 +25,7 @@ export default function KonvaCanvas({
   imageRef,
   deletedShapeIds = [],
   jobData,
+  highlightedObjectId,
 }) {
   const containerRef = useRef(null);
   const [size, setSize] = useState({ width: 790, height: 600 });
@@ -543,6 +544,8 @@ export default function KonvaCanvas({
 
           {/* 저장된 객체들 렌더링 (서버에서 불러온 라벨링 데이터) */}
           {objectsStore?.map((obj, index) => {
+            const isHighlighted = highlightedObjectId === obj.id;
+
             // labelData.bbox가 있는지 확인
             if (obj.labelData?.bbox && Array.isArray(obj.labelData.bbox)) {
               const bbox = obj.labelData.bbox;
@@ -563,9 +566,9 @@ export default function KonvaCanvas({
                   y={canvasCoords.y}
                   width={canvasCoords.width}
                   height={canvasCoords.height}
-                  stroke={color}
-                  strokeWidth={2}
-                  fill={colorToRgba(color, 0.3)} // 저장된 객체는 약간 투명하게 표시
+                  stroke={isHighlighted ? "#FFFF00" : color}
+                  strokeWidth={isHighlighted ? 3 : 2}
+                  fill={colorToRgba(color, isHighlighted ? 0.5 : 0.3)}
                   listening={false} // 클릭 이벤트 비활성화 (저장된 객체는 편집 불가)
                 />
               );
