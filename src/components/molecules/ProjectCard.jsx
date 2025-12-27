@@ -26,6 +26,12 @@ const CardHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  .project-info {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
   h2 {
     font-size: 24px;
     font-weight: 700;
@@ -122,6 +128,26 @@ const DotMenuButtonContainer = styled.div`
   right: 0px;
 `;
 
+// 남은 날짜 표시용 스타일드 컴포넌트 - 임박 경고를 위한 색상 변경 기능 포함
+const RemainingDays = styled.span`
+  font-size: 14px;
+  font-weight: 600; // 날짜 범위보다 더 굵게 표시하여 중요도 강조
+  padding: 4px 10px;
+  border-radius: 6px;
+  // 남은 날짜에 따라 색상 변경: 7일 이하(빨강), 30일 이하(주황), 그 외(청록)
+  color: ${(props) => {
+    if (props.$remainingDays <= 7) return "#FF6B6B"; // 1주일 이하 - 경고 빨강
+    if (props.$remainingDays <= 30) return "#FFA500"; // 1개월 이하 - 주의 주황
+    return "#4ECDC4"; // 여유 있음 - 청록
+  }};
+  background-color: ${(props) => {
+    if (props.$remainingDays <= 7) return "rgba(255, 107, 107, 0.15)"; // 빨강 배경
+    if (props.$remainingDays <= 30) return "rgba(255, 165, 0, 0.15)"; // 주황 배경
+    return "rgba(78, 205, 196, 0.15)"; // 청록 배경
+  }};
+  transition: all 0.2s ease-in-out; // 색상 변경 시 부드러운 전환 효과
+`;
+
 export default function ProjectCard({ project, onDelete }) {
   const TagColors = {
     tree: "#243447",
@@ -191,16 +217,24 @@ export default function ProjectCard({ project, onDelete }) {
       onClick={handleExpiredCardClick}
     >
       <CardHeader>
-        <div>
+        <div className="project-info">
           <h2>{project.name}</h2>
           <p>{project.description}</p>
         </div>
         <div className="role-container">
-          <span className="date">{project.createdAt.split("T")[0]}</span>
+          <span className="date">
+            {project.createdAt.split("T")[0]} ~{" "}
+            {project.expiredAt.split("T")[0]}
+          </span>
+
           <Taglabel
             label={RoleMapping[project.role] || "PM"}
             color={RoleColors[RoleMapping[project.role]] || "#3A245D"}
           />
+          {/* 남은 날짜 표시 - 시각적 강조 및 임박 경고 색상 적용 */}
+          <RemainingDays $remainingDays={project.remainingDays}>
+            D-{project.remainingDays}
+          </RemainingDays>
         </div>
         <DotMenuButton
           // handleEditClick={handleEditClick}

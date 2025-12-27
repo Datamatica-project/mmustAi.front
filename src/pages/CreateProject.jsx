@@ -572,11 +572,13 @@ export default function CreateProject() {
         .addToast("최소 1개 이상의 파일을 업로드해주세요.", "error");
       return;
     }
+    // startDate를 "YYYY-MM-DDT23:59:59" 형식으로 변환 (날짜의 마지막 시간 포함)
+    const formattedStartDate = startDate ? `${startDate}T23:59:59` : startDate;
 
     const payload = {
       projectName,
       description,
-      startDate,
+      startDate: formattedStartDate,
       imagesPerTask,
       classes,
       uploadedFileIds,

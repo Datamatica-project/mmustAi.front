@@ -185,6 +185,7 @@ export default function Project() {
       setProjectDetail(projectDetail.data);
       setData(response.data);
       setBestWorkerData(BestWorkerData.data);
+      console.log(BestWorkerData.data);
       setProjectTasksData(ProjectTasksData.data);
     };
     fetchProject();
@@ -207,12 +208,12 @@ export default function Project() {
           <StyledLink to="/synthetic-data" className="button">
             Synthetic Data
           </StyledLink>
-          <button
+          {/* <button
             className="button"
             onClick={() => setIsAddImageModalOpen(true)}
           >
             Add Images
-          </button>
+          </button> */}
           <button
             className="button"
             onClick={() => setIsInviteMemberModalOpen(true)}

@@ -3,8 +3,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import styled from "styled-components";
 import PageHeader from "../components/organisms/PageHeader";
 import { LeftArrowIcon, RightArrowIcon } from "../components/icons/Icons";
-import { augmentImage, sendToTraining } from "../api/augmentation";
+import { sendToTraining } from "../api/augmentation";
 import { useToastStore } from "../store/toastStore";
+import { augmentImage } from "../utils/opencv/augmentImage";
 
 const Container = styled.div`
   .description {
@@ -212,11 +213,11 @@ export default function DataAugmentation() {
 
   const loadAndAugment = async () => {
     try {
-      setLoading(true);
+      setLoading(true); // 로딩 상태 설정
 
       // 세션 스토리지에서 합성 데이터 가져오기
       const compositeDataStr = sessionStorage.getItem("compositeData");
-
+      // 합성 데이터가 없으면 에러 메시지 표시
       if (!compositeDataStr) {
         useToastStore
           .getState()
@@ -225,6 +226,7 @@ export default function DataAugmentation() {
         return;
       }
 
+      // 세션 스토리지 데이터 추출
       const compositeData = JSON.parse(compositeDataStr);
       const { imageBase64, labels } = compositeData;
 
@@ -235,85 +237,8 @@ export default function DataAugmentation() {
       // OpenCV 증강 API 호출
       const results = await augmentImage(imageBlob, labels);
 
-      // API 응답 형식에 따라 처리
-      // 예상 형식: { images: [base64...], labels: [[...], [...]] } 또는
-      // { results: [{ image: base64, labels: [...] }] }
-      let processedResults = [];
-
-      if (Array.isArray(results)) {
-        // 배열 형식인 경우
-        processedResults = results.map((result, index) => {
-          let imageUrl;
-          if (result.imageUrl) {
-            imageUrl = result.imageUrl;
-          } else if (result.imageBase64) {
-            imageUrl = result.imageBase64;
-          } else if (result.imageBlob) {
-            imageUrl = URL.createObjectURL(result.imageBlob);
-          } else if (typeof result === "string") {
-            // base64 문자열인 경우
-            imageUrl = result;
-          } else {
-            // Blob인 경우
-            imageUrl = URL.createObjectURL(result);
-          }
-
-          return {
-            id: `augmented-${index}`,
-            imageUrl: imageUrl,
-            labels: result.labels || labels,
-            augmentationType:
-              result.type ||
-              result.augmentationType ||
-              `augmentation-${index + 1}`,
-          };
-        });
-      } else if (results.images && Array.isArray(results.images)) {
-        // { images: [...], labels: [...] } 형식
-        processedResults = results.images.map((image, index) => {
-          const imageUrl =
-            typeof image === "string" ? image : URL.createObjectURL(image);
-          return {
-            id: `augmented-${index}`,
-            imageUrl: imageUrl,
-            labels: results.labels?.[index] || labels,
-            augmentationType:
-              results.types?.[index] || `augmentation-${index + 1}`,
-          };
-        });
-      } else if (results.results && Array.isArray(results.results)) {
-        // { results: [...] } 형식
-        processedResults = results.results.map((result, index) => {
-          let imageUrl;
-          if (result.image) {
-            imageUrl =
-              typeof result.image === "string"
-                ? result.image
-                : URL.createObjectURL(result.image);
-          } else if (result.imageBase64) {
-            imageUrl = result.imageBase64;
-          } else {
-            imageUrl = imageBase64; // 원본 이미지 사용
-          }
-
-          return {
-            id: `augmented-${index}`,
-            imageUrl: imageUrl,
-            labels: result.labels || labels,
-            augmentationType: result.type || `augmentation-${index + 1}`,
-          };
-        });
-      } else {
-        // 단일 결과인 경우
-        processedResults = [
-          {
-            id: "augmented-0",
-            imageUrl: typeof results === "string" ? results : imageBase64,
-            labels: labels,
-            augmentationType: "augmentation-1",
-          },
-        ];
-      }
+      // ✅ results를 processedResults에 할당
+      let processedResults = results;
 
       setAugmentedResults(processedResults);
       useToastStore

@@ -5,7 +5,11 @@ import InspectionWorkspace from "../components/organisms/InspectionWorkspace";
 import { getJob } from "../api/Job";
 import { useParams } from "react-router-dom";
 import { getFileUrlByName } from "../api/File";
-import { useClassStore } from "../store/bboxStore";
+import {
+  useClassStore,
+  uselabelDataFlagStore,
+  useObjectStore,
+} from "../store/bboxStore";
 
 const Container = styled.div`
   display: flex;
@@ -14,29 +18,33 @@ const Container = styled.div`
 `;
 
 export default function Inspection() {
-  const title = "Task 1";
-  const description = "Project_1";
   const { jobId, fileName } = useParams();
   const [jobData, setJobData] = useState({});
   const [imageUrl, setImageUrl] = useState(null);
   const { setLabelInfos } = useClassStore();
+  const { labelDataFlag, setLabelDataFlag } = uselabelDataFlagStore();
+  const { objectsStore, setObjectsStore } = useObjectStore();
 
   useEffect(() => {
     const fetchJob = async () => {
       const response = await getJob(jobId);
-
       setJobData(response.data);
+      const allObjects = response.data.labelInfos
+        .filter((labelInfo) => labelInfo.objectInfos?.length > 0)
+        .flatMap((labelInfo) => labelInfo.objectInfos);
+
+      setObjectsStore(allObjects);
+
       setLabelInfos(response.data.labelInfos);
     };
     fetchJob();
-  }, [jobId]);
+  }, [jobId, labelDataFlag]);
 
   // 이미지 URL 로드
   useEffect(() => {
     const fetchImageUrl = async () => {
       if (jobData.fileName) {
         // fileName만 있으면 파일명으로 이미지 URL 생성
-
         const objectUrl = await getFileUrlByName(jobData.fileName);
 
         setImageUrl(objectUrl);
@@ -50,7 +58,7 @@ export default function Inspection() {
 
   return (
     <Container>
-      <PageHeader title={title} description={description} />
+      <PageHeader title={jobData?.fileName} description={jobData?.status} />
       <InspectionWorkspace imageUrl={imageUrl} jobData={jobData} />
     </Container>
   );

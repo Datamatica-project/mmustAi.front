@@ -374,6 +374,31 @@ export default function InviteMemberModal({
     fetchMembers();
   }, [isOpen]);
 
+  // 모달이 열릴 때 첫 번째 task 자동 선택하여 작업자 데이터 가져오기
+  useEffect(() => {
+    if (!isOpen) return; // 모달이 열려있을 때만 실행
+    if (!projectTasksData || projectTasksData.length === 0) return; // task 데이터가 없으면 실행하지 않음
+
+    const fetchInitialTaskData = async () => {
+      const firstTaskId = projectTasksData[0].id;
+      setTasks(firstTaskId);
+
+      try {
+        // 첫 번째 task의 작업자 데이터 자동으로 가져오기
+        const taskDetail = await getTaskDetail(firstTaskId);
+        setReviewer(taskDetail.data.reviewerEmail || "");
+        setWorker(taskDetail.data.workerEmail || "");
+      } catch (error) {
+        console.error("Failed to fetch task detail:", error);
+        // 에러 발생 시 초기화
+        setReviewer("");
+        setWorker("");
+      }
+    };
+
+    fetchInitialTaskData();
+  }, [isOpen, projectTasksData]);
+
   // 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -477,6 +502,10 @@ export default function InviteMemberModal({
     setRole("WORKER");
     setMembers([]);
     setIsDropdownOpen(false);
+    // 모달 닫을 때 task 관련 상태도 초기화하여 다음에 열릴 때 첫 번째 task가 자동 선택되도록 함
+    setTasks("");
+    setReviewer("");
+    setWorker("");
     onClose();
   };
 

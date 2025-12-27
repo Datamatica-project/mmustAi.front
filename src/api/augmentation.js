@@ -11,21 +11,21 @@ import { samApi } from "./axios";
  * 2. 객체 형식: { images: [base64...], labels: [[...], [...]] }
  * 3. 객체 형식: { results: [{ image: base64, labels: [...] }] }
  */
-export const augmentImage = async (imageBlob, labels) => {
-  try {
-    // Blob을 base64로 변환
-    const base64Image = await blobToBase64(imageBlob);
+// export const augmentImage = async (imageBlob, labels) => {
+//   try {
+//     // Blob을 base64로 변환
+//     const base64Image = await blobToBase64(imageBlob);
 
-    const response = await samApi.post("/augment", {
-      image: base64Image,
-      labels: labels,
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Augmentation error:", error);
-    throw error;
-  }
-};
+//     const response = await samApi.post("/augment", {
+//       image: base64Image,
+//       labels: labels,
+//     });
+//     return response.data;
+//   } catch (error) {
+//     console.error("Augmentation error:", error);
+//     throw error;
+//   }
+// };
 
 /**
  * Blob을 base64 문자열로 변환

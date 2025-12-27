@@ -248,6 +248,7 @@ export async function prepareCutout(
   forceRender((prev) => prev + 1);
 }
 
+// 배경이미지와 컷아웃 캔버스를 합성하여 Blob 반환
 export function flattenComposite({ bgCanvasRef }) {
   const bgCanvas = bgCanvasRef;
   const img = document.querySelector(".target-image");
@@ -291,21 +292,19 @@ export async function exportComposite(
   placedObjects,
   cutoutCacheRef
 ) {
-  const imageBlob = await flattenComposite({ bgCanvasRef });
-  const imageUrl = URL.createObjectURL(imageBlob);
-  // const image = new Image();
-  // image.src = imageUrl;
-  // image.onload = () => {
+  const imageBlob = await flattenComposite({ bgCanvasRef }); // 배경이미지와 컷아웃 캔버스를 합성하여 Blob 반환
+  const imageUrl = URL.createObjectURL(imageBlob); // Blob을 URL로 변환
+  // Blob을 base64로 변환하여 세션 스토리지에 저장
+  const base64Image = await blobToBase64(imageBlob);
 
-  // };
-
-  const canvas = bgCanvasRef;
+  // 바운딩 박스를 추출하기 위한 로직 ------------------------------------------------------------
+  const canvas = bgCanvasRef; // 배경 캔버스
 
   // 세션 스토리지에서 원본 이미지 크기 가져오기
   const cutoutSources =
     JSON.parse(sessionStorage.getItem("cutoutSources")) || [];
+
   // 첫 번째 항목의 image 크기를 사용 (또는 배경 이미지에 해당하는 항목)
-  // 사용자가 "2번 이미지"라고 했으므로 인덱스 1 사용 (0-based)
   const originalImage = cutoutSources[1]?.image || cutoutSources[0]?.image;
   if (!originalImage || !originalImage.width || !originalImage.height) {
     console.error("원본 이미지 크기를 찾을 수 없습니다.");
@@ -321,9 +320,7 @@ export async function exportComposite(
     originalImageHeight: originalImage.height,
     alphaThreshold: 0,
   });
-
-  // Blob을 base64로 변환하여 세션 스토리지에 저장
-  const base64Image = await blobToBase64(imageBlob);
+  // ------------------------------------------------------------
 
   // 세션 스토리지에 합성 이미지와 라벨 저장 (DataAugmentation 페이지에서 사용)
   sessionStorage.setItem(

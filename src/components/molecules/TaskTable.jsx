@@ -58,7 +58,7 @@ export default function TaskTable({
                 }
               </td>
               <td>{<StatusBadge status={item.status.toLowerCase()} />}</td>
-              <td>{<ThreeDotsMenu />}</td>
+              {/* <td>{<ThreeDotsMenu />}</td> */}
             </tr>
           );
         })}

@@ -35,11 +35,13 @@ const List = styled.ul`
     display: flex;
     gap: 13px;
     .bestWorker__number {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 20px;
       font-weight: 700;
       color: #b6b5c5;
-      padding: 20px 12px;
+      width: 50px;
       border-radius: 10px;
       background-color: #282943;
     }
@@ -67,6 +69,7 @@ const List = styled.ul`
 `;
 
 export default function BestWorker({ value }) {
+  console.log(value);
   return (
     <BestWorkerContainer>
       <Header>
@@ -74,9 +77,9 @@ export default function BestWorker({ value }) {
         <span>total {value?.totalCount || 0}</span>
       </Header>
       <List>
-        {value?.workers?.map((item, index) => (
+        {value?.bestWorkers?.map((item, index) => (
           <li className="bestWorker__item" key={index}>
-            <span className="bestWorker__number">{index + 1}</span>
+            <span className="bestWorker__number">{item.rank}</span>
             <div className="bestWorker__info">
               <p>{item.worker}</p>
               <p>

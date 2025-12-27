@@ -22,6 +22,10 @@ const Badge = styled.span`
     background-color: rgba(70, 235, 131, 0.45);
     border: 2px solid #46eb83;
   }
+  &.completed {
+    background-color: rgba(70, 235, 131, 0.45);
+    border: 2px solid #46eb83;
+  }
   &.rejected {
     background-color: rgba(244, 68, 104, 0.45);
     border: 2px solid #f44468;

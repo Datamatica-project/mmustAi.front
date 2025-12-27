@@ -566,6 +566,7 @@ export default function SyntheticBackground() {
   };
 
   const handleNext = async () => {
+    // 컷아웃 소스가 없으면 에러 메시지 표시
     if (placedObjects.length === 0) {
       useToastStore
         .getState()
@@ -579,12 +580,12 @@ export default function SyntheticBackground() {
       cutoutCacheRef
     );
 
-    const result = await createSyntheticData(labels);
+    // const result = await createSyntheticData(labels);
 
     // result.imageUrl을 사용하여 이미지 표시
     // 예: <img src={result.imageUrl} />
 
-    // navigate("/synthetic-data/data-augmentation");
+    navigate("/synthetic-data/data-augmentation");
   };
 
   // 🔹 현재 배경 + 컷아웃 합성 결과 기준으로 bbox 계산 (COCO/YOLO 라벨용)

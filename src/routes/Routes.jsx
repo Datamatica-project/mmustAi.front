@@ -57,8 +57,9 @@ const Router = ({ isAuthFailed }) => {
           <Route path="/synthetic-data" element={<SyntheticLayout />}>
             <Route index element={<SyntheticData />} /> {/* 1단계 */}
             <Route path="background" element={<SyntheticBackground />} />
-            <Route path="data-augmentation" element={<DataAugmentation />} />
             {/* 2단계 */}
+            <Route path="data-augmentation" element={<DataAugmentation />} />
+            {/* 3단계 */}
           </Route>
         </Route>
 

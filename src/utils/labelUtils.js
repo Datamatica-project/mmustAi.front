@@ -27,6 +27,7 @@ export function computeCompositeBBoxes({
   originalImageHeight,
   alphaThreshold = 0,
 }) {
+  // 예외 처리
   if (!canvasWidth || !canvasHeight) return [];
   if (!originalImageWidth || !originalImageHeight) return [];
 
@@ -42,7 +43,7 @@ export function computeCompositeBBoxes({
   const results = [];
 
   placedObjects.forEach((obj) => {
-    const cached = cutoutCacheRef.current.get(obj.sourceId);
+    const cached = cutoutCacheRef.current.get(obj.sourceId); // 컷아웃 캐시에서 컷아웃 객체 가져오기
     if (!cached) return;
 
     const { offCanvas, width, height } = cached;

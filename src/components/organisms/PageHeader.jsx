@@ -11,7 +11,7 @@ const Container = styled.header`
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
-    max-width: 800px;
+    max-width: 700px;
   }
   p {
     font-size: 15px;

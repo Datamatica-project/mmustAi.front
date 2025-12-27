@@ -13,6 +13,7 @@ import { approveJob, getObjectsByLabelId, rejectJob } from "../../api/Job";
 import { useToastStore } from "../../store/toastStore";
 import { useNavigate, useParams } from "react-router-dom";
 import { getTaskImgList } from "../../api/Project";
+import KonvaCanvas from "./KonvaCanvas";
 
 const Section = styled.section`
   justify-content: center;
@@ -44,6 +45,10 @@ const Header = styled.header`
     h3 {
       font-size: 24px;
       font-weight: 700;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+      max-width: 300px;
     }
     p {
       font-size: 15px;
@@ -149,6 +154,18 @@ export default function InspectionWorkspace({ imageUrl, jobData }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [taskImgList, setTaskImgList] = useState([]);
 
+  // KonvaCanvas에 필요한 상태 추가 (LabelingWorkspace와 동일)
+  // 검수 페이지에서는 박스를 그리지 않고 시각화만 하므로 기본값 설정
+  const [selectButton] = useState("Bounding Box"); // 박스 그리기 모드는 필요 없지만 KonvaCanvas에 전달 필요
+  const [imageRef, setImageRef] = useState(null); // 이미지 참조 (이미지 크기 계산용)
+  const [deletedShapeIds] = useState([]); // 삭제된 shape id 목록 (검수에서는 사용하지 않지만 전달 필요)
+  const [highlightedObjectId, setHighlightedObjectId] = useState(null); // 하이라이트된 객체 ID (박스 시각화용)
+
+  // 바운딩 박스 완성 핸들러 (검수 페이지에서는 박스를 그리지 않으므로 빈 함수)
+  const handleBoundingBoxComplete = () => {
+    // 검수 페이지에서는 박스를 그리지 않으므로 아무 작업도 하지 않음
+  };
+
   useEffect(() => {
     const fetchTaskImgList = async () => {
       const listData = await getTaskImgList(taskId);
@@ -231,7 +248,7 @@ export default function InspectionWorkspace({ imageUrl, jobData }) {
           {labelInfos
             .sort((a, b) => a.id - b.id)
             .map((cls) => {
-              const objectCount = cls.count || 0;
+              const objectCount = cls.objectInfos.length || 0;
               return (
                 <ClassLabel
                   key={cls.id}
@@ -298,12 +315,30 @@ export default function InspectionWorkspace({ imageUrl, jobData }) {
         {/* 헤더 */}
         <Header>
           <div className="file-info">
-            <h3>Image001.jpg</h3>
+            <h3>{jobData?.fileName || "Image001.jpg"}</h3>
             <p>Not reviewed</p>
           </div>
         </Header>
         <ImageContainer className="image-container">
-          <img src={imageUrl} alt="placeholder" />
+          <KonvaCanvas
+            selectButton={selectButton}
+            classes={labelInfos}
+            onBoundingBoxComplete={handleBoundingBoxComplete}
+            imageRef={imageRef}
+            deletedShapeIds={deletedShapeIds}
+            jobData={jobData}
+            highlightedObjectId={highlightedObjectId}
+          />
+          <img
+            ref={setImageRef}
+            src={imageUrl}
+            alt="placeholder"
+            onError={(e) => {
+              // 이미지 로드 실패 시 placeholder 이미지로 대체
+              console.error("Failed to load image:", imageUrl);
+              e.target.src = "https://picsum.photos/800/600";
+            }}
+          />
         </ImageContainer>
 
         {/* 하단 네비게이션 */}
