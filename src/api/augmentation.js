@@ -50,11 +50,12 @@ const blobToBase64 = (blob) => {
  */
 export const sendToTraining = async (augmentedData) => {
   try {
+    console.log(augmentedData);
     // TODO: 실제 학습 API 엔드포인트로 변경 필요
-    const response = await samApi.post("/training", {
-      data: augmentedData,
-    });
-    return response.data;
+    // const response = await samApi.post("/training", {
+    //   data: augmentedData,
+    // });
+    // return response.data;
   } catch (error) {
     console.error("Training data send error:", error);
     throw error;

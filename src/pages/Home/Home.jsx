@@ -146,7 +146,7 @@ export default function Home() {
     "ProjectManager", // "PM"
     "Labeler", // "Labeler"
     "Reviewer", // "Reviewer"
-    "Synthetic Data Operator", // "SDO"
+    // "Synthetic Data Operator", // "SDO"
   ];
   const TabIcons = [
     SuitCaseIcon,
@@ -166,7 +166,7 @@ export default function Home() {
       // );
 
       setProjects(response.data.items);
-      console.log(response.data.items);
+      // console.log(response.data.items);
     };
     fetchProjects();
   }, [refresh]);
@@ -178,20 +178,27 @@ export default function Home() {
     // 탭에 따른 필터링
     if (selectTab !== 0) {
       // 0: All Projects - 필터링 없음
-      // 1: ProjectManager - role === "PROJECTMANAGER"
+      // 1: ProjectManager - role === "PROJECT_MANAGER" (백엔드 enum 값)
       // 2: Labeler - role === "WORKER"
       // 3: Reviewer - role === "REVIEWER"
-      // 4: Synthetic Data Operator - role === "SYNTHETIC_DATA_OPERATOR"
+      // 4: Synthetic Data Operator - role은 없지만 일단 필터링 제외
       const roleMapping = {
-        1: "PROJECTMANAGER",
+        1: "PROJECT_MANAGER", // 백엔드 enum: PROJECT_MANAGER (언더스코어 포함)
         2: "WORKER",
         3: "REVIEWER",
-        4: "SYNTHETIC_DATA_OPERATOR",
+        4: "SYNTHETIC_DATA_OPERATOR", // 이 역할은 백엔드에 없을 수 있음
       };
 
       const targetRole = roleMapping[selectTab];
       if (targetRole) {
-        filtered = filtered.filter((project) => project.role === targetRole);
+        filtered = filtered.filter((project) => {
+          // role이 문자열인 경우와 enum 객체인 경우 모두 처리
+          const projectRole =
+            typeof project.role === "string"
+              ? project.role
+              : project.role?.toString();
+          return projectRole === targetRole;
+        });
       }
     }
 

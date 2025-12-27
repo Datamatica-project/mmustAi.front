@@ -6,6 +6,7 @@ import { LeftArrowIcon, RightArrowIcon } from "../components/icons/Icons";
 import { sendToTraining } from "../api/augmentation";
 import { useToastStore } from "../store/toastStore";
 import { augmentImage } from "../utils/opencv/augmentImage";
+import { uploadFilesUnified } from "../api/File";
 
 const Container = styled.div`
   .description {
@@ -85,10 +86,35 @@ const ResultCard = styled.div`
   gap: 15px;
   border: 2px solid #3a3c55;
   transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
 
   &:hover {
     border-color: #f62579;
     transform: translateY(-2px);
+  }
+
+  &.selected {
+    border-color: #f62579;
+    border-width: 3px;
+    background-color: #2a2b3d;
+    box-shadow: 0 0 10px rgba(246, 37, 121, 0.3);
+  }
+
+  .checkmark {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 24px;
+    height: 24px;
+    background-color: #f62579;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
   }
 
   .image-container {
@@ -200,24 +226,29 @@ const Navigation = styled.nav`
 export default function DataAugmentation() {
   const navigate = useNavigate();
   const { projectId } = useParams();
-  // 세션 스토리지에서 projectId 가져오기 (없으면 useParams 사용)
+  // Get projectId from session storage (use useParams if not available)
   const storedProjectId = sessionStorage.getItem("currentProjectId");
   const currentProjectId = projectId || storedProjectId;
   const [loading, setLoading] = useState(true);
   const [augmentedResults, setAugmentedResults] = useState([]);
   const [sending, setSending] = useState(false);
+  // Manage selected image IDs (multiple selection)
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  // Upload state for augmented images
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({}); // { imageId: progress }
 
-  // useEffect(() => {
-  //   loadAndAugment();
-  // }, []);
+  useEffect(() => {
+    loadAndAugment();
+  }, []);
 
   const loadAndAugment = async () => {
     try {
-      setLoading(true); // 로딩 상태 설정
+      setLoading(true); // Set loading state
 
-      // 세션 스토리지에서 합성 데이터 가져오기
+      // Get composite data from session storage
       const compositeDataStr = sessionStorage.getItem("compositeData");
-      // 합성 데이터가 없으면 에러 메시지 표시
+      // Show error message if composite data not found
       if (!compositeDataStr) {
         useToastStore
           .getState()
@@ -226,69 +257,105 @@ export default function DataAugmentation() {
         return;
       }
 
-      // 세션 스토리지 데이터 추출
+      // Extract session storage data
       const compositeData = JSON.parse(compositeDataStr);
       const { imageBase64, labels } = compositeData;
 
-      // base64를 Blob으로 변환
+      // Convert base64 to Blob
       const response = await fetch(imageBase64);
       const imageBlob = await response.blob();
 
-      // OpenCV 증강 API 호출
+      // Call OpenCV augmentation API
       const results = await augmentImage(imageBlob, labels);
+      console.log(results);
 
-      // ✅ results를 processedResults에 할당
+      // Assign results to processedResults
       let processedResults = results;
 
       setAugmentedResults(processedResults);
       useToastStore
         .getState()
         .addToast(
-          `${processedResults.length}개의 증강 이미지가 생성되었습니다.`,
+          `${processedResults.length} augmented images have been created.`,
           "success"
         );
     } catch (error) {
       console.error("Augmentation error:", error);
       useToastStore
         .getState()
-        .addToast("증강 처리 중 오류가 발생했습니다.", "error");
+        .addToast("An error occurred during augmentation processing.", "error");
     } finally {
       setLoading(false);
     }
   };
 
+  // Image selection/deselection handler
+  const handleToggleSelection = (id) => {
+    setSelectedIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  // Select all/deselect all handler
+  const handleSelectAll = () => {
+    if (selectedIds.size === augmentedResults.length) {
+      // Deselect all if all are selected
+      setSelectedIds(new Set());
+    } else {
+      // Select all
+      setSelectedIds(new Set(augmentedResults.map((r) => r.id)));
+    }
+  };
+
   const handleSendToTraining = async () => {
-    if (augmentedResults.length === 0) {
-      useToastStore.getState().addToast("전송할 데이터가 없습니다.", "error");
+    // Error if no images selected
+    if (selectedIds.size === 0) {
+      useToastStore
+        .getState()
+        .addToast("Please select images to send.", "error");
       return;
     }
 
     try {
       setSending(true);
 
-      // 증강된 데이터를 학습용 형식으로 변환
-      const trainingData = augmentedResults.map((result) => ({
-        image: result.imageUrl,
-        labels: result.labels,
-      }));
+      // Filter selected images and convert to training format
+      const trainingData = augmentedResults
+        .filter((result) => selectedIds.has(result.id))
+        .map((result) => ({
+          image: result.imageUrl,
+          labels: result.labels,
+        }));
 
       await sendToTraining(trainingData);
 
       useToastStore
         .getState()
-        .addToast("학습 데이터가 성공적으로 전송되었습니다.", "success");
+        .addToast(
+          `${trainingData.length} training data items have been successfully sent.`,
+          "success"
+        );
 
-      // 프로젝트 페이지로 이동
-      if (currentProjectId) {
-        navigate(`/project/${currentProjectId}`);
-      } else {
-        navigate("/");
-      }
+      // Clear selection after sending
+      setSelectedIds(new Set());
+
+      // Navigate to project page
+      // if (currentProjectId) {
+      //   navigate(`/project/${currentProjectId}`);
+      // } else {
+      //   navigate("/");
+      // }
     } catch (error) {
       console.error("Training send error:", error);
       useToastStore
         .getState()
-        .addToast("학습 데이터 전송 중 오류가 발생했습니다.", "error");
+        .addToast("An error occurred while sending training data.", "error");
     } finally {
       setSending(false);
     }
@@ -296,6 +363,129 @@ export default function DataAugmentation() {
 
   const handleBack = () => {
     navigate("/synthetic-data/background");
+  };
+
+  // Upload selected augmented images
+  const handleUploadImages = async () => {
+    // Error if no images selected
+    if (selectedIds.size === 0) {
+      useToastStore
+        .getState()
+        .addToast("Please select images to upload.", "error");
+      return;
+    }
+
+    setUploadingImages(true);
+    setUploadProgress({});
+
+    try {
+      // Get selected augmented results
+      const selectedResults = augmentedResults.filter((result) =>
+        selectedIds.has(result.id)
+      );
+
+      // Convert Blob to File for each selected image
+      const filesToUpload = await Promise.all(
+        selectedResults.map(async (result, index) => {
+          // Convert Blob URL to Blob if needed
+          let blob = result.imageBlob;
+          if (!blob && result.imageUrl) {
+            const response = await fetch(result.imageUrl);
+            blob = await response.blob();
+          }
+
+          // Convert Blob to File
+          const fileName = `augmented-${
+            result.id
+          }-${result.augmentationType.replace(/\s+/g, "-")}.png`;
+          const file = new File([blob], fileName, { type: "image/png" });
+
+          return {
+            file,
+            resultId: result.id,
+            index,
+          };
+        })
+      );
+
+      // Upload files sequentially (same pattern as CreateProject.jsx)
+      const uploadedFileIds = [];
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const { file, resultId } = filesToUpload[i];
+
+        try {
+          // Update progress (upload start)
+          setUploadProgress((prev) => ({
+            ...prev,
+            [resultId]: 0,
+          }));
+
+          // Call unified upload API
+          const response = await uploadFilesUnified(
+            [file],
+            "PROJECT",
+            (progressFileIndex, progress) => {
+              // Update progress
+              setUploadProgress((prev) => ({
+                ...prev,
+                [resultId]: progress,
+              }));
+            }
+          );
+
+          // Extract fileId from response
+          const fileId =
+            response.data?.successFileIds?.[0] ||
+            response.data?.fileIds?.[0] ||
+            response.data?.fileId ||
+            response.fileId;
+
+          uploadedFileIds.push({
+            resultId,
+            fileId,
+          });
+
+          // Update progress to 100%
+          setUploadProgress((prev) => ({
+            ...prev,
+            [resultId]: 100,
+          }));
+        } catch (error) {
+          console.error(`Image ${i} (${file.name}) upload failed:`, error);
+          useToastStore
+            .getState()
+            .addToast(`Failed to upload image: ${file.name}`, "error");
+        }
+      }
+
+      // All uploads completed
+      if (uploadedFileIds.length > 0) {
+        useToastStore
+          .getState()
+          .addToast(
+            `${uploadedFileIds.length} images have been successfully uploaded.`,
+            "success"
+          );
+
+        // Update augmentedResults with fileIds
+        setAugmentedResults((prev) =>
+          prev.map((result) => {
+            const uploaded = uploadedFileIds.find(
+              (u) => u.resultId === result.id
+            );
+            return uploaded ? { ...result, fileId: uploaded.fileId } : result;
+          })
+        );
+      }
+    } catch (error) {
+      console.error("Upload images error:", error);
+      useToastStore
+        .getState()
+        .addToast("An error occurred while uploading images.", "error");
+    } finally {
+      setUploadingImages(false);
+      setUploadProgress({});
+    }
   };
 
   return (
@@ -309,7 +499,32 @@ export default function DataAugmentation() {
 
       <Main>
         <Header>
-          <h3>Augmented Images</h3>
+          <h3>
+            Augmented Images
+            {selectedIds.size > 0 && (
+              <span
+                style={{
+                  marginLeft: "15px",
+                  fontSize: "16px",
+                  color: "#f62579",
+                  fontWeight: "normal",
+                }}
+              >
+                ({selectedIds.size} selected)
+              </span>
+            )}
+          </h3>
+          {augmentedResults.length > 0 && (
+            <button
+              className="secondary"
+              onClick={handleSelectAll}
+              style={{ fontSize: "14px", padding: "8px 16px" }}
+            >
+              {selectedIds.size === augmentedResults.length
+                ? "Deselect All"
+                : "Select All"}
+            </button>
+          )}
         </Header>
 
         {loading ? (
@@ -332,33 +547,73 @@ export default function DataAugmentation() {
             ) : (
               <>
                 <ResultsGrid>
-                  {augmentedResults.map((result) => (
-                    <ResultCard key={result.id}>
-                      <div className="image-container">
-                        <img
-                          src={result.imageUrl}
-                          alt={`Augmented ${result.id}`}
-                        />
-                      </div>
-                      <div className="info">
-                        <div className="label-count">
-                          Number of labels: {result.labels?.length || 0}
+                  {augmentedResults.map((result) => {
+                    const isSelected = selectedIds.has(result.id);
+                    return (
+                      <ResultCard
+                        key={result.id}
+                        className={isSelected ? "selected" : ""}
+                        onClick={() => handleToggleSelection(result.id)}
+                      >
+                        {isSelected && <div className="checkmark">✓</div>}
+                        <div className="image-container">
+                          <img
+                            src={result.imageUrl}
+                            alt={`Augmented ${result.id}`}
+                          />
                         </div>
-                        <div>Augmentation type: {result.augmentationType}</div>
-                      </div>
-                    </ResultCard>
-                  ))}
+                        <div className="info">
+                          <div className="label-count">
+                            Number of labels: {result.labels?.length || 0}
+                          </div>
+                          <div>
+                            Augmentation type: {result.augmentationType}
+                          </div>
+                          {result.fileId && (
+                            <div style={{ color: "#2abcf5", fontSize: "12px" }}>
+                              ✓ Uploaded (ID: {result.fileId})
+                            </div>
+                          )}
+                          {uploadProgress[result.id] !== undefined &&
+                            uploadProgress[result.id] < 100 && (
+                              <div
+                                style={{ color: "#f62579", fontSize: "12px" }}
+                              >
+                                Uploading: {uploadProgress[result.id]}%
+                              </div>
+                            )}
+                        </div>
+                      </ResultCard>
+                    );
+                  })}
                 </ResultsGrid>
 
                 <ActionButtons>
                   <button
                     className="primary"
+                    onClick={handleUploadImages}
+                    disabled={uploadingImages || selectedIds.size === 0}
+                  >
+                    {uploadingImages
+                      ? "Uploading images..."
+                      : `Upload Images${
+                          selectedIds.size > 0
+                            ? ` (${selectedIds.size} items)`
+                            : ""
+                        }`}
+                  </button>
+                  <button
+                    className="primary"
                     onClick={handleSendToTraining}
-                    disabled={sending}
+                    disabled={sending || selectedIds.size === 0}
                   >
                     {sending
                       ? "Uploading..."
-                      : "Uploading for AI model training"}
+                      : `Uploading for AI model training${
+                          selectedIds.size > 0
+                            ? ` (${selectedIds.size} items)`
+                            : ""
+                        }`}
                   </button>
                   <button className="secondary" onClick={loadAndAugment}>
                     Re-augment
