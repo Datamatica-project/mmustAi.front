@@ -85,7 +85,11 @@ export const getBestWorker = async (projectId) => {
 export const getProjectTasks = async (projectId) => {
   try {
     const response = await api.get(`/api/v1/projects/${projectId}/tasks`);
-    return response.data;
+
+    const filteredResponse = response.data.data.filter(
+      (task) => task.jobCount !== 0
+    );
+    return filteredResponse;
   } catch (error) {
     console.error("Error getting project:", error);
     throw error;

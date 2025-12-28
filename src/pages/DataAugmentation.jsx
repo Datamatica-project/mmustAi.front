@@ -225,7 +225,7 @@ const Navigation = styled.nav`
 
 export default function DataAugmentation() {
   const navigate = useNavigate();
-  const { projectId } = useParams();
+  const { projectId, taskId } = useParams();
   // Get projectId from session storage (use useParams if not available)
   const storedProjectId = sessionStorage.getItem("currentProjectId");
   const currentProjectId = projectId || storedProjectId;
@@ -267,12 +267,12 @@ export default function DataAugmentation() {
 
       // Call OpenCV augmentation API
       const results = await augmentImage(imageBlob, labels);
-      console.log(results);
 
       // Assign results to processedResults
       let processedResults = results;
 
       setAugmentedResults(processedResults);
+      console.log(processedResults);
       useToastStore
         .getState()
         .addToast(
@@ -324,33 +324,113 @@ export default function DataAugmentation() {
 
     try {
       setSending(true);
+      setUploadProgress({});
 
-      // Filter selected images and convert to training format
-      const trainingData = augmentedResults
-        .filter((result) => selectedIds.has(result.id))
-        .map((result) => ({
-          image: result.imageUrl,
-          labels: result.labels,
-        }));
+      // Filter selected images
+      const selectedResults = augmentedResults.filter((result) =>
+        selectedIds.has(result.id)
+      );
 
-      await sendToTraining(trainingData);
+      // 각 아이템을 하나씩 처리: 업로드 → fileId 추출 → 저장
+      let successCount = 0;
+      let failCount = 0;
 
-      useToastStore
-        .getState()
-        .addToast(
-          `${trainingData.length} training data items have been successfully sent.`,
-          "success"
-        );
+      for (let i = 0; i < selectedResults.length; i++) {
+        const item = selectedResults[i];
+        const resultId = item.id;
+
+        try {
+          // 1. Blob을 File로 변환
+          let blob = item.imageBlob;
+          if (!blob && item.imageUrl) {
+            const response = await fetch(item.imageUrl);
+            blob = await response.blob();
+          }
+
+          const fileName = `augmented-${resultId}-${
+            item.augmentationType?.replace(/\s+/g, "-") || "image"
+          }.png`;
+          const file = new File([blob], fileName, { type: "image/png" });
+
+          // 2. 이미지 업로드 (진행률 업데이트)
+          setUploadProgress((prev) => ({
+            ...prev,
+            [resultId]: 0,
+          }));
+
+          const uploadResponse = await uploadFilesUnified(
+            [file],
+            "PROJECT",
+            (progressFileIndex, progress) => {
+              // 업로드 진행률 업데이트
+              setUploadProgress((prev) => ({
+                ...prev,
+                [resultId]: progress,
+              }));
+            }
+          );
+          console.log(uploadResponse);
+
+          // 3. 업로드 결과에서 fileId 추출
+          const fileId =
+            uploadResponse.data?.successFileIds?.[0] ||
+            uploadResponse.data?.fileIds?.[0] ||
+            uploadResponse.data?.fileId ||
+            uploadResponse.fileId;
+
+          if (!fileId) {
+            throw new Error("File ID not found in upload response");
+          }
+
+          // 4. 업로드 완료 표시
+          setUploadProgress((prev) => ({
+            ...prev,
+            [resultId]: 100,
+          }));
+
+          // 5. fileId를 포함한 아이템으로 학습 데이터 전송
+          const itemWithFileId = {
+            ...item,
+            fileId: fileId, // 업로드된 fileId로 교체 (sendToTraining에서 fileId 필드
+            // 로 사용됨)
+          };
+
+          await sendToTraining(projectId, taskId, [itemWithFileId]);
+          successCount++;
+        } catch (error) {
+          console.error(
+            `Failed to process item ${i + 1} (${resultId}):`,
+            error
+          );
+          failCount++;
+          // 에러 발생 시 진행률 초기화
+          setUploadProgress((prev) => {
+            const newProgress = { ...prev };
+            delete newProgress[resultId];
+            return newProgress;
+          });
+        }
+      }
+
+      // 결과 메시지 표시
+      if (failCount === 0) {
+        useToastStore
+          .getState()
+          .addToast(
+            `${successCount} training data items have been successfully sent.`,
+            "success"
+          );
+      } else {
+        useToastStore
+          .getState()
+          .addToast(
+            `${successCount} succeeded, ${failCount} failed.`,
+            failCount === selectedResults.length ? "error" : "warning"
+          );
+      }
 
       // Clear selection after sending
       setSelectedIds(new Set());
-
-      // Navigate to project page
-      // if (currentProjectId) {
-      //   navigate(`/project/${currentProjectId}`);
-      // } else {
-      //   navigate("/");
-      // }
     } catch (error) {
       console.error("Training send error:", error);
       useToastStore
@@ -358,134 +438,12 @@ export default function DataAugmentation() {
         .addToast("An error occurred while sending training data.", "error");
     } finally {
       setSending(false);
+      setUploadProgress({});
     }
   };
 
   const handleBack = () => {
     navigate("/synthetic-data/background");
-  };
-
-  // Upload selected augmented images
-  const handleUploadImages = async () => {
-    // Error if no images selected
-    if (selectedIds.size === 0) {
-      useToastStore
-        .getState()
-        .addToast("Please select images to upload.", "error");
-      return;
-    }
-
-    setUploadingImages(true);
-    setUploadProgress({});
-
-    try {
-      // Get selected augmented results
-      const selectedResults = augmentedResults.filter((result) =>
-        selectedIds.has(result.id)
-      );
-
-      // Convert Blob to File for each selected image
-      const filesToUpload = await Promise.all(
-        selectedResults.map(async (result, index) => {
-          // Convert Blob URL to Blob if needed
-          let blob = result.imageBlob;
-          if (!blob && result.imageUrl) {
-            const response = await fetch(result.imageUrl);
-            blob = await response.blob();
-          }
-
-          // Convert Blob to File
-          const fileName = `augmented-${
-            result.id
-          }-${result.augmentationType.replace(/\s+/g, "-")}.png`;
-          const file = new File([blob], fileName, { type: "image/png" });
-
-          return {
-            file,
-            resultId: result.id,
-            index,
-          };
-        })
-      );
-
-      // Upload files sequentially (same pattern as CreateProject.jsx)
-      const uploadedFileIds = [];
-      for (let i = 0; i < filesToUpload.length; i++) {
-        const { file, resultId } = filesToUpload[i];
-
-        try {
-          // Update progress (upload start)
-          setUploadProgress((prev) => ({
-            ...prev,
-            [resultId]: 0,
-          }));
-
-          // Call unified upload API
-          const response = await uploadFilesUnified(
-            [file],
-            "PROJECT",
-            (progressFileIndex, progress) => {
-              // Update progress
-              setUploadProgress((prev) => ({
-                ...prev,
-                [resultId]: progress,
-              }));
-            }
-          );
-
-          // Extract fileId from response
-          const fileId =
-            response.data?.successFileIds?.[0] ||
-            response.data?.fileIds?.[0] ||
-            response.data?.fileId ||
-            response.fileId;
-
-          uploadedFileIds.push({
-            resultId,
-            fileId,
-          });
-
-          // Update progress to 100%
-          setUploadProgress((prev) => ({
-            ...prev,
-            [resultId]: 100,
-          }));
-        } catch (error) {
-          console.error(`Image ${i} (${file.name}) upload failed:`, error);
-          useToastStore
-            .getState()
-            .addToast(`Failed to upload image: ${file.name}`, "error");
-        }
-      }
-
-      // All uploads completed
-      if (uploadedFileIds.length > 0) {
-        useToastStore
-          .getState()
-          .addToast(
-            `${uploadedFileIds.length} images have been successfully uploaded.`,
-            "success"
-          );
-
-        // Update augmentedResults with fileIds
-        setAugmentedResults((prev) =>
-          prev.map((result) => {
-            const uploaded = uploadedFileIds.find(
-              (u) => u.resultId === result.id
-            );
-            return uploaded ? { ...result, fileId: uploaded.fileId } : result;
-          })
-        );
-      }
-    } catch (error) {
-      console.error("Upload images error:", error);
-      useToastStore
-        .getState()
-        .addToast("An error occurred while uploading images.", "error");
-    } finally {
-      setUploadingImages(false);
-      setUploadProgress({});
-    }
   };
 
   return (
@@ -591,25 +549,12 @@ export default function DataAugmentation() {
                 <ActionButtons>
                   <button
                     className="primary"
-                    onClick={handleUploadImages}
-                    disabled={uploadingImages || selectedIds.size === 0}
-                  >
-                    {uploadingImages
-                      ? "Uploading images..."
-                      : `Upload Images${
-                          selectedIds.size > 0
-                            ? ` (${selectedIds.size} items)`
-                            : ""
-                        }`}
-                  </button>
-                  <button
-                    className="primary"
                     onClick={handleSendToTraining}
                     disabled={sending || selectedIds.size === 0}
                   >
                     {sending
                       ? "Uploading..."
-                      : `Uploading for AI model training${
+                      : `Upload for AI model training${
                           selectedIds.size > 0
                             ? ` (${selectedIds.size} items)`
                             : ""
@@ -625,7 +570,13 @@ export default function DataAugmentation() {
         )}
 
         <Navigation>
-          <button onClick={handleBack}>{LeftArrowIcon}Prev</button>
+          <button
+            onClick={() =>
+              navigate(`/project/${projectId}/synthetic-data/background`)
+            }
+          >
+            {LeftArrowIcon}Prev
+          </button>
           <button
             onClick={() => {
               if (currentProjectId) {

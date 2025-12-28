@@ -477,7 +477,7 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
                     name={obj.name}
                   >
                     <DotMenuButton
-                      handleEditClick={() => handleEditClick(obj.id)}
+                      // handleEditClick={() => handleEditClick(obj.id)}
                       handleDeleteClick={() => handleDeleteClick(obj.id)}
                       setHighlightedObjectId={setHighlightedObjectId}
                       objId={obj.id}
@@ -507,9 +507,9 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
             <p>1 hour ago</p>
           </div>
           <div className="action-buttons">
-            <button className="save-btn">
+            {/* <button className="save-btn">
               {SaveIcon} <span>Save</span>
-            </button>
+            </button> */}
             <button className="submit-btn" onClick={handleSubmit}>
               {SubmitIcon}Submit
             </button>

@@ -166,7 +166,6 @@ export default function Home() {
       // );
 
       setProjects(response.data.items);
-      // console.log(response.data.items);
     };
     fetchProjects();
   }, [refresh]);

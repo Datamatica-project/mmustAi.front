@@ -1,4 +1,15 @@
 import { opencvApi } from "./axios";
+import { api } from "./axios";
+
+export const createSyntheticTask = async (projectId) => {
+  try {
+    const response = await api.post(`/api/v1/projects/${projectId}/tasks`, {});
+    return response.data;
+  } catch (error) {
+    console.error("Error creating synthetic task:", error);
+    throw error;
+  }
+};
 
 export const createSyntheticData = async (data) => {
   const { imageUrl, labels } = data;

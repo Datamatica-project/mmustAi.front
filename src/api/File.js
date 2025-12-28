@@ -91,7 +91,6 @@ export const uploadFilesUnified = async (
   type = "PROJECT",
   onProgress = null
 ) => {
-  console.log("uploadFilesUnified", files, type, onProgress);
   const formData = new FormData();
 
   // files 배열을 FormData에 추가

@@ -32,7 +32,7 @@ import ClassLabel from "../components/atoms/ClassLabel";
 import { classes } from "../data/index.js";
 import DropDown from "../components/molecules/DropDown.jsx";
 import { useToastStore } from "../store/toastStore.js";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 const Container = styled.div`
   .description {
@@ -216,6 +216,44 @@ const ImageContainer = styled.div`
   }
 `;
 
+// 로딩 오버레이 스타일 컴포넌트
+const LoadingOverlay = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  border-radius: 8px;
+`;
+
+const LoadingSpinner = styled.div`
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #f62579;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
+const LoadingText = styled.div`
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 16px;
+  text-align: center;
+`;
+
 const Navigation = styled.nav`
   display: flex;
   align-items: center;
@@ -265,6 +303,8 @@ export default function SyntheticData() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null); // 이미지 파일 입력 참조
   const [sgImage, setSgImage] = useState(null); // 이미지 URL 상태
+  const [isSegmenting, setIsSegmenting] = useState(false); // 세그멘테이션 요청 중 로딩 상태
+  const { projectId, taskId } = useParams();
 
   // 이미지 URL 해제
   useEffect(() => {
@@ -397,6 +437,7 @@ export default function SyntheticData() {
       return;
     }
     saveMetaData(selectedClass, bbox, fullMask);
+    handleReset();
     useToastStore.getState().addToast("Cutout saved", "success");
   }
 
@@ -439,6 +480,8 @@ export default function SyntheticData() {
         (targetImage.naturalHeight / displayedHeight);
       const base64 = imageToBase64(targetImage);
 
+      // 세그멘테이션 요청 시작 - 로딩 상태 활성화
+      setIsSegmenting(true);
       try {
         const response = await segmentImage(base64, [[x, y]], [1]);
         const newMask = response.mask;
@@ -467,6 +510,10 @@ export default function SyntheticData() {
         );
       } catch (error) {
         console.error(error);
+        useToastStore.getState().addToast("Segmentation failed", "error");
+      } finally {
+        // 요청 완료 후 로딩 상태 비활성화 (성공/실패 모두)
+        setIsSegmenting(false);
       }
     };
 
@@ -487,7 +534,7 @@ export default function SyntheticData() {
 
       <Main>
         <aside>
-          <div className="ToolButtons">
+          {/* <div className="ToolButtons">
             <button
               className={`ButtonStyle ${
                 tool === "segmentation" ? "active" : ""
@@ -504,7 +551,7 @@ export default function SyntheticData() {
             >
               {ScissorsIcon} Cut-out Preview
             </button>
-          </div>
+          </div> */}
           <div className="ToolSection">
             <ToolSelector
               buttons={ButtonsOptions}
@@ -590,7 +637,7 @@ export default function SyntheticData() {
           </Header>
           <ImageContainer className="image-container">
             <img
-              src={sgImage || "/testImg2.jpg"}
+              src={sgImage || "/placeholder.png"}
               alt="segmantation image"
               className="target-image"
             />
@@ -602,13 +649,37 @@ export default function SyntheticData() {
                 onSelect={(box) => handleMaskFromBbox(box)}
                 convertCanvasToImageCoords={convertCanvasToImageCoords}
                 imageToBase64={imageToBase64}
+                setIsSegmenting={setIsSegmenting}
               />
+            )}
+            {/* 세그멘테이션 요청 중 로딩 오버레이 표시 */}
+            {isSegmenting && (
+              <LoadingOverlay>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                  }}
+                >
+                  <LoadingSpinner />
+                  <LoadingText>Segmenting...</LoadingText>
+                </div>
+              </LoadingOverlay>
             )}
           </ImageContainer>
           <footer>
             <Navigation>
-              <button disabled>{LeftArrowIcon}Prev</button>
-              <button onClick={() => navigate("/synthetic-data/background")}>
+              <button onClick={() => navigate(`/project/${projectId}`)}>
+                {LeftArrowIcon}Prev
+              </button>
+              <button
+                onClick={() =>
+                  navigate(
+                    `/project/${projectId}/synthetic-data/${taskId}/background`
+                  )
+                }
+              >
                 {RightArrowIcon}Next
               </button>
             </Navigation>

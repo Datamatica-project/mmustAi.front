@@ -1,6 +1,7 @@
 import { useBboxStore } from "../store/bboxStore";
 import { useToastStore } from "../store/toastStore";
 import { saveImageToIndexedDB, saveMaskToIndexedDB } from "./indexDB";
+import { generateUUID } from "./generateUUID";
 
 // 이미지를 base64로 변환
 export function imageToBase64(img) {
@@ -73,7 +74,8 @@ export async function saveMetaData(className, bbox, fullMask) {
   }
 
   // 인덱스 DB 키 값으로 쓸 랜덤 ID 생성
-  const id = crypto.randomUUID();
+  // 크로스 브라우저 호환성을 위해 generateUUID() 함수 사용
+  const id = generateUUID();
 
   const metadata = {
     id,

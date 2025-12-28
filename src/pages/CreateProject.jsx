@@ -349,7 +349,7 @@ export default function CreateProject() {
   const [startDate, setStartDate] = useState("");
   const [imagesPerTask, setImagesPerTask] = useState("");
 
-  // 업로드 관련 상태
+  // Upload related state
   const [uploadMethod, setUploadMethod] = useState("individual"); // "individual" | "zip"
   const [uploadFiles, setUploadFiles] = useState([]); // { file, fileId, progress, status }
   const [isDragging, setIsDragging] = useState(false);
@@ -358,10 +358,10 @@ export default function CreateProject() {
   const [labelName, setLabelName] = useState("");
   const [labelColor, setLabelColor] = useState("#697689");
   const [classes, setClasses] = useState([
-    { name: "car", hexColor: "#8A4A4A" }, // red → 톤 다운
+    { name: "car", hexColor: "#8A4A4A" }, // red → tone down
     { name: "truck", hexColor: "#4A5A8A" }, // blue
     { name: "bus", hexColor: "#4A8A5A" }, // green
-    { name: "special_vehicle", hexColor: "#4A8A8A" }, // cyan (옵션)
+    { name: "special_vehicle", hexColor: "#4A8A8A" }, // cyan (optional)
     { name: "motorcycle", hexColor: "#8A4A7A" }, // pink
     { name: "bicycle", hexColor: "#6C4A8A" }, // purple
     { name: "pedestrian", hexColor: "#8A6A4A" }, // orange
@@ -382,7 +382,7 @@ export default function CreateProject() {
     setClasses((prev) => prev.filter((c) => c.name !== name));
   };
 
-  // 파일 선택 처리
+  // Handle file selection
   const handleFileSelect = (files) => {
     const fileArray = Array.from(files);
     const newFiles = fileArray.map((file) => ({
@@ -394,16 +394,16 @@ export default function CreateProject() {
     setUploadFiles((prev) => [...prev, ...newFiles]);
   };
 
-  // 개별 파일 선택
+  // Handle individual file selection
   const handleIndividualFileChange = (e) => {
     const files = e.target.files;
     if (files && files.length > 0) {
       handleFileSelect(files);
     }
-    e.target.value = ""; // 같은 파일 재선택 가능하도록
+    e.target.value = ""; // Allow reselecting the same file
   };
 
-  // ZIP 파일 선택
+  // Handle ZIP file selection
   const handleZipFileChange = (e) => {
     const files = e.target.files;
     if (files && files.length > 0) {
@@ -411,7 +411,7 @@ export default function CreateProject() {
       if (!zipFile.name.endsWith(".zip")) {
         useToastStore
           .getState()
-          .addToast("ZIP 파일만 업로드 가능합니다.", "error");
+          .addToast("Only ZIP files can be uploaded.", "error");
         return;
       }
       handleFileSelect([zipFile]);
@@ -419,7 +419,7 @@ export default function CreateProject() {
     e.target.value = "";
   };
 
-  // 드래그 앤 드롭
+  // Drag and drop
   const handleDragOver = (e) => {
     e.preventDefault();
     setIsDragging(true);
@@ -451,27 +451,27 @@ export default function CreateProject() {
     }
   };
 
-  // 파일 업로드 시작
+  // Start file upload
   const handleStartUpload = async () => {
     if (uploadFiles.length === 0) {
       useToastStore
         .getState()
-        .addToast("업로드할 파일을 선택해주세요.", "error");
+        .addToast("Please select files to upload.", "error");
       return;
     }
 
     setIsUploading(true);
 
     try {
-      // 통합 업로드 API 사용 (개별 파일과 ZIP 파일 모두 동일한 방식)
+      // Use unified upload API (same method for both individual files and ZIP files)
       const files = uploadFiles.map((item) => item.file);
 
-      // 각 파일에 대해 순차적으로 업로드 처리
+      // Process uploads sequentially for each file
       for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
         const file = files[fileIndex];
 
         try {
-          // 진행률 업데이트 (업로드 시작)
+          // Update progress (upload started)
           setUploadFiles((prev) =>
             prev.map((item, index) =>
               index === fileIndex
@@ -480,12 +480,12 @@ export default function CreateProject() {
             )
           );
 
-          // 통합 업로드 API 호출
+          // Call unified upload API
           const response = await uploadFilesUnified(
             [file],
             "PROJECT",
             (progressFileIndex, progress) => {
-              // 진행률 업데이트
+              // Update progress
               setUploadFiles((prev) =>
                 prev.map((item, index) =>
                   index === fileIndex
@@ -496,14 +496,14 @@ export default function CreateProject() {
             }
           );
 
-          // 응답에서 fileId 추출 (successFileIds 배열의 첫 번째 요소 사용)
+          // Extract fileId from response (use first element of successFileIds array)
           const fileId =
             response.data?.successFileIds?.[0] ||
             response.data?.fileIds?.[0] ||
             response.data?.fileId ||
             response.fileId;
 
-          // fileId 업데이트 (해당 파일만)
+          // Update fileId (for this file only)
           setUploadFiles((prev) =>
             prev.map((item, index) =>
               index === fileIndex
@@ -521,7 +521,7 @@ export default function CreateProject() {
             `File ${fileIndex} (${file.name}) upload failed:`,
             error
           );
-          // 해당 파일을 에러 상태로 표시
+          // Mark file as error status
           setUploadFiles((prev) =>
             prev.map((item, index) =>
               index === fileIndex ? { ...item, status: "error" } : item
@@ -530,20 +530,20 @@ export default function CreateProject() {
         }
       }
 
-      // 모든 파일 업로드 완료
+      // All file uploads completed
       const successCount = uploadFiles.filter(
         (item) => item.status === "success"
       ).length;
       if (successCount > 0) {
         useToastStore
           .getState()
-          .addToast(`${successCount}개 파일 업로드 완료`, "success");
+          .addToast(`${successCount} file(s) uploaded successfully`, "success");
       }
     } catch (error) {
       console.error("Upload error:", error);
       useToastStore
         .getState()
-        .addToast("업로드 중 오류가 발생했습니다.", "error");
+        .addToast("An error occurred during upload.", "error");
       setUploadFiles((prev) =>
         prev.map((item) => ({
           ...item,
@@ -555,24 +555,26 @@ export default function CreateProject() {
     }
   };
 
-  // 파일 제거
+  // Remove file
   const handleRemoveFile = (index) => {
     setUploadFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
-    // 업로드된 fileId 추출
+    // Extract uploaded fileIds
     const uploadedFileIds = uploadFiles
-      .filter((item) => item.status === "success" && item.fileId)
+      .filter((item) => item.status === "success")
       .map((item) => item.fileId);
+
+    console.log(uploadFiles);
 
     if (uploadedFileIds.length === 0) {
       useToastStore
         .getState()
-        .addToast("최소 1개 이상의 파일을 업로드해주세요.", "error");
+        .addToast("Please upload at least one file.", "error");
       return;
     }
-    // startDate를 "YYYY-MM-DDT23:59:59" 형식으로 변환 (날짜의 마지막 시간 포함)
+    // Convert startDate to "YYYY-MM-DDT23:59:59" format (including last time of date)
     const formattedStartDate = startDate ? `${startDate}T23:59:59` : startDate;
 
     const payload = {
@@ -590,14 +592,14 @@ export default function CreateProject() {
       if (response.resultCode === "SUCCESS") {
         useToastStore
           .getState()
-          .addToast("프로젝트가 생성되었습니다.", "success");
+          .addToast("Project created successfully.", "success");
         navigate(-1);
       }
     } catch (error) {
       console.error("Create project error:", error);
       useToastStore
         .getState()
-        .addToast("프로젝트 생성 중 오류가 발생했습니다.", "error");
+        .addToast("An error occurred while creating the project.", "error");
     }
   };
 
@@ -643,7 +645,7 @@ export default function CreateProject() {
               </div>
 
               <div>
-                <Label>Images per Task (최대 1000)</Label>
+                <Label>Images per Task (max 1000)</Label>
                 <Input
                   type="number"
                   min={1}
@@ -652,7 +654,7 @@ export default function CreateProject() {
                   value={imagesPerTask}
                   onChange={(e) => {
                     const value = e.target.value;
-                    // 최대값 1000 제한
+                    // Maximum value limit of 1000
                     if (
                       value === "" ||
                       (Number(value) >= 1 && Number(value) <= 1000)
@@ -672,13 +674,13 @@ export default function CreateProject() {
                   $active={uploadMethod === "individual"}
                   onClick={() => setUploadMethod("individual")}
                 >
-                  개별 파일 선택
+                  Select Individual Files
                 </TabButton>
                 <TabButton
                   $active={uploadMethod === "zip"}
                   onClick={() => setUploadMethod("zip")}
                 >
-                  ZIP 파일 업로드
+                  Upload ZIP File
                 </TabButton>
               </TabButtons>
 
@@ -716,13 +718,13 @@ export default function CreateProject() {
                   }}
                 >
                   {uploadMethod === "individual"
-                    ? "📁 이미지 파일을 선택하거나 드래그하세요"
-                    : "📦 ZIP 파일을 선택하거나 드래그하세요"}
+                    ? "📁 Select or drag image files"
+                    : "📦 Select or drag ZIP file"}
                 </div>
                 <UploadText>
                   {uploadMethod === "individual"
-                    ? "여러 이미지 파일을 한 번에 선택할 수 있습니다"
-                    : "압축된 이미지 파일을 업로드합니다"}
+                    ? "You can select multiple image files at once"
+                    : "Upload compressed image files"}
                 </UploadText>
               </UploadArea>
 
@@ -737,11 +739,11 @@ export default function CreateProject() {
                             <ProgressFill $progress={item.progress} />
                           </ProgressBar>
                           <FileStatus $status={item.status}>
-                            {item.status === "pending" && "대기 중"}
+                            {item.status === "pending" && "Pending"}
                             {item.status === "uploading" &&
-                              `업로드 중... ${item.progress}%`}
-                            {item.status === "success" && "완료"}
-                            {item.status === "error" && "실패"}
+                              `Uploading... ${item.progress}%`}
+                            {item.status === "success" && "Completed"}
+                            {item.status === "error" && "Failed"}
                           </FileStatus>
                         </FileInfo>
                         <RemoveFileButton
@@ -758,7 +760,7 @@ export default function CreateProject() {
                       disabled={isUploading}
                       style={{ marginTop: "12px", width: "100%" }}
                     >
-                      {isUploading ? "업로드 중..." : "업로드 시작"}
+                      {isUploading ? "Uploading..." : "Start Upload"}
                     </AddButton>
                   )}
                 </>

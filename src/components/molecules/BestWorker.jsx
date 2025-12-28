@@ -69,7 +69,6 @@ const List = styled.ul`
 `;
 
 export default function BestWorker({ value }) {
-  console.log(value);
   return (
     <BestWorkerContainer>
       <Header>

@@ -10,6 +10,7 @@ import SyntheticData from "../pages/SyntheticData";
 import SyntheticLayout from "../pages/SyntheticLayout";
 import SyntheticBackground from "../pages/SyntheticBackground";
 import DataAugmentation from "../pages/DataAugmentation";
+import ImageGeneration from "../pages/ImageGeneration";
 
 const Loader = styled.div`
   height: 100vh;
@@ -54,13 +55,20 @@ const Router = ({ isAuthFailed }) => {
             path="/project/:projectId/task/:taskId/reviewing/:jobId"
             element={<Inspection />}
           />
-          <Route path="/synthetic-data" element={<SyntheticLayout />}>
+          <Route
+            path="/project/:projectId/synthetic-data/:taskId"
+            element={<SyntheticLayout />}
+          >
             <Route index element={<SyntheticData />} /> {/* 1단계 */}
             <Route path="background" element={<SyntheticBackground />} />
             {/* 2단계 */}
             <Route path="data-augmentation" element={<DataAugmentation />} />
             {/* 3단계 */}
           </Route>
+          <Route
+            path="/project/:projectId/ImageGeneration"
+            element={<ImageGeneration />}
+          />
         </Route>
 
         <Route path="*" element={<NotFound />} />

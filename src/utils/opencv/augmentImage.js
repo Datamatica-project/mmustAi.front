@@ -2,7 +2,6 @@ import { blobToImage, canvasToBlob } from "../image/blobToImage";
 import { applyAffineToLabels } from "./transformBBox";
 
 export async function augmentImage(imageBlob, labels) {
-  console.log(labels);
   const cv = window.cv;
 
   if (!cv || !cv.Mat) {

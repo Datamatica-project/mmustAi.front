@@ -217,7 +217,7 @@ export default function InspectionWorkspace({ imageUrl, jobData }) {
   const handleClassClick = async (cls) => {
     setSelectedClass(cls.id);
     const response = await getObjectsByLabelId(jobId, cls.id);
-    console.log(response);
+
     setObjects(response.data);
   };
 

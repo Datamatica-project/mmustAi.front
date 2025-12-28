@@ -7,7 +7,9 @@ export const api = axios.create({
 });
 
 export const samApi = axios.create({
-  baseURL: "http://127.0.0.1:8001",
+  // SAM2 API 주소를 환경 변수로 관리 (포트포워딩 접속 시 주소 변경 가능)
+  // 환경 변수가 없으면 기본값으로 localhost 사용
+  baseURL: import.meta.env.VITE_SAM_API_URL || "http://127.0.0.1:8001",
 });
 
 export const opencvApi = axios.create({

@@ -11,7 +11,7 @@ import InviteMemberModal from "../components/molecules/InviteMemberModal";
 import AutoLabelingModal from "../components/molecules/AutoLabelingModal";
 import { peopleCost, TaskList } from "../data";
 import Pagination from "../components/common/Pagination";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   getBestWorker,
   getProject,
@@ -21,6 +21,7 @@ import {
 } from "../api/Project";
 import { useProjectRolesStore } from "../store/authStore";
 import { useToastStore } from "../store/toastStore";
+import { createSyntheticTask } from "../api/syntheticApi";
 
 const Title = styled.h1`
   font-size: 32px;
@@ -155,6 +156,7 @@ export default function Project() {
   const [isInviteMemberModalOpen, setIsInviteMemberModalOpen] = useState(false);
   const [isAutoLabelingModalOpen, setIsAutoLabelingModalOpen] = useState(false);
   const { projectRoles, setProjectRoles } = useProjectRolesStore();
+  const navigate = useNavigate();
 
   // 페이지네이션 데이터 추출 (0, 10), (10, 20), (20, 30), ...
   const paginateDate = TaskList.slice((page - 1) * pageSize, page * pageSize);
@@ -185,11 +187,18 @@ export default function Project() {
       setProjectDetail(projectDetail.data);
       setData(response.data);
       setBestWorkerData(BestWorkerData.data);
-      console.log(BestWorkerData.data);
-      setProjectTasksData(ProjectTasksData.data);
+
+      setProjectTasksData(ProjectTasksData);
     };
     fetchProject();
   }, [params.projectId]);
+
+  const handleSyntheticData = async () => {
+    const response = await createSyntheticTask(params.projectId);
+    navigate(
+      `/project/${params.projectId}/synthetic-data/${response.data.taskId}`
+    );
+  };
 
   return (
     <main>
@@ -205,9 +214,25 @@ export default function Project() {
           >
             Auto Labeling
           </button>
-          <StyledLink to="/synthetic-data" className="button">
+          {/* <StyledLink
+            to={`/project/${params.projectId}/synthetic-data`}
+            className="button"
+          >
             Synthetic Data
+          </StyledLink> */}
+          <StyledLink
+            to={`/project/${params.projectId}/ImageGeneration`}
+            className="button"
+          >
+            Image Generation
           </StyledLink>
+          <button
+            // to={`/project/${params.projectId}/synthetic-data`}
+            onClick={handleSyntheticData}
+            className="button"
+          >
+            Synthetic Data
+          </button>
           {/* <button
             className="button"
             onClick={() => setIsAddImageModalOpen(true)}

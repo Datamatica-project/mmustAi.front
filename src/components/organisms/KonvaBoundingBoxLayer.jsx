@@ -8,6 +8,7 @@ export default function KonvaBoundingBoxLayer({
   onSelect,
   convertCanvasToImageCoords,
   imageToBase64,
+  setIsSegmenting, // 세그멘테이션 로딩 상태 설정 함수
 }) {
   const [newRect, setNewRect] = useState(null); // 새로운 바운딩 박스
   const [isDragging, setIsDragging] = useState(false); // 드래그 상태
@@ -82,6 +83,8 @@ export default function KonvaBoundingBoxLayer({
     setIsDragging(false);
 
     // === 2) SAM API 요청 ===
+    // 세그멘테이션 요청 시작 - 로딩 상태 활성화
+    if (setIsSegmenting) setIsSegmenting(true);
     try {
       const response = await segmentImageBbox(base64, samBBox);
       const newMask = response.mask;
@@ -90,6 +93,9 @@ export default function KonvaBoundingBoxLayer({
       onSelect(newMask);
     } catch (err) {
       console.error(err);
+    } finally {
+      // 요청 완료 후 로딩 상태 비활성화 (성공/실패 모두)
+      if (setIsSegmenting) setIsSegmenting(false);
     }
   };
 

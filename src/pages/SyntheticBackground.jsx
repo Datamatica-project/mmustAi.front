@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { useRef, useState } from "react";
 import PageHeader from "../components/organisms/PageHeader";
 import styled from "styled-components";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { LeftArrowIcon, RightArrowIcon } from "../components/icons/Icons";
 import {
   PlusIcon,
@@ -29,6 +29,7 @@ import {
 } from "../utils/mousecursorUtil";
 import { useToastStore } from "../store/toastStore";
 import { createSyntheticData } from "../api/syntheticApi";
+import { generateUUID } from "../utils/generateUUID";
 
 const Container = styled.div`
   .description {
@@ -284,6 +285,7 @@ export default function SyntheticBackground() {
   const isRotatingRef = useRef(false);
   const startAngleRef = useRef(0);
   const startRotateRef = useRef(0);
+  const { projectId, taskId } = useParams();
 
   useEffect(() => {
     // 캔버스 크기 === 이미지 크기로 조정
@@ -421,7 +423,7 @@ export default function SyntheticBackground() {
     setPlacedObjects((prev) => [
       ...prev,
       {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         sourceId: cutout.id,
         classId: classId, // 확실히 설정된 classId 사용
         bbox,
@@ -585,7 +587,9 @@ export default function SyntheticBackground() {
     // result.imageUrl을 사용하여 이미지 표시
     // 예: <img src={result.imageUrl} />
 
-    navigate("/synthetic-data/data-augmentation");
+    navigate(
+      `/project/${projectId}/synthetic-data/${taskId}/data-augmentation`
+    );
   };
 
   // 🔹 현재 배경 + 컷아웃 합성 결과 기준으로 bbox 계산 (COCO/YOLO 라벨용)
@@ -696,7 +700,11 @@ export default function SyntheticBackground() {
           </ImageContainer>
           <footer>
             <Navigation>
-              <button onClick={() => navigate("/synthetic-data/")}>
+              <button
+                onClick={() =>
+                  navigate(`/project/${projectId}/synthetic-data/${taskId}`)
+                }
+              >
                 {LeftArrowIcon}Prev
               </button>
               <button onClick={() => handleNext()}>{RightArrowIcon}Next</button>

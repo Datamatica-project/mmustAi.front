@@ -1,7 +1,7 @@
 import React from "react";
 import styled from "styled-components";
 import logoPng from "../../assets/image/datamatica_Logo.png";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate, useParams } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
 
 const Nav = styled.nav`
@@ -65,6 +65,7 @@ const GoBackButton = styled(NavLinks)`
 export default function Gnb() {
   const navigate = useNavigate();
   const { clearToken } = useAuthStore();
+  const params = useParams();
 
   const handleLogout = (e) => {
     e.preventDefault();
@@ -76,7 +77,14 @@ export default function Gnb() {
 
   const handleGoBack = (e) => {
     e.preventDefault();
-    navigate(-1);
+    console.log(params);
+    if (params.jobId) {
+      navigate(`/project/${params.projectId}/task/${params.taskId}`);
+    } else if (!params.jobId && params.taskId) {
+      navigate(`/project/${params.projectId}`);
+    } else if (!params.jobId && !params.taskId && params.projectId) {
+      navigate(`/`);
+    }
   };
 
   return (

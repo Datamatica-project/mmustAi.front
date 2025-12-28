@@ -122,6 +122,39 @@ export default function KonvaCanvas({
     };
   };
 
+  // YOLO 형식(좌상단 좌표 기준) 객체를 캔버스 좌표로 변환하는 함수
+  // 입력: {x, y, w, h} 형식의 객체 (x, y는 좌상단 좌표, 0~1 정규화)
+  const convertYOLOToCanvasCoordsFromObject = (yoloObj) => {
+    const {
+      x: normalizedX,
+      y: normalizedY,
+      w: normalizedWidth,
+      h: normalizedHeight,
+    } = yoloObj;
+
+    // 이미지 원본 크기
+    const imgWidth = imageSize.width || size.width;
+    const imgHeight = imageSize.height || size.height;
+
+    // 정규화된 좌상단 좌표를 이미지 원본 크기로 변환 (x, y는 이미 좌상단 좌표)
+    const xPixels = normalizedX * imgWidth;
+    const yPixels = normalizedY * imgHeight;
+    const widthPixels = normalizedWidth * imgWidth;
+    const heightPixels = normalizedHeight * imgHeight;
+
+    // 캔버스 크기로 스케일링 (이미지가 캔버스에 맞춰 표시되는 비율)
+    const scaleX = size.width / imgWidth;
+    const scaleY = size.height / imgHeight;
+
+    // 캔버스 좌표로 변환
+    return {
+      x: xPixels * scaleX,
+      y: yPixels * scaleY,
+      width: widthPixels * scaleX,
+      height: heightPixels * scaleY,
+    };
+  };
+
   // YOLO 형식으로 변환 (0~1 사이의 비율)
   const convertToYOLOFormat = (bbox, className) => {
     // 이미지 원본 크기 (naturalWidth/Height 사용)
@@ -546,15 +579,33 @@ export default function KonvaCanvas({
           {objectsStore?.map((obj, index) => {
             const isHighlighted = highlightedObjectId === obj.id;
 
-            // labelData.bbox가 있는지 확인
-            if (obj.labelData?.bbox && Array.isArray(obj.labelData.bbox)) {
+            // 새로운 데이터 구조: obj.annotation.yolo 형식 확인
+            // annotation.yolo는 {x, y, w, h} 형식 (중심 좌표 기준)
+            let yoloData = null;
+
+            if (obj.annotation?.yolo) {
+              // 새로운 구조: annotation.yolo 객체 형식
+              yoloData = obj.annotation.yolo;
+            } else if (
+              obj.labelData?.bbox &&
+              Array.isArray(obj.labelData.bbox)
+            ) {
+              // 기존 구조: labelData.bbox 배열 형식 (하위 호환성)
               const bbox = obj.labelData.bbox;
+              const coords = bbox.length === 5 ? bbox.slice(1) : bbox;
+              const [x, y, w, h] = coords;
+              yoloData = { x, y, w, h };
+            }
 
-              // YOLO 형식으로 변환된 좌표를 캔버스 좌표로 변환
-              const canvasCoords = convertYOLOToCanvasCoords(bbox);
+            if (yoloData) {
+              // YOLO 형식(중심 좌표)을 캔버스 좌표로 변환
+              const canvasCoords =
+                convertYOLOToCanvasCoordsFromObject(yoloData);
 
-              // 클래스 색상 찾기 (labelData.class_id 또는 obj에 있는 정보 사용)
-              const classId = obj.labelData?.class_id;
+              // 클래스 색상 찾기
+              // annotation.class_id 또는 labelData.class_id 또는 obj의 정보 사용
+              const classId =
+                obj.annotation?.class_id || obj.labelData?.class_id;
               const classInfo = classes.find((cls) => cls.id === classId);
               // 클래스에서 찾지 못하면 객체 자체의 hexColor 사용, 없으면 기본색
               const color = classInfo?.hexColor || obj.hexColor || "#f62579";

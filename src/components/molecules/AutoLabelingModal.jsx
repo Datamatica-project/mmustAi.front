@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
+import { getProject, getProjectDetail } from "../../api/Project";
 // import {
 //   startAutoLabeling,
 //   getAutoLabelingStatus,
@@ -103,7 +104,7 @@ const ProgressBarFill = styled.div`
   height: 100%;
   background: linear-gradient(90deg, #f62579 0%, #d41e66 100%);
   transition: width 0.3s ease;
-  width: ${(props) => props.progress || 0}%;
+  width: ${(props) => props.$progress || 0}%;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -175,6 +176,59 @@ const PhaseText = styled.div`
   font-size: 14px;
   color: #b6b5c5;
   margin-top: 8px;
+`;
+
+// 라벨링된 클래스 정보 표시용 스타일 컴포넌트
+const LabeledClassesSection = styled.div`
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #3b3c5d;
+`;
+
+const LabeledClassesTitle = styled.div`
+  font-size: 14px;
+  color: #b6b5c5;
+  font-weight: 500;
+  margin-bottom: 12px;
+`;
+
+const LabeledClassesList = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const ClassBadge = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #2a2b3d;
+  border-radius: 6px;
+  border: 1px solid #3b3c5d;
+`;
+
+const ClassColorDot = styled.div`
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: ${(props) => props.color || "#ffffff"};
+`;
+
+const ClassName = styled.span`
+  font-size: 13px;
+  color: #ffffff;
+  font-weight: 500;
+`;
+
+const ClassCount = styled.span`
+  font-size: 13px;
+  color: #b6b5c5;
+  font-weight: 600;
+`;
+
+const ClassBalanceInfo = styled(InfoMessage)`
+  margin-top: 12px;
 `;
 
 const CycleSection = styled.div`
@@ -347,7 +401,8 @@ export default function AutoLabelingModal({
     miss: [],
   });
   const [activeTab, setActiveTab] = useState("pass");
-  const [manualLabelingProgress, setManualLabelingProgress] = useState(25); // 더미 진행률
+  const [manualLabelingProgress, setManualLabelingProgress] = useState(0); // 더미 진행률
+  const [labeledClasses, setLabeledClasses] = useState([]); // 현재 라벨링된 클래스 정보
 
   const canStartAutoLabeling = manualLabelingProgress >= 10;
 
@@ -372,6 +427,16 @@ export default function AutoLabelingModal({
 
   useEffect(() => {
     if (!isOpen) return;
+    [
+      "rotate",
+      "flip",
+      "brightness",
+      "contrast",
+      "saturation",
+      "hue",
+      "median_blur",
+    ];
+
     // 모달이 열릴 때 초기화
     setAutoLabelingStatus("idle");
     setCycleStatus({
@@ -381,6 +446,39 @@ export default function AutoLabelingModal({
     });
     setCycle1Images({ pass: [], fail: [], miss: [] });
     setActiveTab("pass");
+
+    // 진행률 계산
+    const fetchAutoLabelingStatus = async () => {
+      const response = await getProject(projectId);
+      console.log(response.data);
+      // 진행률 계산: (승인된 작업 수 / 전체 작업 수) * 100
+      // totalJobCount가 0인 경우를 방지하기 위한 체크 추가
+      const percentage =
+        response.data.totalJobCount > 0
+          ? (response.data.approvedJobCount / response.data.totalJobCount) * 100
+          : 0;
+      setManualLabelingProgress(percentage);
+    };
+
+    const currentLabbeldObject = async () => {
+      const projectDetail = await getProjectDetail(projectId);
+      console.log(projectDetail.data.labelInfos);
+      // labelInfos에서 objectInfos가 있는 클래스만 필터링하여 저장
+      // 각 클래스의 이름과 objectInfos.length를 저장
+      const classesWithObjects = (projectDetail.data?.labelInfos || [])
+        .filter(
+          (labelInfo) =>
+            labelInfo.objectInfos && labelInfo.objectInfos.length > 0
+        )
+        .map((labelInfo) => ({
+          name: labelInfo.name,
+          count: labelInfo.objectInfos.length,
+          color: labelInfo.hexColor || "#ffffff",
+        }));
+      setLabeledClasses(classesWithObjects);
+    };
+    fetchAutoLabelingStatus();
+    currentLabbeldObject();
   }, [isOpen]);
 
   const handleStartAutoLabeling = () => {
@@ -461,17 +559,19 @@ export default function AutoLabelingModal({
           <ProgressSection>
             <ProgressLabel>
               <LabelText>Manual Labeling Progress</LabelText>
-              <ProgressValue>{manualLabelingProgress}%</ProgressValue>
+              <ProgressValue>
+                {Math.round(manualLabelingProgress)}%
+              </ProgressValue>
             </ProgressLabel>
             <ProgressBarContainer>
-              <ProgressBarFill progress={manualLabelingProgress}>
-                {manualLabelingProgress}%
+              <ProgressBarFill $progress={Math.round(manualLabelingProgress)}>
+                {Math.round(manualLabelingProgress)}%
               </ProgressBarFill>
             </ProgressBarContainer>
             {!canStartAutoLabeling && (
               <InfoMessage type="warning">
                 At least 10% manual labeling is required to start auto labeling.
-                Current progress: {manualLabelingProgress}%
+                Current progress: {Math.round(manualLabelingProgress)}%
               </InfoMessage>
             )}
             {canStartAutoLabeling && (
@@ -479,6 +579,32 @@ export default function AutoLabelingModal({
                 You can start auto labeling. Minimum 10% manual labeling is
                 completed.
               </InfoMessage>
+            )}
+            {/* 현재 라벨링된 클래스별 오브젝트 개수 표시 */}
+            {labeledClasses.length > 0 && (
+              <LabeledClassesSection>
+                <LabeledClassesTitle>
+                  Labeled Objects by Class
+                </LabeledClassesTitle>
+                <LabeledClassesList>
+                  {labeledClasses.map((classInfo, index) => (
+                    <ClassBadge key={index}>
+                      <ClassColorDot color={classInfo.color} />
+                      <ClassName>{classInfo.name}</ClassName>
+                      <ClassCount>({classInfo.count})</ClassCount>
+                    </ClassBadge>
+                  ))}
+                </LabeledClassesList>
+                {/* 클래스별 개수 균형 안내 메시지 */}
+                {labeledClasses.length > 1 && (
+                  <ClassBalanceInfo type="warning">
+                    For optimal model training performance, try to maintain a
+                    similar number of objects across all classes. <br />
+                    Balanced class distribution helps improve model accuracy and
+                    generalization.
+                  </ClassBalanceInfo>
+                )}
+              </LabeledClassesSection>
             )}
           </ProgressSection>
 

@@ -1,5 +1,5 @@
 import { samApi } from "./axios";
-
+import { api } from "./axios";
 /**
  * OpenCV 증강 API 호출
  * @param {Blob} imageBlob - 합성된 이미지 Blob
@@ -48,14 +48,40 @@ const blobToBase64 = (blob) => {
  * @param {Array} augmentedData - 증강된 이미지와 라벨 데이터 배열
  * @returns {Promise} 전송 결과
  */
-export const sendToTraining = async (augmentedData) => {
+export const sendToTraining = async (projectId, taskId, itemArray) => {
+  let item = itemArray[0];
+  let labels = item.labels;
+
+  const data = {
+    augmentation: {
+      type: "rotate",
+      angle: item.augmentation === "rotate" ? item.augmentation.value : 0,
+    },
+    fileId: item.fileId,
+    annotations: [],
+  };
+
+  for (let i = 0; i < labels.length; i++) {
+    let label = labels[i];
+    data.annotations.push({
+      classId: label.classId,
+      sourceId: item.fileId,
+      yolo: {
+        x: label.yolo.x,
+        y: label.yolo.y,
+        w: label.yolo.w,
+        h: label.yolo.h,
+      },
+    });
+  }
+  console.log(data);
+
   try {
-    console.log(augmentedData);
-    // TODO: 실제 학습 API 엔드포인트로 변경 필요
-    // const response = await samApi.post("/training", {
-    //   data: augmentedData,
-    // });
-    // return response.data;
+    const response = await api.post(
+      `/api/v1/projects/${projectId}/tasks/${taskId}/synthetic-data`,
+      data
+    );
+    return response.data;
   } catch (error) {
     console.error("Training data send error:", error);
     throw error;
