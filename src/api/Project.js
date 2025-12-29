@@ -85,7 +85,11 @@ export const getBestWorker = async (projectId) => {
 
 export const getProjectTasks = async (projectId) => {
   try {
-    const response = await api.get(`/api/v1/projects/${projectId}/tasks`);
+    const response = await api.get(`/api/v1/projects/${projectId}/tasks`, {
+      params: {
+        type: "LABELING",
+      },
+    });
 
     const filteredResponse = response.data.data.filter(
       (task) => task.jobCount !== 0

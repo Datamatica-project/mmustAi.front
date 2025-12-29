@@ -183,6 +183,7 @@ export default function Project() {
       const response = await getProject(params.projectId);
       const BestWorkerData = await getBestWorker(params.projectId);
       const ProjectTasksData = await getProjectTasks(params.projectId);
+      console.log("ProjectTasksData", ProjectTasksData);
 
       setProjectDetail(projectDetail.data);
       setData(response.data);

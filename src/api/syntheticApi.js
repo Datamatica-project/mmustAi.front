@@ -3,7 +3,9 @@ import { api } from "./axios";
 
 export const createSyntheticTask = async (projectId) => {
   try {
-    const response = await api.post(`/api/v1/projects/${projectId}/tasks`, {});
+    const response = await api.post(`/api/v1/projects/${projectId}/tasks`, {
+      type: "SYNTHETIC",
+    });
     return response.data;
   } catch (error) {
     console.error("Error creating synthetic task:", error);
