@@ -30,6 +30,7 @@ import {
 import { useToastStore } from "../store/toastStore";
 import { createSyntheticData } from "../api/syntheticApi";
 import { generateUUID } from "../utils/generateUUID";
+import { usePlacedObjectsStore } from "../store/projectStore";
 
 const Container = styled.div`
   .description {
@@ -266,7 +267,7 @@ export default function SyntheticBackground() {
   const [bgImage, setBgImage] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
   const [cutouts, setCutouts] = useState([]); // 원본 컷아웃 메타데이터
-  const [placedObjects, setPlacedObjects] = useState([]); // 실제 배치된 객체들
+  const { placedObjects, setPlacedObjects } = usePlacedObjectsStore();
   const [activePlacedId, setActivePlacedId] = useState(null); // 현재 선택된 배치 객체
   const cutoutCacheRef = useRef(new Map());
   const [, forceRender] = useState(0);
@@ -309,7 +310,7 @@ export default function SyntheticBackground() {
 
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+    const safePlacedObjects = Array.isArray(placedObjects) ? placedObjects : [];
     // 배경 캔버스에 컷아웃 그리기
     placedObjects.forEach((obj) => {
       drawCutoutOnBackground({
@@ -383,6 +384,18 @@ export default function SyntheticBackground() {
     }
     e.preventDefault();
 
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith("image/")) {
+        const url = URL.createObjectURL(file);
+        setBgImage(url);
+        return; // 배경 이미지 설정 후 종료
+      }
+    }
+
+    console.log("files", files);
+
     const data = e.dataTransfer.getData("application/cutout");
     if (!data) return;
 
@@ -420,11 +433,15 @@ export default function SyntheticBackground() {
 
     await prepareCutout(cutout.id, cutout.bbox, cutoutCacheRef);
 
+    console.log("cutout", cutout);
+
     setPlacedObjects((prev) => [
       ...prev,
       {
         id: generateUUID(),
-        sourceId: cutout.id,
+        // sourceId: cutout.id,
+        cutoutId: cutout.id, // 컷아웃 UUID (캐시 키용)
+        sourceId: cutout.sourceId,
         classId: classId, // 확실히 설정된 classId 사용
         bbox,
         x,
@@ -586,6 +603,7 @@ export default function SyntheticBackground() {
 
     // result.imageUrl을 사용하여 이미지 표시
     // 예: <img src={result.imageUrl} />
+    
 
     navigate(
       `/project/${projectId}/synthetic-data/${taskId}/data-augmentation`
@@ -618,6 +636,8 @@ export default function SyntheticBackground() {
       alphaThreshold: 0, // alpha > 0 인 픽셀을 객체로 간주
     });
   };
+
+  const handleAddBackground = (e) => {};
 
   return (
     <Container onDragOver={(e) => e.preventDefault()}>
@@ -663,7 +683,7 @@ export default function SyntheticBackground() {
         </Sidebar>
         <section>
           <Header>
-            <h3>Image010.jpg</h3>
+            <h3>Background Image</h3>
             <button onClick={() => fileInputRef.current.click()}>
               {PlusIcon} Add
             </button>
@@ -678,6 +698,9 @@ export default function SyntheticBackground() {
 
                 const url = URL.createObjectURL(file);
                 setBgImage(url);
+
+                setPlacedObjects([]);
+                setActivePlacedId(null);
               }}
             />
           </Header>

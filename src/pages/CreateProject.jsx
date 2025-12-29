@@ -358,15 +358,15 @@ export default function CreateProject() {
   const [labelName, setLabelName] = useState("");
   const [labelColor, setLabelColor] = useState("#697689");
   const [classes, setClasses] = useState([
-    { name: "car", hexColor: "#8A4A4A" }, // red → tone down
-    { name: "truck", hexColor: "#4A5A8A" }, // blue
-    { name: "bus", hexColor: "#4A8A5A" }, // green
-    { name: "special_vehicle", hexColor: "#4A8A8A" }, // cyan (optional)
-    { name: "motorcycle", hexColor: "#8A4A7A" }, // pink
-    { name: "bicycle", hexColor: "#6C4A8A" }, // purple
-    { name: "pedestrian", hexColor: "#8A6A4A" }, // orange
-    { name: "traffic_sign", hexColor: "#7A5A4A" }, // brown
-    { name: "traffic_light", hexColor: "#6A6A6A" }, // gray
+    { name: "car", hexColor: "#8A4A4A", classId: 0 }, // red → tone down
+    { name: "truck", hexColor: "#4A5A8A", classId: 1 }, // blue
+    { name: "bus", hexColor: "#4A8A5A", classId: 2 }, // green
+    { name: "special_vehicle", hexColor: "#4A8A8A", classId: 3 }, // cyan (optional)
+    { name: "motorcycle", hexColor: "#8A4A7A", classId: 4 }, // pink
+    { name: "bicycle", hexColor: "#6C4A8A", classId: 5 }, // purple
+    { name: "pedestrian", hexColor: "#8A6A4A", classId: 6 }, // orange
+    { name: "traffic_sign", hexColor: "#7A5A4A", classId: 7 }, // brown
+    { name: "traffic_light", hexColor: "#6A6A6A", classId: 8 }, // gray
   ]);
 
   const handleAddClass = () => {
@@ -577,6 +577,12 @@ export default function CreateProject() {
     // Convert startDate to "YYYY-MM-DDT23:59:59" format (including last time of date)
     const formattedStartDate = startDate ? `${startDate}T23:59:59` : startDate;
 
+    const classesWithClassId = classes.map((cls) => ({
+      name: cls.name,
+      hexColor: cls.hexColor,
+      classId: cls.classId,
+    }));
+    console.log(classes);
     const payload = {
       projectName,
       description,

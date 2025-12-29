@@ -62,7 +62,7 @@ export function drawCutoutOnBackground({
   activePlacedId,
   cutoutCacheRef,
 }) {
-  const cached = cutoutCacheRef.current.get(cutout.sourceId); // 컷아웃 객체 가져오기
+  const cached = cutoutCacheRef.current.get(cutout.cutoutId || cutout.sourceId); // 컷아웃 객체 가져오기
   if (!cached) return;
 
   const ctx = canvas.getContext("2d");
@@ -310,6 +310,8 @@ export async function exportComposite(
     console.error("원본 이미지 크기를 찾을 수 없습니다.");
     return;
   }
+
+  console.log("placedObjects", placedObjects);
 
   const labels = computeCompositeBBoxes({
     placedObjects,

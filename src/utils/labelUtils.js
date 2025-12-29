@@ -43,7 +43,7 @@ export function computeCompositeBBoxes({
   const results = [];
 
   placedObjects.forEach((obj) => {
-    const cached = cutoutCacheRef.current.get(obj.sourceId); // 컷아웃 캐시에서 컷아웃 객체 가져오기
+    const cached = cutoutCacheRef.current.get(obj.cutoutId || obj.sourceId); // 컷아웃 캐시에서 컷아웃 객체 가져오기
     if (!cached) return;
 
     const { offCanvas, width, height } = cached;
@@ -115,6 +115,8 @@ export function computeCompositeBBoxes({
       w: cocoBBox.width / originalImageWidth,
       h: cocoBBox.height / originalImageHeight,
     };
+
+    console.log(obj);
 
     results.push({
       sourceId: obj.sourceId,

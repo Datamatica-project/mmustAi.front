@@ -5,6 +5,7 @@ export const createProject = async (projectData) => {
   const labelRequests = projectData.classes.map((cls) => ({
     name: cls.name,
     hexColor: cls.color || cls.hexColor,
+    classId: cls.classId,
   }));
 
   // expiredAt을 ISO 8601 형식으로 변환

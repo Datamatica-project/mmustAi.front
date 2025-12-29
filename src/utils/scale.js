@@ -4,7 +4,7 @@ import { getRotatedAABB } from "./drawImg";
 
 // 스케일 핸들 위에 마우스 커서가 있는지 확인 (마스크 기준 tight bbox 사용)
 export function isOnScaleHandle(obj, x, y, cutoutCacheRef) {
-  const cached = cutoutCacheRef?.current?.get(obj.sourceId);
+  const cached = cutoutCacheRef?.current?.get(obj.cutoutId || obj.sourceId);
   if (!cached) {
     // 캐시가 없으면 fallback
     const w = obj.bbox.width * obj.scale;

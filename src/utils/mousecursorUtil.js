@@ -30,7 +30,7 @@ export function updateCanvasCursor(canvas, cursor) {
 
 // 객체 내부에 마우스 커서가 있는지 확인 (마스크 기준 tight bbox 사용)
 export function isInsideObject(obj, x, y, cutoutCacheRef) {
-  const cached = cutoutCacheRef?.current?.get(obj.sourceId);
+  const cached = cutoutCacheRef?.current?.get(obj.cutoutId || obj.sourceId);
   if (!cached) {
     // 캐시가 없으면 fallback (기존 방식)
     const w = obj.bbox.width * obj.scale;

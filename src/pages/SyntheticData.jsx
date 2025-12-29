@@ -617,7 +617,7 @@ export default function SyntheticData() {
         </aside>
         <section>
           <Header>
-            <h3>Image010.jpg</h3>
+            <h3>Segmentation Cutout</h3>
             <button onClick={() => fileInputRef.current.click()}>
               {PlusIcon} Add
             </button>

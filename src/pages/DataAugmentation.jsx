@@ -7,6 +7,7 @@ import { sendToTraining } from "../api/augmentation";
 import { useToastStore } from "../store/toastStore";
 import { augmentImage } from "../utils/opencv/augmentImage";
 import { uploadFilesUnified } from "../api/File";
+import { usePlacedObjectsStore } from "../store/projectStore";
 
 const Container = styled.div`
   .description {
@@ -119,7 +120,8 @@ const ResultCard = styled.div`
 
   .image-container {
     width: 100%;
-    height: 200px;
+    min-height: 200px;
+    max-height: 300px; // 최대 높이 제한
     border-radius: 8px;
     overflow: hidden;
     background-color: #1a1b2e;
@@ -128,9 +130,12 @@ const ResultCard = styled.div`
     justify-content: center;
 
     img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain; // 원본 비율 유지하면서 컨테이너에 맞춤
+      display: block; // 이미지 하단 여백 제거
     }
   }
 
@@ -237,6 +242,9 @@ export default function DataAugmentation() {
   // Upload state for augmented images
   const [uploadingImages, setUploadingImages] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({}); // { imageId: progress }
+  // 저장 완료 상태 관리 (학습 데이터 저장 완료 여부)
+  const [savedStatus, setSavedStatus] = useState({}); // { imageId: true/false }
+  const { placedObjects, setPlacedObjects } = usePlacedObjectsStore();
 
   useEffect(() => {
     loadAndAugment();
@@ -369,7 +377,6 @@ export default function DataAugmentation() {
               }));
             }
           );
-          console.log(uploadResponse);
 
           // 3. 업로드 결과에서 fileId 추출
           const fileId =
@@ -388,14 +395,45 @@ export default function DataAugmentation() {
             [resultId]: 100,
           }));
 
-          // 5. fileId를 포함한 아이템으로 학습 데이터 전송
+          // 5. cutoutSources에서 각 label의 sourceId에 해당하는 fileId 찾기
+          const cutoutSources =
+            JSON.parse(sessionStorage.getItem("cutoutSources")) || [];
+
+          // 각 label의 sourceId를 fileId로 매핑
+          // item.labels의 각 label은 { sourceId, classId, bbox, yolo } 구조를 가짐
+          const labelsWithFileId = item.labels.map((label) => {
+            console.log("label", label); // 각 label을 추출
+            // label의 sourceId로 cutoutSources에서 원본 메타데이터 찾기
+            const sourceMetadata = cutoutSources.find(
+              (source) => source.id === label.sourceId
+            );
+
+            return {
+              ...label,
+              // sourceId 필드를 원본 컷아웃의 fileId로 교체
+              // (sendToTraining에서 sourceId 필드로 사용됨)
+              sourceId: sourceMetadata?.fileId || label.sourceId,
+            };
+          });
+
+          // 6. fileId와 수정된 labels를 포함한 아이템으로 학습 데이터 전송
           const itemWithFileId = {
             ...item,
-            fileId: fileId, // 업로드된 fileId로 교체 (sendToTraining에서 fileId 필드
-            // 로 사용됨)
+            fileId: fileId, // 증강된 이미지의 fileId (증강 이미지 자체의 fileId)
+            labels: labelsWithFileId, // 각 label의 sourceId가 원본 컷아웃의 fileId로 매핑됨
           };
 
-          await sendToTraining(projectId, taskId, [itemWithFileId]);
+          const response = await sendToTraining(projectId, taskId, [
+            itemWithFileId,
+          ]);
+          console.log("response", response);
+
+          // 저장 완료 상태 업데이트 (학습 데이터 저장 성공)
+          setSavedStatus((prev) => ({
+            ...prev,
+            [resultId]: true,
+          }));
+
           successCount++;
         } catch (error) {
           console.error(
@@ -444,6 +482,58 @@ export default function DataAugmentation() {
 
   const handleBack = () => {
     navigate("/synthetic-data/background");
+  };
+
+  // 원본 이미지 다운로드 함수
+  const handleDownloadOriginalImage = () => {
+    try {
+      // 세션 스토리지에서 원본 이미지 가져오기
+      const compositeDataStr = sessionStorage.getItem("compositeData");
+      if (!compositeDataStr) {
+        useToastStore
+          .getState()
+          .addToast("Original image data not found.", "error");
+        return;
+      }
+
+      const compositeData = JSON.parse(compositeDataStr);
+      const { imageBase64 } = compositeData;
+
+      // base64 데이터를 Blob으로 변환
+      // imageBase64가 data URL 형식이면 그대로 사용, 아니면 data URL로 변환
+      let base64Data = imageBase64;
+      if (!imageBase64.startsWith("data:")) {
+        base64Data = `data:image/png;base64,${imageBase64}`;
+      }
+
+      // base64를 Blob으로 변환
+      const byteCharacters = atob(base64Data.split(",")[1] || base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: "image/png" });
+
+      // Blob을 다운로드 링크로 변환하여 다운로드
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `synthetic-original-${Date.now()}.png`; // 파일명에 타임스탬프 추가
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url); // 메모리 해제
+
+      useToastStore
+        .getState()
+        .addToast("Original image downloaded successfully.", "success");
+    } catch (error) {
+      console.error("Download error:", error);
+      useToastStore
+        .getState()
+        .addToast("Failed to download original image.", "error");
+    }
   };
 
   return (
@@ -540,6 +630,17 @@ export default function DataAugmentation() {
                                 Uploading: {uploadProgress[result.id]}%
                               </div>
                             )}
+                          {savedStatus[result.id] && (
+                            <div
+                              style={{
+                                color: "#46eb83",
+                                fontSize: "12px",
+                                fontWeight: "600",
+                              }}
+                            >
+                              ✓ Saved to training data
+                            </div>
+                          )}
                         </div>
                       </ResultCard>
                     );
@@ -559,6 +660,12 @@ export default function DataAugmentation() {
                             ? ` (${selectedIds.size} items)`
                             : ""
                         }`}
+                  </button>
+                  <button
+                    className="secondary"
+                    onClick={handleDownloadOriginalImage}
+                  >
+                    Original Image Download
                   </button>
                   <button className="secondary" onClick={loadAndAugment}>
                     Re-augment

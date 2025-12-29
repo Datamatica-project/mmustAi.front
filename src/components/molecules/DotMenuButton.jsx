@@ -196,7 +196,7 @@ export default function DotMenuButton({
     }
 
     setIsMenuOpen(!isMenuOpen);
-    setHighlightedObjectId(objId);
+    setHighlightedObjectId && setHighlightedObjectId(objId);
   };
 
   return (

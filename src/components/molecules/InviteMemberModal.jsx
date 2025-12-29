@@ -522,6 +522,8 @@ export default function InviteMemberModal({
     setWorker(taskDetail.data.workerEmail);
   };
 
+  console.log(members);
+
   return (
     <ModalOverlay onClick={handleClose}>
       <ModalContent onClick={(e) => e.stopPropagation()}>
@@ -609,9 +611,11 @@ export default function InviteMemberModal({
             </Select>
           </InputGroup>
 
-          <Button className="primary" onClick={handleAddMember}>
-            Add
-          </Button>
+          {members.length === 0 && (
+            <Button className="primary" onClick={handleAddMember}>
+              Add
+            </Button>
+          )}
         </Section>
 
         {members.length > 0 && (

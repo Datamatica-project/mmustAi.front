@@ -49,6 +49,7 @@ const blobToBase64 = (blob) => {
  * @returns {Promise} 전송 결과
  */
 export const sendToTraining = async (projectId, taskId, itemArray) => {
+  console.log(projectId, taskId, itemArray);
   let item = itemArray[0];
   let labels = item.labels;
 
@@ -65,7 +66,8 @@ export const sendToTraining = async (projectId, taskId, itemArray) => {
     let label = labels[i];
     data.annotations.push({
       classId: label.classId,
-      sourceId: item.fileId,
+      // label의 sourceId는 이미 DataAugmentation에서 원본 컷아웃의 fileId로 매핑되어 있음
+      sourceId: label.sourceId,
       yolo: {
         x: label.yolo.x,
         y: label.yolo.y,
@@ -74,7 +76,6 @@ export const sendToTraining = async (projectId, taskId, itemArray) => {
       },
     });
   }
-  console.log(data);
 
   try {
     const response = await api.post(

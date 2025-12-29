@@ -195,9 +195,8 @@ export default function Project() {
 
   const handleSyntheticData = async () => {
     const response = await createSyntheticTask(params.projectId);
-    navigate(
-      `/project/${params.projectId}/synthetic-data/${response.data.taskId}`
-    );
+    let taskId = response.data.taskId;
+    navigate(`/project/${params.projectId}/synthetic-data/${taskId}`);
   };
 
   return (
