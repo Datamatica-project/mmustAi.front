@@ -1,6 +1,6 @@
 import React from "react";
 import styled from "styled-components";
-import ProgressBar from "../atoms/progressBar";
+import ProgressBar from "../atoms/ProgressBar";
 import ThreeDotsMenu from "../common/ThreeDotsMenu";
 import { Link } from "react-router-dom";
 import StatusBadge from "../atoms/StatusBadge";
