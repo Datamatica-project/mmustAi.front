@@ -12,6 +12,7 @@
   "dependencies": {
     "@tanstack/react-query": "^5.90.7",
     "axios": "^1.13.2",
+    "idb": "^8.0.3",
     "konva": "^10.0.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

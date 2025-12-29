@@ -10,27 +10,30 @@ const Container = styled.div`
     font-size: 18px;
     font-weight: 700;
     display: flex;
-    cursor: pointer;
     justify-content: space-between;
     align-items: center;
   }
 
   .List {
     box-sizing: border-box;
-    max-height: ${(props) => (props.$isOpen ? "200px" : "0")};
+    height: 200px;
     overflow-y: auto;
     transition: max-height 0.3s ease-in-out;
-    scrollbar-width: thin;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
   }
 `;
 
-export default function ListSection({ title, children, isOpen, onToggle }) {
+export default function ListSection({ title, children }) {
   return (
-    <Container $isOpen={isOpen}>
-      <h3 className="title" onClick={onToggle}>
-        {title}
-        <span className="arrow">{isOpen ? "▲" : "▼"}</span>
-      </h3>
+    <Container>
+      <h3 className="title">{title}</h3>
       <ul className="List">{children}</ul>
     </Container>
   );

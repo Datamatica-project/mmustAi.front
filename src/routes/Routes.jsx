@@ -1,10 +1,16 @@
-import React, { lazy, Suspense } from "react";
+import React, { lazy, Suspense, useEffect } from "react";
 import styled from "styled-components";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useNavigate } from "react-router-dom";
 import Login from "../pages/Login/Login";
 import Layout from "../pages/Layout";
-import Labeling from "../pages/Labeling";
-import Inspection from "../pages/Inspection";
+import { useAuthStore } from "../store/authStore";
+import Project from "../pages/Project";
+import Task from "../pages/Task";
+import SyntheticData from "../pages/SyntheticData";
+import SyntheticLayout from "../pages/SyntheticLayout";
+import SyntheticBackground from "../pages/SyntheticBackground";
+import DataAugmentation from "../pages/DataAugmentation";
+import ImageGeneration from "../pages/ImageGeneration";
 
 const Loader = styled.div`
   height: 100vh;
@@ -17,23 +23,58 @@ const Loader = styled.div`
 
 // 필요할 때만 로드 되도록 lazy 설정
 const Home = lazy(() => import("../pages/Home/Home"));
+const CreateProject = lazy(() => import("../pages/CreateProject"));
+const Labeling = lazy(() => import("../pages/Labeling"));
+const Inspection = lazy(() => import("../pages/Inspection"));
 const NotFound = lazy(() => import("../pages/Notfound/NotFound"));
 
 // 라우터 설정
-const Router = () => (
-  <Suspense fallback={<Loader>Loading...</Loader>}>
-    <Routes>
-      <Route path="/login" element={<Login />} />
+const Router = ({ isAuthFailed }) => {
+  const navigate = useNavigate();
 
-      <Route element={<Layout />}>
-        <Route path="/" index element={<Home />} />
-        <Route path="/labeling" element={<Labeling />} />
-        <Route path="/inspection" element={<Inspection />} />
-      </Route>
+  useEffect(() => {
+    if (isAuthFailed) {
+      navigate("/login");
+    }
+  }, [isAuthFailed]);
 
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  </Suspense>
-);
+  return (
+    <Suspense fallback={<Loader>Loading...</Loader>}>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route element={<Layout />}>
+          <Route path="/" index element={<Home />} />
+          <Route path="/create-project" element={<CreateProject />} />
+          <Route path="/project/:projectId" element={<Project />} />
+          <Route path="/project/:projectId/task/:taskId" element={<Task />} />
+          <Route
+            path="/project/:projectId/task/:taskId/labeling/:jobId"
+            element={<Labeling />}
+          />
+          <Route
+            path="/project/:projectId/task/:taskId/reviewing/:jobId"
+            element={<Inspection />}
+          />
+          <Route
+            path="/project/:projectId/synthetic-data/:taskId"
+            element={<SyntheticLayout />}
+          >
+            <Route index element={<SyntheticData />} /> {/* 1단계 */}
+            <Route path="background" element={<SyntheticBackground />} />
+            {/* 2단계 */}
+            <Route path="data-augmentation" element={<DataAugmentation />} />
+            {/* 3단계 */}
+          </Route>
+          <Route
+            path="/project/:projectId/ImageGeneration"
+            element={<ImageGeneration />}
+          />
+        </Route>
+
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
+  );
+};
 
 export default Router;

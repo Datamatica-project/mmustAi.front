@@ -1,23 +1,42 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BrowserRouter, useNavigate } from "react-router-dom";
 import Routes from "./routes/Routes";
 import { useGetRefreshToken } from "./hooks/useUser";
 import { useAuthStore } from "./store/authStore";
+import ToastContainer from "./components/molecules/ToastContainer";
 function App() {
-  const { token, setToken } = useAuthStore();
-  const { data } = useGetRefreshToken({ enabled: !token });
-  const navigate = useNavigate();
+  const { token, setToken, clearToken } = useAuthStore();
+  const hasTriedRefresh = useRef(false);
+
+  const { data, isError, isSuccess } = useGetRefreshToken(
+    token,
+    hasTriedRefresh.current
+  );
 
   useEffect(() => {
-    if (data?.data?.accessToken) {
-      setToken(data.data.accessToken);
-    } else {
-      navigate("/login");
+    if (!token && !hasTriedRefresh.current) {
+      hasTriedRefresh.current = true; // 재실행 방지
     }
-  }, [data, setToken]);
+  }, [token]);
+
+  // 리프레시 성공 시 토큰 저장
+  useEffect(() => {
+    if (isSuccess && data) {
+      setToken(data.data.accessToken);
+    }
+  }, [isSuccess, data, setToken]);
+
+  // 리프레시 실패 시 토큰 삭제
+  useEffect(() => {
+    if (isError) {
+      clearToken();
+    }
+  }, [isError, clearToken]);
+
   return (
     <BrowserRouter>
-      <Routes />
+      <ToastContainer />
+      <Routes isAuthFailed={isError} />
     </BrowserRouter>
   );
 }

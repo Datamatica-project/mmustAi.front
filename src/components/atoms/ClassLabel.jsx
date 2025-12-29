@@ -56,8 +56,8 @@ const ListItem = styled.li`
 `;
 
 const ColorCircle = styled.div`
-  width: 17px;
-  height: 17px;
+  width: 14px;
+  height: 14px;
   background-color: ${(props) => props.$color};
   border: 1px solid rgba(255, 255, 255, 0.36);
   box-shadow: 0px 0px 5.2px 3px rgba(255, 0, 0, 0.25);

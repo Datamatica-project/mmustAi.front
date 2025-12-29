@@ -7,6 +7,12 @@ import AuthForm from "../molecules/AuthForm";
 import AuthLinks from "../molecules/AuthLinks";
 import { usePostLogin } from "../../hooks/useUser";
 import { useAuthStore } from "../../store/authStore";
+/**
+ * 로그인 관리 방식
+ * Zustand 상태 관리 방식 사용
+ * token 관리
+ * 로그인 성공 시 token 저장
+ */
 
 const Container = styled.div`
   height: 100vh;
@@ -181,13 +187,15 @@ export default function LoginPage() {
       setShowInput(true);
     } else {
       loginMutation.mutate(
-        { email, password },
+        { email, password }, // 로그인 요청 데이터
         {
+          // 로그인 성공 시 실행
           onSuccess: (res) => {
             const accessToken = res.data.data.accessToken;
-            setToken(accessToken);
-            navigate("/labeling");
+            setToken(accessToken); // 토큰 저장
+            navigate("/");
           },
+          // 로그인 실패 시 실행
           onError: (error) => {
             console.error(
               "❌ 로그인 실패",
