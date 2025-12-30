@@ -7,6 +7,10 @@
     {
       "source": "/sam/:path*",
       "destination": "http://1.235.57.64:8001/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
