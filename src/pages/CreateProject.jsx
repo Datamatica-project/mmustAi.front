@@ -370,7 +370,7 @@ export default function CreateProject() {
   const [projectName, setProjectName] = useState("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState(null); // Date 객체로 변경
-  const [imagesPerTask, setImagesPerTask] = useState(1);
+  const [imagesPerTask, setImagesPerTask] = useState("");
 
   // Upload related state
   const [uploadMethod, setUploadMethod] = useState("individual"); // "individual" | "zip"
@@ -867,7 +867,7 @@ export default function CreateProject() {
                   type="number"
                   min={1}
                   max={1000}
-                  placeholder="Images per Task"
+                  placeholder="Images per Task  ex) 1"
                   value={imagesPerTask}
                   onChange={(e) => {
                     const value = e.target.value;

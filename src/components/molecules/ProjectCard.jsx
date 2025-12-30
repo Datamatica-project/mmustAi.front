@@ -193,20 +193,14 @@ export default function ProjectCard({ project, onDelete }) {
         // 상위에서 리스트 갱신하도록 콜백 호출
         onDelete();
 
-        useToastStore
-          .getState()
-          .addToast("프로젝트 삭제에 성공했습니다.", "success");
+        useToastStore.getState().addToast("Project delete success.", "success");
       } else {
         console.error("Delete failed:", res);
-        useToastStore
-          .getState()
-          .addToast("프로젝트 삭제에 실패했습니다.", "error");
+        useToastStore.getState().addToast("Project delete failed.", "error");
       }
     } catch (err) {
       console.error(err);
-      useToastStore
-        .getState()
-        .addToast("프로젝트 삭제 중 오류가 발생했습니다.", "error");
+      useToastStore.getState().addToast("Project delete error.", "error");
     }
   };
 
