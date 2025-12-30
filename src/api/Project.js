@@ -164,14 +164,22 @@ export const inviteMembers = async (projectId, members, tasks) => {
  * @param {string} projectId - 프로젝트 ID
  * @returns {Promise}
  */
-export const startAutoLabeling = async (projectId) => {
+export const startAutoLabeling = async () => {
   try {
-    const response = await api.post(
-      `/api/v1/projects/${projectId}/auto-labeling/start`
-    );
+    const response = await api.post(`/api/v1/ai/demo/auto-labeling/start`);
     return response.data;
   } catch (error) {
     console.error("Error starting auto labeling:", error);
+    throw error;
+  }
+};
+
+export const getAutoLabelingResult = async () => {
+  try {
+    const response = await api.get(`/api/v1/ai/demo/results/latest`);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting auto labeling result:", error);
     throw error;
   }
 };

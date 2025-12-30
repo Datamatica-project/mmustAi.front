@@ -1,13 +1,21 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
-import { getProject, getProjectDetail } from "../../api/Project";
+import {
+  getAutoLabelingResult,
+  getProject,
+  getProjectDetail,
+  startAutoLabeling,
+} from "../../api/Project";
 // import {
 //   startAutoLabeling,
 //   getAutoLabelingStatus,
 //   getAutoLabelingCycleResult,
 //   getProject,
 // } from "../../api/Project";
-// import { useToastStore } from "../../store/toastStore";
+import { useToastStore } from "../../store/toastStore";
+import { getOriginalImageUrl } from "../../api/File";
+import confetti from "canvas-confetti";
+import { CheckIcon } from "../icons/Icons";
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -178,6 +186,137 @@ const PhaseText = styled.div`
   margin-top: 8px;
 `;
 
+const StatusCard = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 48px 32px;
+  gap: 24px;
+  background: linear-gradient(135deg, #1c1d2f 0%, #2a2b3d 100%);
+  border-radius: 16px;
+  border: 2px solid ${(props) => (props.$isCompleted ? "#46eb83" : "#f62579")};
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  min-height: 200px;
+  width: 100%;
+`;
+
+const StatusIcon = styled.div`
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${(props) =>
+    props.$isCompleted
+      ? "linear-gradient(135deg, #46eb83 0%, #2dd47e 100%)"
+      : "linear-gradient(135deg, #f62579 0%, #d41e66 100%)"};
+  box-shadow: 0 4px 20px
+    ${(props) =>
+      props.$isCompleted
+        ? "rgba(70, 235, 131, 0.4)"
+        : "rgba(246, 37, 121, 0.4)"};
+  position: relative;
+
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  &::before {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: ${(props) =>
+      props.$isCompleted
+        ? "linear-gradient(135deg, #46eb83 0%, #2dd47e 100%)"
+        : "linear-gradient(135deg, #f62579 0%, #d41e66 100%)"};
+    opacity: 0.3;
+    animation: ${(props) =>
+      props.$isCompleted ? "pulse 2s ease-in-out infinite" : "none"};
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 0.3;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 0;
+    }
+  }
+`;
+
+const StatusTitle = styled.h3`
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  text-align: center;
+  margin: 0;
+  letter-spacing: -0.5px;
+`;
+
+const StatusDescription = styled.p`
+  font-size: 14px;
+  font-weight: 400;
+  color: #b6b5c5;
+  text-align: center;
+  margin: 0;
+  line-height: 1.6;
+  max-width: 400px;
+`;
+
+const StatusBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: ${(props) =>
+    props.$isCompleted ? "rgba(70, 235, 131, 0.1)" : "rgba(246, 37, 121, 0.1)"};
+  border: 1px solid ${(props) => (props.$isCompleted ? "#46eb83" : "#f62579")};
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: ${(props) => (props.$isCompleted ? "#46eb83" : "#f62579")};
+  margin-top: 8px;
+`;
+
+// const CheckIcon = styled.div`
+//   width: 40px;
+//   height: 40px;
+//   position: relative;
+
+//   &::before,
+//   &::after {
+//     content: "";
+//     position: absolute;
+//     background-color: #ffffff;
+//     border-radius: 2px;
+//   }
+
+//   &::before {
+//     width: 4px;
+//     height: 20px;
+//     left: 14px;
+//     top: 20px;
+//     transform: rotate(45deg);
+//   }
+
+//   &::after {
+//     width: 4px;
+//     height: 12px;
+//     left: 22px;
+//     top: 24px;
+//     transform: rotate(-45deg);
+//   }
+// `;
+
 // 라벨링된 클래스 정보 표시용 스타일 컴포넌트
 const LabeledClassesSection = styled.div`
   margin-top: 20px;
@@ -259,7 +398,7 @@ const CycleBadge = styled.span`
 
 const ResultGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   margin-bottom: 16px;
 `;
@@ -298,9 +437,9 @@ const TabButton = styled.button`
   flex: 1;
   padding: 10px 16px;
   border-radius: 8px;
-  border: 1px solid ${(props) => (props.active ? "#f62579" : "#3b3c5d")};
-  background-color: ${(props) => (props.active ? "#f62579" : "transparent")};
-  color: ${(props) => (props.active ? "#ffffff" : "#b6b5c5")};
+  border: 1px solid ${(props) => (props.$active ? "#f62579" : "#3b3c5d")};
+  background-color: ${(props) => (props.$active ? "#f62579" : "transparent")};
+  color: ${(props) => (props.$active ? "#ffffff" : "#b6b5c5")};
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
@@ -339,6 +478,92 @@ const ImageItem = styled.div`
     height: 100%;
     object-fit: cover;
   }
+`;
+
+const FileListContainer = styled.div`
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 12px;
+  background-color: #151624;
+  border-radius: 8px;
+`;
+
+const FileListItem = styled.div`
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  background-color: #1c1d2f;
+  border-radius: 6px;
+  border: 1px solid #3b3c5d;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #ffffff;
+  font-size: 13px;
+
+  &:hover {
+    border-color: #f62579;
+    background-color: #2a2b3d;
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const ImageModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+`;
+
+const ImageModalContent = styled.div`
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+`;
+
+const ImageModalImage = styled.img`
+  max-width: 100%;
+  max-height: 85vh;
+  object-fit: contain;
+`;
+
+const ImageModalClose = styled.button`
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 32px;
+  cursor: pointer;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    color: #f62579;
+  }
+`;
+
+const ImageModalFileName = styled.div`
+  margin-top: 16px;
+  color: #ffffff;
+  font-size: 14px;
+  text-align: center;
+  word-break: break-all;
 `;
 
 const ActionButtons = styled.div`
@@ -389,63 +614,77 @@ export default function AutoLabelingModal({
   projectData,
   onComplete,
 }) {
-  const [autoLabelingStatus, setAutoLabelingStatus] = useState("idle"); // idle, locked, running, completed
-  const [cycleStatus, setCycleStatus] = useState({
-    cycleIndex: null,
-    phase: null, // inference, training, done
-    result: { pass: 0, fail: 0, miss: 0 },
-  });
-  const [cycle1Images, setCycle1Images] = useState({
-    pass: [],
-    fail: [],
-    miss: [],
-  });
-  const [activeTab, setActiveTab] = useState("pass");
-  const [manualLabelingProgress, setManualLabelingProgress] = useState(0); // 더미 진행률
+  const [autoLabelingStatus, setAutoLabelingStatus] = useState("idle"); // idle, running, completed, showingResults
+  const [manualLabelingProgress, setManualLabelingProgress] = useState(0);
   const [labeledClasses, setLabeledClasses] = useState([]); // 현재 라벨링된 클래스 정보
+  const [resultImages, setResultImages] = useState([]); // 결과 이미지 리스트 (pass)
+  const [failedImages, setFailedImages] = useState([]); // 실패 이미지 리스트 (fail)
+  const [activeTab, setActiveTab] = useState("pass"); // pass/fail 탭 전환
+  const [selectedImage, setSelectedImage] = useState(null); // 선택된 이미지 (원본 이미지 URL)
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false); // 이미지 모달 열림 상태
 
   const canStartAutoLabeling = manualLabelingProgress >= 10;
 
-  // 더미 이미지 데이터 (Cycle 1용)
-  const dummyImages = {
-    pass: [
-      { url: "https://via.placeholder.com/150/46eb83/ffffff?text=PASS+1" },
-      { url: "https://via.placeholder.com/150/46eb83/ffffff?text=PASS+2" },
-      { url: "https://via.placeholder.com/150/46eb83/ffffff?text=PASS+3" },
-    ],
-    fail: [
-      { url: "https://via.placeholder.com/150/f62579/ffffff?text=FAIL+1" },
-      { url: "https://via.placeholder.com/150/f62579/ffffff?text=FAIL+2" },
-    ],
-    miss: [
-      { url: "https://via.placeholder.com/150/f4c37e/ffffff?text=MISS+1" },
-      { url: "https://via.placeholder.com/150/f4c37e/ffffff?text=MISS+2" },
-      { url: "https://via.placeholder.com/150/f4c37e/ffffff?text=MISS+3" },
-      { url: "https://via.placeholder.com/150/f4c37e/ffffff?text=MISS+4" },
-    ],
-  };
+  // 이미지 URL 정리
+  useEffect(() => {
+    return () => {
+      if (selectedImage?.url) {
+        URL.revokeObjectURL(selectedImage.url);
+      }
+    };
+  }, [selectedImage]);
+
+  // Confetti 효과 (완료 시)
+  useEffect(() => {
+    if (autoLabelingStatus === "completed") {
+      // 여러 번 발사하여 더 화려한 효과
+      const duration = 2000;
+      const animationEnd = Date.now() + duration;
+      const defaults = {
+        startVelocity: 30,
+        spread: 360,
+        ticks: 60,
+        zIndex: 2000,
+      };
+
+      function randomInRange(min, max) {
+        return Math.random() * (max - min) + min;
+      }
+
+      const interval = setInterval(function () {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) {
+          return clearInterval(interval);
+        }
+
+        const particleCount = 50 * (timeLeft / duration);
+        // 왼쪽에서 발사
+        confetti({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+        });
+        // 오른쪽에서 발사
+        confetti({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+        });
+      }, 250);
+    }
+  }, [autoLabelingStatus]);
 
   useEffect(() => {
     if (!isOpen) return;
-    [
-      "rotate",
-      "flip",
-      "brightness",
-      "contrast",
-      "saturation",
-      "hue",
-      "median_blur",
-    ];
 
     // 모달이 열릴 때 초기화
     setAutoLabelingStatus("idle");
-    setCycleStatus({
-      cycleIndex: null,
-      phase: null,
-      result: { pass: 0, fail: 0, miss: 0 },
-    });
-    setCycle1Images({ pass: [], fail: [], miss: [] });
+    setResultImages([]);
+    setFailedImages([]);
     setActiveTab("pass");
+    setSelectedImage(null);
+    setIsImageModalOpen(false);
 
     // 진행률 계산
     const fetchAutoLabelingStatus = async () => {
@@ -481,71 +720,104 @@ export default function AutoLabelingModal({
     currentLabbeldObject();
   }, [isOpen]);
 
-  const handleStartAutoLabeling = () => {
-    if (!canStartAutoLabeling) return;
+  const handleStartAutoLabeling = async () => {
     setAutoLabelingStatus("running");
-    setCycleStatus({
-      cycleIndex: 1,
-      phase: "inference",
-      result: { pass: 0, fail: 0, miss: 0 },
-    });
+
+    try {
+      const response = await startAutoLabeling();
+      console.log("startAutoLabeling response:", response);
+
+      // // 결과 확인
+      const result = await getAutoLabelingResult();
+      console.log("getAutoLabelingResult:", result);
+
+      // 토스트 알림 표시
+      if (response) {
+        useToastStore
+          .getState()
+          .addToast("오토라벨링이 성공적으로 완료되었습니다.", "success");
+      } else {
+        useToastStore
+          .getState()
+          .addToast("오토라벨링 처리 중 오류가 발생했습니다.", "error");
+      }
+
+      // 완료 상태로 변경
+      setAutoLabelingStatus("completed");
+    } catch (error) {
+      console.error("Auto labeling error:", error);
+      useToastStore
+        .getState()
+        .addToast("오토라벨링 실행 중 오류가 발생했습니다.", "error");
+      setAutoLabelingStatus("idle");
+    }
   };
 
-  const handleNextPhase = () => {
-    if (autoLabelingStatus !== "running") return;
+  const handleViewResults = async () => {
+    try {
+      const result = await getAutoLabelingResult();
+      console.log("Result for view:", result);
+      let passdImages = [];
+      let failedImages = [];
 
-    const currentPhase = cycleStatus.phase;
-    const currentCycle = cycleStatus.cycleIndex;
+      if (result && result.items && Array.isArray(result.items)) {
+        const resultItems = result.items;
+        // passed === true인 항목들의 resultPath만 추출
+        passdImages = resultItems
+          .filter((item) => item.passed === true)
+          .map((item) => item.resultPath.split("/pass/")[1]);
+        // passed === false인 항목들의 resultPath만 추출
+        failedImages = resultItems
+          .filter((item) => item.passed === false)
+          .map((item) => item.resultPath.split("/fail/")[1]);
 
-    if (currentPhase === "inference") {
-      // inference -> training
-      setCycleStatus((prev) => ({
-        ...prev,
-        phase: "training",
-      }));
-    } else if (currentPhase === "training") {
-      // training -> done
-      setCycleStatus((prev) => ({
-        ...prev,
-        phase: "done",
-        result: {
-          pass: currentCycle === 1 ? 15 : 20,
-          fail: currentCycle === 1 ? 5 : 3,
-          miss: currentCycle === 1 ? 8 : 2,
-        },
-      }));
-
-      // Cycle 1 완료 시 더미 이미지 로드
-      if (currentCycle === 1) {
-        setCycle1Images(dummyImages);
-      }
-    } else if (currentPhase === "done") {
-      // done -> 다음 사이클로
-      if (currentCycle < 3) {
-        setCycleStatus({
-          cycleIndex: currentCycle + 1,
-          phase: "inference",
-          result: { pass: 0, fail: 0, miss: 0 },
-        });
-        setCycle1Images({ pass: [], fail: [], miss: [] });
-        setActiveTab("pass");
+        console.log("Passed images:", passdImages);
+        console.log("Failed images:", failedImages);
+        setResultImages(passdImages);
+        setFailedImages(failedImages);
+        setAutoLabelingStatus("showingResults");
       } else {
-        // 모든 사이클 완료
-        setAutoLabelingStatus("completed");
+        useToastStore
+          .getState()
+          .addToast("결과를 불러올 수 없습니다.", "error");
       }
+    } catch (error) {
+      console.error("Error fetching results:", error);
+      useToastStore
+        .getState()
+        .addToast("결과 조회 중 오류가 발생했습니다.", "error");
     }
   };
 
   const handleClose = () => {
     setAutoLabelingStatus("idle");
-    setCycleStatus({
-      cycleIndex: null,
-      phase: null,
-      result: { pass: 0, fail: 0, miss: 0 },
-    });
-    setCycle1Images({ pass: [], fail: [], miss: [] });
+    setResultImages([]);
+    setFailedImages([]);
     setActiveTab("pass");
+    setSelectedImage(null);
+    setIsImageModalOpen(false);
     onClose();
+  };
+
+  const handleFileNameClick = async (fileName) => {
+    try {
+      const imageUrl = await getOriginalImageUrl(fileName, "PROJECT");
+      setSelectedImage({ url: imageUrl, fileName });
+      setIsImageModalOpen(true);
+    } catch (error) {
+      console.error("Error loading original image:", error);
+      useToastStore
+        .getState()
+        .addToast("이미지를 불러올 수 없습니다.", "error");
+    }
+  };
+
+  const handleCloseImageModal = () => {
+    if (selectedImage?.url) {
+      URL.revokeObjectURL(selectedImage.url);
+    }
+    setSelectedImage(null);
+    setIsImageModalOpen(false);
   };
 
   if (!isOpen) return null;
@@ -615,7 +887,7 @@ export default function AutoLabelingModal({
             <Button
               className="primary"
               onClick={handleStartAutoLabeling}
-              disabled={!canStartAutoLabeling}
+              // disabled={!canStartAutoLabeling}
             >
               Start Auto Labeling
             </Button>
@@ -624,207 +896,168 @@ export default function AutoLabelingModal({
       );
     }
 
-    // 실행 중
+    // 실행 중 (로딩)
     if (autoLabelingStatus === "running") {
-      const phaseText =
-        cycleStatus.phase === "inference"
-          ? "Inference"
-          : cycleStatus.phase === "training"
-          ? "Training"
-          : "Processing";
-
       return (
         <>
-          <LoadingSection>
-            <Spinner />
-            <LoadingText>
-              Auto Labeling in Progress
-              <br />
-              Cycle {cycleStatus.cycleIndex || 1} / 3
-            </LoadingText>
-            <PhaseText>{phaseText}</PhaseText>
-          </LoadingSection>
-
-          {cycleStatus.cycleIndex > 1 && (
-            <ResultGrid>
-              <ResultCard>
-                <ResultLabel>PASS</ResultLabel>
-                <ResultValue type="pass">
-                  {cycleStatus.result.pass || 0}
-                </ResultValue>
-              </ResultCard>
-              <ResultCard>
-                <ResultLabel>FAIL</ResultLabel>
-                <ResultValue type="fail">
-                  {cycleStatus.result.fail || 0}
-                </ResultValue>
-              </ResultCard>
-              <ResultCard>
-                <ResultLabel>MISS</ResultLabel>
-                <ResultValue type="miss">
-                  {cycleStatus.result.miss || 0}
-                </ResultValue>
-              </ResultCard>
-            </ResultGrid>
-          )}
-
-          <ActionButtons>
-            <Button className="secondary" onClick={handleClose}>
-              Close
-            </Button>
-            <Button className="primary" onClick={handleNextPhase}>
-              Next: Cycle 2
-            </Button>
-          </ActionButtons>
+          <StatusCard $isCompleted={false}>
+            <StatusIcon $isCompleted={false}>
+              <Spinner />
+            </StatusIcon>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
+              <StatusTitle>Auto Labeling in Progress</StatusTitle>
+              <StatusDescription>
+                Our AI is analyzing and labeling your images. This may take a
+                few moments.
+                <br />
+                Please do not close this window.
+              </StatusDescription>
+              <StatusBadge $isCompleted={false}>
+                <span>Processing...</span>
+              </StatusBadge>
+            </div>
+          </StatusCard>
         </>
       );
     }
 
-    // Cycle 1 완료 (이미지 표시)
-    if (
-      autoLabelingStatus === "running" &&
-      cycleStatus.cycleIndex === 1 &&
-      cycleStatus.phase === "done"
-    ) {
-      return (
-        <>
-          <CycleSection>
-            <CycleHeader>
-              <CycleTitle>Cycle 1 Result</CycleTitle>
-              <CycleBadge>Cycle 1 / 3</CycleBadge>
-            </CycleHeader>
-
-            <ResultGrid>
-              <ResultCard>
-                <ResultLabel>PASS</ResultLabel>
-                <ResultValue type="pass">
-                  {cycleStatus.result.pass || 0}
-                </ResultValue>
-              </ResultCard>
-              <ResultCard>
-                <ResultLabel>FAIL</ResultLabel>
-                <ResultValue type="fail">
-                  {cycleStatus.result.fail || 0}
-                </ResultValue>
-              </ResultCard>
-              <ResultCard>
-                <ResultLabel>MISS</ResultLabel>
-                <ResultValue type="miss">
-                  {cycleStatus.result.miss || 0}
-                </ResultValue>
-              </ResultCard>
-            </ResultGrid>
-
-            <InfoMessage type="info">
-              These results are for review only. You cannot edit them at this
-              stage.
-            </InfoMessage>
-
-            <TabButtons>
-              <TabButton
-                active={activeTab === "pass"}
-                onClick={() => setActiveTab("pass")}
-              >
-                PASS ({cycle1Images.pass?.length || 0})
-              </TabButton>
-              <TabButton
-                active={activeTab === "fail"}
-                onClick={() => setActiveTab("fail")}
-              >
-                FAIL ({cycle1Images.fail?.length || 0})
-              </TabButton>
-              <TabButton
-                active={activeTab === "miss"}
-                onClick={() => setActiveTab("miss")}
-              >
-                MISS ({cycle1Images.miss?.length || 0})
-              </TabButton>
-            </TabButtons>
-
-            <ImageGrid>
-              {(cycle1Images[activeTab] || []).map((image, index) => (
-                <ImageItem key={index}>
-                  <img src={image.url || image} alt={`${activeTab}-${index}`} />
-                </ImageItem>
-              ))}
-            </ImageGrid>
-          </CycleSection>
-
-          <ActionButtons>
-            <Button className="secondary" onClick={handleClose}>
-              Close
-            </Button>
-            <Button className="primary" onClick={handleNextPhase}>
-              Next: Cycle 2
-            </Button>
-          </ActionButtons>
-        </>
-      );
-    }
-
-    // 완료
+    // 완료 상태 (성공 메시지 + 결과 보기 버튼)
     if (autoLabelingStatus === "completed") {
       return (
         <>
+          <StatusCard $isCompleted={true}>
+            <StatusIcon $isCompleted={true}>{CheckIcon}</StatusIcon>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
+              <StatusTitle>Auto Labeling Completed!</StatusTitle>
+              <StatusDescription>
+                Your images have been successfully processed and labeled.
+                <br />
+                Click "View Results" to see the detailed results.
+              </StatusDescription>
+              <StatusBadge $isCompleted={true}>
+                <span>✓ Success</span>
+              </StatusBadge>
+            </div>
+          </StatusCard>
+
+          <ActionButtons>
+            <Button className="secondary" onClick={handleClose}>
+              Close
+            </Button>
+            <Button className="primary" onClick={handleViewResults}>
+              View Results
+            </Button>
+          </ActionButtons>
+        </>
+      );
+    }
+
+    // 결과 표시 상태
+    if (autoLabelingStatus === "showingResults") {
+      const currentList = activeTab === "pass" ? resultImages : failedImages;
+      const passCount = resultImages.length;
+      const failCount = failedImages.length;
+
+      return (
+        <>
           <CycleSection>
             <CycleHeader>
-              <CycleTitle>Final Result</CycleTitle>
-              <CycleBadge>Completed</CycleBadge>
+              <CycleTitle>Auto Labeling Results</CycleTitle>
+              <CycleBadge>Total: {passCount + failCount}</CycleBadge>
             </CycleHeader>
 
+            {/* 통계 표시 */}
             <ResultGrid>
               <ResultCard>
                 <ResultLabel>PASS</ResultLabel>
-                <ResultValue type="pass">
-                  {cycleStatus.result.pass || 0}
-                </ResultValue>
+                <ResultValue type="pass">{passCount}</ResultValue>
               </ResultCard>
               <ResultCard>
                 <ResultLabel>FAIL</ResultLabel>
-                <ResultValue type="fail">
-                  {cycleStatus.result.fail || 0}
-                </ResultValue>
-              </ResultCard>
-              <ResultCard>
-                <ResultLabel>MISS</ResultLabel>
-                <ResultValue type="miss">
-                  {cycleStatus.result.miss || 0}
-                </ResultValue>
+                <ResultValue type="fail">{failCount}</ResultValue>
               </ResultCard>
             </ResultGrid>
 
-            {cycleStatus.result.fail > 0 && (
-              <InfoMessage type="warning">
-                {cycleStatus.result.fail} images require additional manual
-                labeling. Please proceed to manual labeling.
-              </InfoMessage>
-            )}
+            {/* 탭 버튼 */}
+            <TabButtons>
+              <TabButton
+                $active={activeTab === "pass"}
+                onClick={() => setActiveTab("pass")}
+              >
+                PASS ({passCount})
+              </TabButton>
+              <TabButton
+                $active={activeTab === "fail"}
+                onClick={() => setActiveTab("fail")}
+              >
+                FAIL ({failCount})
+              </TabButton>
+            </TabButtons>
 
-            {cycleStatus.result.fail === 0 && (
-              <InfoMessage type="success">
-                Auto labeling completed successfully. You can proceed to review
-                or approve.
-              </InfoMessage>
-            )}
+            {/* 파일명 리스트 */}
+            <FileListContainer>
+              {currentList.length > 0 ? (
+                currentList.map((fileName, index) => (
+                  <FileListItem
+                    key={index}
+                    onClick={() => handleFileNameClick(fileName)}
+                  >
+                    {fileName}
+                  </FileListItem>
+                ))
+              ) : (
+                <div
+                  style={{
+                    padding: "20px",
+                    textAlign: "center",
+                    color: "#b6b5c5",
+                  }}
+                >
+                  {activeTab === "pass"
+                    ? "PASS된 이미지가 없습니다."
+                    : "FAIL된 이미지가 없습니다."}
+                </div>
+              )}
+            </FileListContainer>
           </CycleSection>
 
           <ActionButtons>
             <Button className="secondary" onClick={handleClose}>
               Close
             </Button>
-            {cycleStatus.result.fail > 0 && (
-              <Button
-                className="primary"
-                onClick={() => {
-                  // TODO: 수동 라벨링 페이지로 이동
-                  if (onComplete) onComplete();
-                  handleClose();
-                }}
-              >
-                Go to Manual Labeling
-              </Button>
-            )}
           </ActionButtons>
+
+          {/* 이미지 모달 */}
+          {isImageModalOpen && selectedImage && (
+            <ImageModalOverlay onClick={handleCloseImageModal}>
+              <ImageModalContent onClick={(e) => e.stopPropagation()}>
+                <ImageModalClose onClick={handleCloseImageModal}>
+                  ×
+                </ImageModalClose>
+                <ImageModalImage
+                  src={selectedImage.url}
+                  alt={selectedImage.fileName}
+                />
+                <ImageModalFileName>
+                  {selectedImage.fileName}
+                </ImageModalFileName>
+              </ImageModalContent>
+            </ImageModalOverlay>
+          )}
         </>
       );
     }

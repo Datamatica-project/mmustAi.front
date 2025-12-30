@@ -144,3 +144,23 @@ export const getFileUrlByName = async (fileName) => {
     throw error;
   }
 };
+
+/**
+ * 원본 이미지 조회
+ * @param {string} fileName - 원본 파일명
+ * @param {string} type - 파일 타입 (PROJECT, PREPROCESSING, PREPROCESSING_PROCESSED)
+ * @returns {string} 이미지 URL
+ */
+export const getOriginalImageUrl = async (fileName, type = "PROJECT") => {
+  try {
+    const response = await api.get(
+      `/api/v1/images/original/view?filename=${fileName}&type=${type}`,
+      { responseType: "blob" }
+    );
+    const objectUrl = URL.createObjectURL(response.data);
+    return objectUrl;
+  } catch (error) {
+    console.error("Get original image url error:", error);
+    throw error;
+  }
+};

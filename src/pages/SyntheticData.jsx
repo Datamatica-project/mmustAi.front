@@ -200,17 +200,20 @@ const ImageContainer = styled.div`
   height: 600px;
   position: relative;
   margin-bottom: 20px;
-  display: inline-block;
+  /* display: inline-block; */
+  display: flex;
+  justify-content: center;
+  align-items: center;
   img {
-    width: 100%;
+    /* width: 100%; */
     height: 100%;
-    object-fit: contain;
+    /* object-fit: contain; */
   }
   .mask-canvas {
     position: absolute;
-    top: 0;
+    /* top: 0;
     left: 0;
-    width: 100%;
+    width: 100%; */
     height: 100%;
     pointer-events: none; /* 클릭 이벤트는 이미지가 받도록 */
   }
@@ -304,12 +307,55 @@ export default function SyntheticData() {
   const fileInputRef = useRef(null); // 이미지 파일 입력 참조
   const [sgImage, setSgImage] = useState(null); // 이미지 URL 상태
   const [isSegmenting, setIsSegmenting] = useState(false); // 세그멘테이션 요청 중 로딩 상태
+  const [imageStyle, setImageStyle] = useState({}); // 이미지 크기 스타일
   const { projectId, taskId } = useParams();
 
   // 이미지 URL 해제
   useEffect(() => {
     return () => {
       if (sgImage) URL.revokeObjectURL(sgImage);
+    };
+  }, [sgImage]);
+
+  // 이미지 로드 시 크기에 따라 스타일 설정
+  useEffect(() => {
+    if (!sgImage) {
+      setImageStyle({});
+      return;
+    }
+
+    const img = document.querySelector(".target-image");
+    if (!img) return;
+
+    const handleImageLoad = () => {
+      const naturalWidth = img.naturalWidth;
+      const naturalHeight = img.naturalHeight;
+
+      // 가로가 더 길면 가로 100%, 세로가 더 길면 세로 100%
+      if (naturalWidth > naturalHeight) {
+        // 가로가 더 긴 경우
+        setImageStyle({
+          width: "100%",
+          height: "auto",
+        });
+      } else {
+        // 세로가 더 긴 경우
+        setImageStyle({
+          width: "auto",
+          height: "100%",
+        });
+      }
+    };
+
+    // 이미지가 이미 로드되어 있으면 즉시 실행
+    if (img.complete && img.naturalWidth > 0) {
+      handleImageLoad();
+    } else {
+      img.addEventListener("load", handleImageLoad);
+    }
+
+    return () => {
+      img.removeEventListener("load", handleImageLoad);
     };
   }, [sgImage]);
 
@@ -446,9 +492,13 @@ export default function SyntheticData() {
     fullMaskRef.current = fullMask;
     const handleClick = async (e) => {
       if (selectButton !== "Click") return;
+      if (!sgImage) return; // 이미지가 없으면 처리하지 않음
 
       const rect = e.currentTarget.getBoundingClientRect();
       const targetImage = document.querySelector(".target-image");
+
+      // targetImage가 없거나 placeholder 이미지인 경우 처리하지 않음
+      if (!targetImage || targetImage.src.includes("placeholder.png")) return;
 
       const containerWidth = rect.width;
       const containerHeight = rect.height;
@@ -523,7 +573,7 @@ export default function SyntheticData() {
     return () => {
       imageContainer?.removeEventListener("click", handleClick);
     };
-  }, [selectButton, toggleStatusButton, fullMask]);
+  }, [selectButton, toggleStatusButton, fullMask, sgImage]);
 
   return (
     <Container>
@@ -640,8 +690,9 @@ export default function SyntheticData() {
               src={sgImage || "/placeholder.png"}
               alt="segmantation image"
               className="target-image"
+              style={imageStyle}
             />
-            <canvas className="mask-canvas" />
+            <canvas className="mask-canvas" style={imageStyle} />
             {selectButton === "Bounding Box" && (
               <KonvaBoundingBoxLayer
                 width={790}
