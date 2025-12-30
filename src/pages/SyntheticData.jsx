@@ -196,6 +196,7 @@ const Header = styled.header`
 `;
 
 const ImageContainer = styled.div`
+  overflow: hidden;
   width: 790px;
   height: 600px;
   position: relative;

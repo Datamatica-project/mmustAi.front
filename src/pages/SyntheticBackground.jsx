@@ -168,6 +168,7 @@ const Navigation = styled.nav`
 `;
 
 const ImageContainer = styled.div`
+  overflow: hidden;
   width: 790px;
   height: 600px;
   position: relative;
@@ -638,6 +639,18 @@ export default function SyntheticBackground() {
         .addToast("Please place at least one object.", "error");
       return;
     }
+
+    // 바운딩 박스 사라지게 하기 (activePlacedId를 null로 설정)
+    setActivePlacedId(null);
+
+    // 바운딩 박스가 사라진 후 이미지 생성 (다음 프레임에 실행)
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          resolve();
+        });
+      });
+    });
 
     const labels = await exportComposite(
       bgCanvasRef.current,

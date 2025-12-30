@@ -12,6 +12,8 @@ import {
 import { useToastStore } from "../store/toastStore";
 import { uploadFilesUnified } from "../api/File";
 import { ChunkUploadCalculator } from "../utils/chunkCalculator";
+import { generateUUID } from "../utils/generateUUID";
+import JSZip from "jszip";
 
 const Wrapper = styled.div`
   min-height: 100vh;
@@ -382,29 +384,121 @@ export default function CreateProject() {
     setClasses((prev) => prev.filter((c) => c.name !== name));
   };
 
+  // 랜덤 영어 파일명 생성 함수 (한글 제거, 확장자 유지)
+  const generateRandomFileName = (originalFileName) => {
+    // 원본 파일의 확장자 추출
+    const extension = originalFileName.includes(".")
+      ? originalFileName.substring(originalFileName.lastIndexOf("."))
+      : "";
+
+    // 랜덤 문자열 생성 (UUID를 사용하되 하이픈 제거하여 더 짧게)
+    const randomString = generateUUID().replace(/-/g, "");
+
+    // 파일명: 랜덤문자열_타임스탬프 + 확장자
+    return `${randomString}_${Date.now()}${extension}`;
+  };
+
+  // ZIP 파일 내부 파일명 변경 처리
+  const processZipFile = async (file) => {
+    try {
+      // JSZip으로 ZIP 파일 읽기
+      const zip = await JSZip.loadAsync(file);
+      const newZip = new JSZip();
+
+      // ZIP 내부의 모든 파일 순회
+      const filePromises = [];
+      zip.forEach((relativePath, zipEntry) => {
+        // 디렉토리는 건너뛰기
+        if (zipEntry.dir) return;
+
+        // 파일명 추출
+        const fileName = relativePath.split("/").pop();
+        const extension = fileName.includes(".")
+          ? fileName.substring(fileName.lastIndexOf("."))
+          : "";
+
+        // 랜덤 영어 파일명 생성
+        const randomFileName = generateRandomFileName(fileName);
+
+        // 경로 구조 유지 (디렉토리가 있는 경우)
+        const pathParts = relativePath.split("/");
+        pathParts[pathParts.length - 1] = randomFileName;
+        const newPath = pathParts.join("/");
+
+        // 파일 데이터를 새 ZIP에 추가 (변경된 파일명으로)
+        filePromises.push(
+          zipEntry.async("blob").then((blob) => {
+            newZip.file(newPath, blob);
+          })
+        );
+      });
+
+      // 모든 파일 처리 완료 대기
+      await Promise.all(filePromises);
+
+      // 새로운 ZIP 파일 생성
+      const zipBlob = await newZip.generateAsync({ type: "blob" });
+      const processedZipFile = new File([zipBlob], file.name, {
+        type: "application/zip",
+        lastModified: file.lastModified,
+      });
+
+      return processedZipFile;
+    } catch (error) {
+      console.error("ZIP 파일 처리 실패:", error);
+      useToastStore
+        .getState()
+        .addToast("ZIP 파일 처리 중 오류가 발생했습니다.", "error");
+      // 실패 시 원본 파일 반환
+      return file;
+    }
+  };
+
   // Handle file selection
-  const handleFileSelect = (files) => {
+  const handleFileSelect = async (files) => {
     const fileArray = Array.from(files);
-    const newFiles = fileArray.map((file) => ({
-      file,
-      fileId: null,
-      progress: 0,
-      status: "pending", // pending, uploading, success, error
-    }));
+    const newFiles = await Promise.all(
+      fileArray.map(async (file) => {
+        // 원본 파일명 저장 (UI 표시용)
+        const originalFileName = file.name;
+
+        let processedFile = file;
+
+        // ZIP 파일인 경우 내부 파일명 변경 처리
+        if (file.name.endsWith(".zip")) {
+          processedFile = await processZipFile(file);
+        } else {
+          // 개별 파일인 경우 파일명 변경
+          const randomFileName = generateRandomFileName(originalFileName);
+          processedFile = new File([file], randomFileName, {
+            type: file.type,
+            lastModified: file.lastModified,
+          });
+        }
+
+        return {
+          file: processedFile, // 처리된 File 객체 사용
+          originalFileName, // UI 표시용 원본 파일명 저장
+          fileId: null,
+          progress: 0,
+          status: "pending", // pending, uploading, success, error
+        };
+      })
+    );
     setUploadFiles((prev) => [...prev, ...newFiles]);
   };
 
   // Handle individual file selection
-  const handleIndividualFileChange = (e) => {
+  const handleIndividualFileChange = async (e) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      handleFileSelect(files);
+      await handleFileSelect(files);
     }
     e.target.value = ""; // Allow reselecting the same file
   };
 
   // Handle ZIP file selection
-  const handleZipFileChange = (e) => {
+  const handleZipFileChange = async (e) => {
     const files = e.target.files;
     if (files && files.length > 0) {
       const zipFile = files[0];
@@ -414,7 +508,7 @@ export default function CreateProject() {
           .addToast("Only ZIP files can be uploaded.", "error");
         return;
       }
-      handleFileSelect([zipFile]);
+      await handleFileSelect([zipFile]);
     }
     e.target.value = "";
   };
@@ -430,7 +524,7 @@ export default function CreateProject() {
     setIsDragging(false);
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     setIsDragging(false);
 
@@ -439,14 +533,14 @@ export default function CreateProject() {
         file.type.startsWith("image/")
       );
       if (files.length > 0) {
-        handleFileSelect(files);
+        await handleFileSelect(files);
       }
     } else {
       const files = Array.from(e.dataTransfer.files).filter((file) =>
         file.name.endsWith(".zip")
       );
       if (files.length > 0) {
-        handleFileSelect(files);
+        await handleFileSelect(files);
       }
     }
   };
@@ -496,20 +590,35 @@ export default function CreateProject() {
             }
           );
 
-          // Extract fileId from response (use first element of successFileIds array)
-          const fileId =
-            response.data?.successFileIds?.[0] ||
-            response.data?.fileIds?.[0] ||
-            response.data?.fileId ||
-            response.fileId;
+          // ZIP 파일인지 확인
+          const isZipFile = file.name.endsWith(".zip");
+
+          // ZIP 파일과 개별 파일 구분 처리
+          let fileId = null;
+          if (isZipFile) {
+            // ZIP 파일: successFileIds 전체 배열 사용 (여러 개의 파일 ID)
+            const successFileIds =
+              response.data?.successFileIds || response.data?.fileIds || [];
+            fileId = successFileIds.length > 0 ? successFileIds : null;
+            console.log("ZIP file - extracted fileIds:", fileId);
+          } else {
+            // 개별 파일: 첫 번째 파일 ID만 사용
+            fileId =
+              response.data?.successFileIds?.[0] ||
+              response.data?.fileIds?.[0] ||
+              response.data?.fileId ||
+              response.fileId;
+            console.log("Individual file - fileId:", fileId);
+          }
 
           // Update fileId (for this file only)
+          // ZIP 파일의 경우 fileId는 배열, 개별 파일의 경우 단일 값
           setUploadFiles((prev) =>
             prev.map((item, index) =>
               index === fileIndex
                 ? {
                     ...item,
-                    fileId: fileId,
+                    fileId: fileId, // ZIP: 배열, 개별: 단일 값
                     status: "success",
                     progress: 100,
                   }
@@ -562,11 +671,21 @@ export default function CreateProject() {
 
   const handleSubmit = async () => {
     // Extract uploaded fileIds
+    // ZIP 파일의 경우 fileId가 배열이므로 flatMap으로 펼쳐서 모든 파일 ID 수집
+    // 개별 파일의 경우 fileId가 단일 값이므로 배열로 변환
     const uploadedFileIds = uploadFiles
       .filter((item) => item.status === "success")
-      .map((item) => item.fileId);
+      .flatMap((item) => {
+        // fileId가 배열인 경우 (ZIP 파일) 그대로 사용
+        if (Array.isArray(item.fileId)) {
+          return item.fileId;
+        }
+        // fileId가 단일 값인 경우 (개별 파일) 배열로 변환
+        return item.fileId ? [item.fileId] : [];
+      });
 
-    console.log(uploadFiles);
+    console.log("uploadFiles:", uploadFiles);
+    console.log("uploadedFileIds:", uploadedFileIds);
 
     if (uploadedFileIds.length === 0) {
       useToastStore
@@ -740,7 +859,9 @@ export default function CreateProject() {
                     {uploadFiles.map((item, index) => (
                       <FileItem key={index}>
                         <FileInfo>
-                          <FileName>{item.file.name}</FileName>
+                          <FileName>
+                            {item.originalFileName || item.file.name}
+                          </FileName>
                           <ProgressBar>
                             <ProgressFill $progress={item.progress} />
                           </ProgressBar>

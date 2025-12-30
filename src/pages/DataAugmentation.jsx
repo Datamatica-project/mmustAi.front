@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import styled from "styled-components";
 import PageHeader from "../components/organisms/PageHeader";
@@ -245,8 +245,14 @@ export default function DataAugmentation() {
   // 저장 완료 상태 관리 (학습 데이터 저장 완료 여부)
   const [savedStatus, setSavedStatus] = useState({}); // { imageId: true/false }
   const { placedObjects, setPlacedObjects } = usePlacedObjectsStore();
+  // useEffect 중복 실행 방지용 ref
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
+    // 이미 실행되었으면 스킵
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
+
     loadAndAugment();
   }, []);
 
