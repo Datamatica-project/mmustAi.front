@@ -762,14 +762,48 @@ export default function AutoLabelingModal({
 
       if (result && result.items && Array.isArray(result.items)) {
         const resultItems = result.items;
-        // passed === true인 항목들의 resultPath만 추출
+
+        // resultPath 파싱 함수
+        const parseResultPath = (resultPath) => {
+          // resultPath 형식: /workspace/auto_labeling/demo/data/demo_runs/run_20251230_082135_b44872a0/result/fail/01a4933a-252e566a.jpg
+          if (!resultPath) return null;
+
+          // /result/ 다음 경로에서 which (pass 또는 fail) 추출
+          const resultIndex = resultPath.indexOf("/result/");
+          if (resultIndex === -1) return null;
+
+          const afterResult = resultPath.substring(
+            resultIndex + "/result/".length
+          );
+          const parts = afterResult.split("/");
+          const which = parts[0]; // pass 또는 fail
+          const name = parts[parts.length - 1]; // 마지막 파일명 (01a4933a-252e566a.jpg)
+
+          // runId 추출 (run_으로 시작하는 부분 찾기)
+          const runIdMatch = resultPath.match(/run_\d{8}_\d{6}_[a-f0-9]+/);
+          const runId = runIdMatch ? runIdMatch[0] : null;
+
+          if (!runId || !name || !which) return null;
+
+          return {
+            runId,
+            name,
+            which,
+            fileName: name, // 표시용 파일명
+          };
+        };
+
+        // passed === true인 항목들의 resultPath 파싱
         passdImages = resultItems
           .filter((item) => item.passed === true)
-          .map((item) => item.resultPath.split("/pass/")[1]);
-        // passed === false인 항목들의 resultPath만 추출
+          .map((item) => parseResultPath(item.resultPath))
+          .filter((item) => item !== null); // null 제거
+
+        // passed === false인 항목들의 resultPath 파싱
         failedImages = resultItems
           .filter((item) => item.passed === false)
-          .map((item) => item.resultPath.split("/fail/")[1]);
+          .map((item) => parseResultPath(item.resultPath))
+          .filter((item) => item !== null); // null 제거
 
         console.log("Passed images:", passdImages);
         console.log("Failed images:", failedImages);
@@ -799,10 +833,15 @@ export default function AutoLabelingModal({
     onClose();
   };
 
-  const handleFileNameClick = async (fileName) => {
+  const handleFileNameClick = async (imageData) => {
     try {
-      const imageUrl = await getOriginalImageUrl(fileName, "PROJECT");
-      setSelectedImage({ url: imageUrl, fileName });
+      // imageData는 { runId, name, which, fileName } 형태의 객체
+      const imageUrl = await getOriginalImageUrl(
+        imageData.runId,
+        imageData.name,
+        imageData.which
+      );
+      setSelectedImage({ url: imageUrl, fileName: imageData.fileName });
       setIsImageModalOpen(true);
     } catch (error) {
       console.error("Error loading original image:", error);
@@ -1011,12 +1050,12 @@ export default function AutoLabelingModal({
             {/* 파일명 리스트 */}
             <FileListContainer>
               {currentList.length > 0 ? (
-                currentList.map((fileName, index) => (
+                currentList.map((imageData, index) => (
                   <FileListItem
                     key={index}
-                    onClick={() => handleFileNameClick(fileName)}
+                    onClick={() => handleFileNameClick(imageData)}
                   >
-                    {fileName}
+                    {imageData.name}
                   </FileListItem>
                 ))
               ) : (

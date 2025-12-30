@@ -280,7 +280,7 @@ export default function DataAugmentation() {
       let processedResults = results;
 
       setAugmentedResults(processedResults);
-      console.log(processedResults);
+
       useToastStore
         .getState()
         .addToast(

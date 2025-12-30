@@ -172,17 +172,20 @@ const ImageContainer = styled.div`
   height: 600px;
   position: relative;
   margin-bottom: 20px;
-  display: inline-block;
+  /* display: inline-block; */
+  display: flex;
+  justify-content: center;
+  align-items: center;
   img {
-    width: 100%;
+    /* width: 100%; */
     height: 100%;
-    object-fit: contain;
+    /* object-fit: contain; */
   }
   .mask-canvas {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
+    /* top: 0;
+    left: 0; */
+    /* width: 100%; */
     height: 100%;
   }
 `;
@@ -287,6 +290,49 @@ export default function SyntheticBackground() {
   const startAngleRef = useRef(0);
   const startRotateRef = useRef(0);
   const { projectId, taskId } = useParams();
+  const [imageStyle, setImageStyle] = useState({});
+
+  // 이미지 로드 시 크기에 따라 스타일 설정
+  useEffect(() => {
+    if (!bgImage) {
+      setImageStyle({});
+      return;
+    }
+
+    const img = document.querySelector(".target-image");
+    if (!img) return;
+
+    const handleImageLoad = () => {
+      const naturalWidth = img.naturalWidth;
+      const naturalHeight = img.naturalHeight;
+
+      // 가로가 더 길면 가로 100%, 세로가 더 길면 세로 100%
+      if (naturalWidth > naturalHeight) {
+        // 가로가 더 긴 경우
+        setImageStyle({
+          width: "100%",
+          height: "auto",
+        });
+      } else {
+        // 세로가 더 긴 경우
+        setImageStyle({
+          width: "auto",
+          height: "100%",
+        });
+      }
+    };
+
+    // 이미지가 이미 로드되어 있으면 즉시 실행
+    if (img.complete && img.naturalWidth > 0) {
+      handleImageLoad();
+    } else {
+      img.addEventListener("load", handleImageLoad);
+    }
+
+    return () => {
+      img.removeEventListener("load", handleImageLoad);
+    };
+  }, [bgImage]);
 
   useEffect(() => {
     // 캔버스 크기 === 이미지 크기로 조정
@@ -603,7 +649,6 @@ export default function SyntheticBackground() {
 
     // result.imageUrl을 사용하여 이미지 표시
     // 예: <img src={result.imageUrl} />
-    
 
     navigate(
       `/project/${projectId}/synthetic-data/${taskId}/data-augmentation`
@@ -709,10 +754,12 @@ export default function SyntheticBackground() {
               src={bgImage || "/placeholder.png"}
               alt="background"
               className="target-image"
+              style={imageStyle}
             />
             <canvas
               ref={bgCanvasRef}
               className="mask-canvas"
+              style={imageStyle}
               onMouseDown={handleCanvasMouseDown}
               onMouseMove={handleCanvasMouseMove}
               onMouseUp={handleCanvasMouseUp}

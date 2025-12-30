@@ -151,16 +151,42 @@ export const getFileUrlByName = async (fileName) => {
  * @param {string} type - 파일 타입 (PROJECT, PREPROCESSING, PREPROCESSING_PROCESSED)
  * @returns {string} 이미지 URL
  */
-export const getOriginalImageUrl = async (fileName, type = "PROJECT") => {
+// export const getOriginalImageUrl = async (fileName, type = "PROJECT") => {
+//   try {
+//     const response = await api.get(
+//       `/api/v1/images/original/view?filename=${fileName}&type=${type}`,
+//       { responseType: "blob" }
+//     );
+//     const objectUrl = URL.createObjectURL(response.data);
+//     return objectUrl;
+//   } catch (error) {
+//     console.error("Get original image url error:", error);
+//     throw error;
+//   }
+// };
+
+/**
+ * Demo 결과 이미지 미리보기 조회
+ * @param {string} runId - Demo 실행 ID
+ * @param {string} name - 이미지 파일명
+ * @param {string} which - 결과 타입 (pass 또는 fail)
+ * @returns {string} 이미지 URL
+ */
+export const getOriginalImageUrl = async (runId, name, which) => {
+  console.log(runId, name, which);
   try {
-    const response = await api.get(
-      `/api/v1/images/original/view?filename=${fileName}&type=${type}`,
-      { responseType: "blob" }
-    );
+    const response = await api.get(`/api/v1/ai/demo/results/preview`, {
+      params: {
+        runId,
+        name,
+        which,
+      },
+      responseType: "blob",
+    });
     const objectUrl = URL.createObjectURL(response.data);
     return objectUrl;
   } catch (error) {
-    console.error("Get original image url error:", error);
+    console.error("Get demo result image url error:", error);
     throw error;
   }
 };
