@@ -5,6 +5,10 @@
       "destination": "http://1.235.57.64:8080/api/:path*"
     },
     {
+      "source": "/sam/:path*",
+      "destination": "http://1.235.57.64:8001/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
