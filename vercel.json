@@ -2,12 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "http://1.235.57.64:8080/api/:path*",
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization"
-      }
+      "destination": "http://1.235.57.64:8080/api/:path*"
     },
     {
       "source": "/sam/:path*",
