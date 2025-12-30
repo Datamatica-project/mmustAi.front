@@ -16,6 +16,15 @@ const Nav = styled.nav`
   padding: 30px 20px;
   background-color: #2f304e;
   gap: 30px;
+  .logo-button {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
   a {
     margin: 0 auto;
   }
@@ -89,9 +98,9 @@ export default function Gnb() {
 
   return (
     <Nav>
-      <Link to="/login">
+      <button onClick={() => navigate("/")} className="logo-button">
         <img src={logoPng} alt="logo" width={70} height={70} />
-      </Link>
+      </button>
       <ul>
         {window.location.pathname !== "/" && (
           <li>
