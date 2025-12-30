@@ -14,6 +14,9 @@ import { uploadFilesUnified } from "../api/File";
 import { ChunkUploadCalculator } from "../utils/chunkCalculator";
 import { generateUUID } from "../utils/generateUUID";
 import JSZip from "jszip";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { enUS } from "date-fns/locale";
 
 const Wrapper = styled.div`
   min-height: 100vh;
@@ -107,6 +110,24 @@ const Input = styled.input`
   padding: 10px 14px;
   font-size: 14px;
   outline: none;
+
+  &::placeholder {
+    color: #c3c3c3;
+  }
+`;
+
+// DatePicker를 기존 Input 스타일과 동일하게 맞추기 위한 스타일드 컴포넌트
+const StyledDatePicker = styled(DatePicker)`
+  box-sizing: border-box;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #ea257f;
+  background-color: #1c1d2f;
+  color: #ffffff;
+  padding: 10px 14px;
+  font-size: 14px;
+  outline: none;
+  font-family: inherit;
 
   &::placeholder {
     color: #c3c3c3;
@@ -348,7 +369,7 @@ export default function CreateProject() {
 
   const [projectName, setProjectName] = useState("");
   const [description, setDescription] = useState("");
-  const [startDate, setStartDate] = useState("");
+  const [startDate, setStartDate] = useState(null); // Date 객체로 변경
   const [imagesPerTask, setImagesPerTask] = useState(1);
 
   // Upload related state
@@ -693,8 +714,14 @@ export default function CreateProject() {
         .addToast("Please upload at least one file.", "error");
       return;
     }
-    // Convert startDate to "YYYY-MM-DDT23:59:59" format (including last time of date)
-    const formattedStartDate = startDate ? `${startDate}T23:59:59` : startDate;
+    // Convert startDate (Date 객체) to "YYYY-MM-DDT23:59:59" format (including last time of date)
+    let formattedStartDate = null;
+    if (startDate) {
+      const year = startDate.getFullYear();
+      const month = String(startDate.getMonth() + 1).padStart(2, "0");
+      const day = String(startDate.getDate()).padStart(2, "0");
+      formattedStartDate = `${year}-${month}-${day}T23:59:59`;
+    }
 
     const classesWithClassId = classes.map((cls) => ({
       name: cls.name,
@@ -730,6 +757,66 @@ export default function CreateProject() {
 
   return (
     <Wrapper>
+      {/* DatePicker 캘린더 스타일 커스터마이징 */}
+      <style>{`
+        .date-picker-calendar {
+          background-color: #202236 !important;
+          border: 1px solid #ea257f !important;
+          border-radius: 10px !important;
+          font-family: inherit !important;
+        }
+        
+        .react-datepicker__header {
+          background-color: #1c1d2f !important;
+          border-bottom: 1px solid #3b3c5d !important;
+          border-top-left-radius: 10px !important;
+          border-top-right-radius: 10px !important;
+        }
+        
+        .react-datepicker__current-month {
+          color: #ffffff !important;
+          font-weight: 700 !important;
+        }
+        
+        .react-datepicker__day-name {
+          color: #b6b5c5 !important;
+        }
+        
+        .react-datepicker__day {
+          color: #ffffff !important;
+        }
+        
+        .react-datepicker__day:hover {
+          background-color: #3b3c5d !important;
+          border-radius: 50% !important;
+        }
+        
+        .react-datepicker__day--selected {
+          background-color: #f62579 !important;
+          border-radius: 50% !important;
+        }
+        
+        .react-datepicker__day--keyboard-selected {
+          background-color: #f62579 !important;
+          border-radius: 50% !important;
+        }
+        
+        .react-datepicker__day--today {
+          font-weight: 700 !important;
+        }
+        
+        .react-datepicker__navigation {
+          top: 10px !important;
+        }
+        
+        .react-datepicker__navigation-icon::before {
+          border-color: #ffffff !important;
+        }
+        
+        .react-datepicker__triangle {
+          display: none !important;
+        }
+      `}</style>
       {/* <PageHeader title="Create Project" description="Project settings" /> */}
       <PageContainer>
         <Card>
@@ -762,10 +849,15 @@ export default function CreateProject() {
             <FormRow>
               <div>
                 <Label>Start Date</Label>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                <StyledDatePicker
+                  selected={startDate}
+                  onChange={(date) => setStartDate(date)}
+                  dateFormat="yyyy-MM-dd"
+                  locale={enUS}
+                  placeholderText="Select a date"
+                  wrapperClassName="date-picker-wrapper"
+                  className="date-picker-input"
+                  calendarClassName="date-picker-calendar"
                 />
               </div>
 
