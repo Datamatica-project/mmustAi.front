@@ -349,7 +349,7 @@ export default function CreateProject() {
   const [projectName, setProjectName] = useState("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
-  const [imagesPerTask, setImagesPerTask] = useState("");
+  const [imagesPerTask, setImagesPerTask] = useState(1);
 
   // Upload related state
   const [uploadMethod, setUploadMethod] = useState("individual"); // "individual" | "zip"

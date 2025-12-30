@@ -232,7 +232,7 @@ export default function DotMenuButton({
             <li>
               <button onClick={(e) => handleDeleteClick(e)}>
                 {DeleteIcon}
-                <span>삭제</span>
+                <span>Delete</span>
               </button>
             </li>
           </DropdownMenu>,
