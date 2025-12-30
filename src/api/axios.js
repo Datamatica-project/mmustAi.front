@@ -2,18 +2,18 @@ import axios from "axios";
 import { useAuthStore } from "../store/authStore";
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "/api",
+  baseURL: import.meta.env.VITE_API_URL || "",
   withCredentials: true, // 세션 쿠키를 사용해 인증을 유지하는 구조일때 자동 첨부
 });
 
 export const samApi = axios.create({
   // SAM2 API 주소를 환경 변수로 관리 (포트포워딩 접속 시 주소 변경 가능)
   // 환경 변수가 없으면 기본값으로 localhost 사용
-  baseURL: import.meta.env.VITE_SAM_API_URL || "/sam",
+  baseURL: import.meta.env.VITE_SAM_API_URL || "",
 });
 
 export const opencvApi = axios.create({
-  baseURL: import.meta.env.VITE_OPENCV_API_URL || "/opencv",
+  baseURL: import.meta.env.VITE_OPENCV_API_URL || "",
 });
 
 // 요청 인터셉터: 토큰을 헤더에 추가
