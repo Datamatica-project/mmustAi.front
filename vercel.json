@@ -5,8 +5,8 @@
       "destination": "http://1.235.57.64:8080/api/:path*"
     },
     {
-      "source": "/sam/:path*",
-      "destination": "http://1.235.57.64:8001/sam/:path*"
+      "source": "/segment/:path*",
+      "destination": "http://1.235.57.64:8001/segment/:path*"
     },
     {
       "source": "/(.*)",
