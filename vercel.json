@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "http://1.235.57.64:8080/:path*"
+      "destination": "http://1.235.57.64:8080/api/:path*"
     },
     {
       "source": "/sam/:path*",
-      "destination": "http://1.235.57.64:8001/:path*"
+      "destination": "http://1.235.57.64:8001/sam/:path*"
     },
     {
       "source": "/(.*)",
