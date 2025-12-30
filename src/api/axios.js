@@ -34,8 +34,11 @@ api.interceptors.response.use(
       const { clearToken } = useAuthStore.getState();
       // 토큰 삭제
       clearToken();
-      // 로그인 페이지로 리다이렉트 (브라우저 환경에서만)
-      if (typeof window !== "undefined") {
+      // 로그인 페이지로 리다이렉트 (브라우저 환경에서만, 이미 로그인 페이지가 아닐 때만)
+      if (
+        typeof window !== "undefined" &&
+        window.location.pathname !== "/login"
+      ) {
         window.location.href = "/login";
       }
     }
