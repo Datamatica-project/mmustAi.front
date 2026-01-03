@@ -432,8 +432,22 @@ export default function CreateProject() {
         // 디렉토리는 건너뛰기
         if (zipEntry.dir) return;
 
-        // 파일명 추출
+        // macOS 메타데이터 파일 필터링
+        // __MACOSX/ 폴더 내 파일 제외
+        if (relativePath.includes("__MACOSX/")) {
+          return;
+        }
+        // ._ 로 시작하는 파일 제외 (macOS 리소스 포크)
         const fileName = relativePath.split("/").pop();
+        if (fileName.startsWith("._")) {
+          return;
+        }
+        // .DS_Store 파일 제외
+        if (fileName === ".DS_Store") {
+          return;
+        }
+
+        // 파일명 추출
         const extension = fileName.includes(".")
           ? fileName.substring(fileName.lastIndexOf("."))
           : "";
