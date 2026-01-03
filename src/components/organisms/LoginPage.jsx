@@ -191,6 +191,7 @@ export default function LoginPage() {
         {
           // 로그인 성공 시 실행
           onSuccess: (res) => {
+            localStorage.setItem("email", res.data.data.email);
             const accessToken = res.data.data.accessToken;
             setToken(accessToken); // 토큰 저장
             navigate("/");

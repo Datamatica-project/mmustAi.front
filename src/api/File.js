@@ -97,6 +97,7 @@ export const uploadFilesUnified = async (
   files.forEach((file) => {
     formData.append("files", file);
   });
+  console.log("formData", formData.getAll("files"));
 
   try {
     const response = await api.post(
@@ -119,6 +120,7 @@ export const uploadFilesUnified = async (
         },
       }
     );
+    console.log("response", response);
     return response.data;
   } catch (error) {
     console.error("Upload files error:", error);

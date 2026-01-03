@@ -11,6 +11,7 @@ import SyntheticLayout from "../pages/SyntheticLayout";
 import SyntheticBackground from "../pages/SyntheticBackground";
 import DataAugmentation from "../pages/DataAugmentation";
 import ImageGeneration from "../pages/ImageGeneration";
+import Classes from "../pages/Classes";
 
 const Loader = styled.div`
   height: 100vh;
@@ -69,6 +70,7 @@ const Router = ({ isAuthFailed }) => {
             path="/project/:projectId/ImageGeneration"
             element={<ImageGeneration />}
           />
+          <Route path="/classes" element={<Classes />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

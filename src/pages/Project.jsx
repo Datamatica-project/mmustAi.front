@@ -9,6 +9,7 @@ import TaskTable from "../components/molecules/TaskTable";
 import AddImageModal from "../components/molecules/AddImageModal";
 import InviteMemberModal from "../components/molecules/InviteMemberModal";
 import AutoLabelingModal from "../components/molecules/AutoLabelingModal";
+import AutoLabelingDemoModal from "../components/molecules/AutoLabelingDemoModal";
 import { peopleCost, TaskList } from "../data";
 import Pagination from "../components/common/Pagination";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -155,6 +156,8 @@ export default function Project() {
   const [isAddImageModalOpen, setIsAddImageModalOpen] = useState(false);
   const [isInviteMemberModalOpen, setIsInviteMemberModalOpen] = useState(false);
   const [isAutoLabelingModalOpen, setIsAutoLabelingModalOpen] = useState(false);
+  const [isAutoLabelingDemoModalOpen, setIsAutoLabelingDemoModalOpen] =
+    useState(false);
   const { projectRoles, setProjectRoles } = useProjectRolesStore();
   const navigate = useNavigate();
 
@@ -208,11 +211,23 @@ export default function Project() {
           <Description>{projectDetail?.description}</Description>
         </div>
         <div className="button-group">
+          {/* <button
+            className="button"
+            onClick={() => setIsAutoLabelingModalOpen(true)}
+          >
+            Auto Labeling
+          </button> */}
           <button
             className="button"
             onClick={() => setIsAutoLabelingModalOpen(true)}
           >
             Auto Labeling
+          </button>
+          <button
+            className="button"
+            onClick={() => setIsAutoLabelingDemoModalOpen(true)}
+          >
+            Auto Labeling Demo
           </button>
           {/* <StyledLink
             to={`/project/${params.projectId}/synthetic-data`}
@@ -332,6 +347,22 @@ export default function Project() {
       <AutoLabelingModal
         isOpen={isAutoLabelingModalOpen}
         onClose={() => setIsAutoLabelingModalOpen(false)}
+        projectId={params.projectId}
+        projectData={data}
+        onComplete={() => {
+          // 프로젝트 데이터 새로고침
+          const fetchProject = async () => {
+            const response = await getProject(params.projectId);
+            setData(response.data);
+          };
+          fetchProject();
+        }}
+      />
+
+      {/* 오토라벨링 데모 모달 */}
+      <AutoLabelingDemoModal
+        isOpen={isAutoLabelingDemoModalOpen}
+        onClose={() => setIsAutoLabelingDemoModalOpen(false)}
         projectId={params.projectId}
         projectData={data}
         onComplete={() => {

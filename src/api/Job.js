@@ -49,6 +49,16 @@ export const deleteObject = async (objectId) => {
   }
 };
 
+export const updateObject = async (objectId, updateData) => {
+  try {
+    const response = await api.patch(`/api/v1/objects/${objectId}`, updateData);
+    return response.data;
+  } catch (error) {
+    console.error("Error updating object:", error);
+    throw error;
+  }
+};
+
 export const submitJob = async (jobId) => {
   try {
     const response = await api.patch(`/api/v1/jobs/${jobId}/submit`);

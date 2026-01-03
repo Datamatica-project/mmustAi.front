@@ -3,6 +3,7 @@ import styled from "styled-components";
 import logoPng from "../../assets/image/datamatica_Logo.png";
 import { Link, NavLink, useNavigate, useParams } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
+import { UserIcon } from "../icons/HomeIcons";
 
 const Nav = styled.nav`
   position: fixed;
@@ -43,6 +44,13 @@ const Nav = styled.nav`
   & .active {
     border-bottom: 2px solid #ea257f;
     font-weight: 700;
+  }
+
+  & .user-info-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
   }
 `;
 
@@ -102,13 +110,17 @@ export default function Gnb() {
         <img src={logoPng} alt="logo" width={70} height={70} />
       </button>
       <ul>
-        {window.location.pathname !== "/" && (
-          <li>
-            <GoBackButton onClick={handleGoBack}>go back</GoBackButton>
-          </li>
-        )}
+        {window.location.pathname !== "/" &&
+          window.location.pathname !== "/classes" && (
+            <li>
+              <GoBackButton onClick={handleGoBack}>go back</GoBackButton>
+            </li>
+          )}
         <li>
           <NavLinks to="/">Home</NavLinks>
+        </li>
+        <li>
+          <NavLinks to="/classes">Classes</NavLinks>
         </li>
       </ul>
 
@@ -121,6 +133,10 @@ export default function Gnb() {
           >
             Logout
           </NavLinks>
+        </li>
+        <li className="user-info-container">
+          {UserIcon}
+          <p>{localStorage.getItem("email").split("@")[0]}</p>
         </li>
       </ul>
     </Nav>

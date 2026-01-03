@@ -610,6 +610,7 @@ export default function CreateProject() {
               );
             }
           );
+          console.log("response", response);
 
           // ZIP 파일인지 확인
           const isZipFile = file.name.endsWith(".zip");
@@ -832,7 +833,15 @@ export default function CreateProject() {
                 <Input
                   placeholder="Project Name"
                   value={projectName}
-                  onChange={(e) => setProjectName(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // 최대 50자까지만 입력 가능
+                    if (value.length <= 50) {
+                      setProjectName(value);
+                    }
+                  }}
+                  maxLength={50}
+                  minLength={2}
                 />
               </div>
             </FormRow>
@@ -842,7 +851,14 @@ export default function CreateProject() {
                 <TextArea
                   placeholder="Project description"
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // 최대 50자까지만 입력 가능
+                    if (value.length <= 50) {
+                      setDescription(value);
+                    }
+                  }}
+                  maxLength={50}
                 />
               </div>
             </FormRow>

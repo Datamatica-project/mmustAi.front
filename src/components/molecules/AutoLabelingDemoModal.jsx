@@ -1,24 +1,18 @@
 import React, { useState, useEffect, useCallback } from "react";
 import styled from "styled-components";
-import { useNavigate } from "react-router-dom";
 import {
   getAutoLabelingResult,
   getProject,
   getProjectDetail,
   startAutoLabeling,
 } from "../../api/Project";
-// import {
-//   startAutoLabeling,
-//   getAutoLabelingStatus,
-//   getAutoLabelingCycleResult,
-//   getProject,
-// } from "../../api/Project";
 import { useToastStore } from "../../store/toastStore";
 import { getOriginalImageUrl } from "../../api/File";
 import confetti from "canvas-confetti";
 import { CheckIcon } from "../icons/Icons";
 import { classes as defaultClasses } from "../../data";
 
+// 기존 AutoLabelingModal과 동일한 스타일 컴포넌트들 재사용
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -182,12 +176,6 @@ const LoadingText = styled.div`
   text-align: center;
 `;
 
-const PhaseText = styled.div`
-  font-size: 14px;
-  color: #b6b5c5;
-  margin-top: 8px;
-`;
-
 const StatusCard = styled.div`
   display: flex;
   flex-direction: column;
@@ -289,122 +277,6 @@ const StatusBadge = styled.div`
   margin-top: 8px;
 `;
 
-// const CheckIcon = styled.div`
-//   width: 40px;
-//   height: 40px;
-//   position: relative;
-
-//   &::before,
-//   &::after {
-//     content: "";
-//     position: absolute;
-//     background-color: #ffffff;
-//     border-radius: 2px;
-//   }
-
-//   &::before {
-//     width: 4px;
-//     height: 20px;
-//     left: 14px;
-//     top: 20px;
-//     transform: rotate(45deg);
-//   }
-
-//   &::after {
-//     width: 4px;
-//     height: 12px;
-//     left: 22px;
-//     top: 24px;
-//     transform: rotate(-45deg);
-//   }
-// `;
-
-// 라벨링된 클래스 정보 표시용 스타일 컴포넌트
-const LabeledClassesSection = styled.div`
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #3b3c5d;
-`;
-
-const LabeledClassesTitle = styled.div`
-  font-size: 14px;
-  color: #b6b5c5;
-  font-weight: 500;
-  margin-bottom: 12px;
-`;
-
-const LabeledClassesList = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-`;
-
-const ClassBadge = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background-color: #2a2b3d;
-  border-radius: 6px;
-  border: 1px solid #3b3c5d;
-`;
-
-const ClassColorDot = styled.div`
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background-color: ${(props) => props.color || "#ffffff"};
-`;
-
-const ClassName = styled.span`
-  font-size: 13px;
-  color: #ffffff;
-  font-weight: 500;
-`;
-
-const ClassCount = styled.span`
-  font-size: 13px;
-  color: #b6b5c5;
-  font-weight: 600;
-`;
-
-const ClassBalanceInfo = styled(InfoMessage)`
-  margin-top: 12px;
-`;
-
-// 학습이 안된 클래스 섹션 스타일 (비슷한 UI)
-const IncompleteClassesSection = styled.div`
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #3b3c5d;
-`;
-
-const IncompleteClassesTitle = styled.div`
-  font-size: 14px;
-  color: #b6b5c5;
-  font-weight: 500;
-  margin-bottom: 12px;
-`;
-
-const IncompleteClassesList = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
-`;
-
-const IncompleteClassLink = styled.a`
-  font-size: 13px;
-  color: #f62579;
-  text-decoration: underline;
-  cursor: pointer;
-  transition: color 0.2s;
-
-  &:hover {
-    color: #ea257f;
-  }
-`;
-
 const CycleSection = styled.div`
   margin-bottom: 24px;
 `;
@@ -462,6 +334,111 @@ const ResultValue = styled.div`
   }};
 `;
 
+const ActionButtons = styled.div`
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+`;
+
+const Button = styled.button`
+  flex: 1;
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &.primary {
+    background-color: #f62579;
+    color: #ffffff;
+
+    &:hover {
+      background-color: #d41e66;
+    }
+
+    &:disabled {
+      background-color: #5b5d75;
+      cursor: not-allowed;
+    }
+  }
+
+  &.secondary {
+    background-color: transparent;
+    border: 1px solid #5b5d75;
+    color: #ffffff;
+
+    &:hover {
+      background-color: #3b3c5d;
+    }
+  }
+
+  &.danger {
+    background-color: transparent;
+    border: 1px solid #f62579;
+    color: #f62579;
+
+    &:hover {
+      background-color: rgba(246, 37, 121, 0.1);
+    }
+  }
+`;
+
+// 루프 완료 화면용 스타일
+const LoopCompleteSection = styled.div`
+  margin-bottom: 24px;
+  padding: 20px;
+  background-color: #151624;
+  border-radius: 8px;
+  border: 1px solid #3b3c5d;
+`;
+
+const LoopCompleteTitle = styled.div`
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  text-align: center;
+  margin-bottom: 16px;
+`;
+
+const AutoLoopCheckbox = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px;
+  background-color: #1c1d2f;
+  border-radius: 8px;
+  border: 1px solid #3b3c5d;
+`;
+
+const CheckboxInput = styled.input`
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #f62579;
+`;
+
+const CheckboxLabel = styled.label`
+  font-size: 14px;
+  color: #b6b5c5;
+  cursor: pointer;
+  user-select: none;
+`;
+
+const LoopProgressInfo = styled.div`
+  margin-top: 12px;
+  padding: 12px;
+  background-color: rgba(42, 188, 245, 0.1);
+  border: 1px solid #2abcf5;
+  border-radius: 8px;
+  color: #2abcf5;
+  font-size: 13px;
+  text-align: center;
+`;
+
+// 최종 결과 화면용 스타일 (기존 AutoLabelingModal과 동일)
 const TabButtons = styled.div`
   display: flex;
   gap: 10px;
@@ -482,36 +459,6 @@ const TabButton = styled.button`
 
   &:hover {
     border-color: #f62579;
-  }
-`;
-
-const ImageGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 12px;
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 12px;
-  background-color: #151624;
-  border-radius: 8px;
-`;
-
-const ImageItem = styled.div`
-  position: relative;
-  aspect-ratio: 1;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 2px solid #3b3c5d;
-  cursor: pointer;
-
-  &:hover {
-    border-color: #f62579;
-  }
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
   }
 `;
 
@@ -601,7 +548,6 @@ const ImageModalFileName = styled.div`
   word-break: break-all;
 `;
 
-// 이미지 네비게이션 화살표 버튼
 const ImageNavButton = styled.button`
   position: absolute;
   top: 50%;
@@ -640,70 +586,32 @@ const ImageNavButton = styled.button`
   }
 `;
 
-const ActionButtons = styled.div`
-  display: flex;
-  gap: 12px;
-  margin-top: 24px;
-`;
-
-const Button = styled.button`
-  flex: 1;
-  padding: 12px 24px;
-  border-radius: 8px;
-  border: none;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &.primary {
-    background-color: #f62579;
-    color: #ffffff;
-
-    &:hover {
-      background-color: #d41e66;
-    }
-
-    &:disabled {
-      background-color: #5b5d75;
-      cursor: not-allowed;
-    }
-  }
-
-  &.secondary {
-    background-color: transparent;
-    border: 1px solid #5b5d75;
-    color: #ffffff;
-
-    &:hover {
-      background-color: #3b3c5d;
-    }
-  }
-`;
-
-export default function AutoLabelingModal({
+export default function AutoLabelingDemoModal({
   isOpen,
   onClose,
   projectId,
   projectData,
   onComplete,
 }) {
-  const navigate = useNavigate();
-  const [autoLabelingStatus, setAutoLabelingStatus] = useState("idle"); // idle, running, completed, showingResults
+  // 최대 루프 횟수 (변수로 관리 가능)
+  const MAX_LOOP_COUNT = 10;
+
+  const [autoLabelingStatus, setAutoLabelingStatus] = useState("idle"); // idle, running, loopComplete, finalComplete, showingResults
   const [manualLabelingProgress, setManualLabelingProgress] = useState(0);
-  const [labeledClasses, setLabeledClasses] = useState([]); // 현재 라벨링된 클래스 정보
-  const [incompleteClasses, setIncompleteClasses] = useState([]); // 학습이 완료되지 않은 클래스 목록
-  const [resultImages, setResultImages] = useState([]); // 결과 이미지 리스트 (pass)
-  const [failedImages, setFailedImages] = useState([]); // 실패 이미지 리스트 (fail)
+  const [currentLoop, setCurrentLoop] = useState(0); // 현재 루프 번호 (1부터 시작)
+  const [loopResults, setLoopResults] = useState([]); // 각 루프의 결과 저장 [{ loop: 1, passed: 10, failed: 2 }, ...]
+  const [currentLoopResult, setCurrentLoopResult] = useState({
+    passed: 0,
+    failed: 0,
+  }); // 현재 루프의 결과
+  const [isAutoLoop, setIsAutoLoop] = useState(false); // 자동 루프 진행 여부
+  const [isLoopRunning, setIsLoopRunning] = useState(false); // 루프 진행 중 여부 (자동 진행 시)
+  const [resultImages, setResultImages] = useState([]); // 최종 결과 이미지 리스트 (pass)
+  const [failedImages, setFailedImages] = useState([]); // 최종 결과 이미지 리스트 (fail)
   const [activeTab, setActiveTab] = useState("pass"); // pass/fail 탭 전환
   const [selectedImage, setSelectedImage] = useState(null); // 선택된 이미지 (원본 이미지 URL)
   const [selectedImageIndex, setSelectedImageIndex] = useState(-1); // 선택된 이미지의 인덱스
   const [isImageModalOpen, setIsImageModalOpen] = useState(false); // 이미지 모달 열림 상태
-  const [resultCounts, setResultCounts] = useState({ passed: 0, failed: 0 }); // 성공/실패 개수
-
-  // AI 학습에 필요한 최소 데이터 수 (Classes.jsx와 동일한 값)
-  const REQUIRED_DATA_COUNT = 1000;
-  const STORAGE_KEY = "customClasses";
 
   const canStartAutoLabeling = manualLabelingProgress >= 10;
 
@@ -716,10 +624,9 @@ export default function AutoLabelingModal({
     };
   }, [selectedImage]);
 
-  // Confetti 효과 (완료 시)
+  // Confetti 효과 (최종 완료 시)
   useEffect(() => {
-    if (autoLabelingStatus === "completed") {
-      // 여러 번 발사하여 더 화려한 효과
+    if (autoLabelingStatus === "finalComplete") {
       const duration = 2000;
       const animationEnd = Date.now() + duration;
       const defaults = {
@@ -741,13 +648,11 @@ export default function AutoLabelingModal({
         }
 
         const particleCount = 50 * (timeLeft / duration);
-        // 왼쪽에서 발사
         confetti({
           ...defaults,
           particleCount,
           origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
         });
-        // 오른쪽에서 발사
         confetti({
           ...defaults,
           particleCount,
@@ -762,158 +667,36 @@ export default function AutoLabelingModal({
 
     // 모달이 열릴 때 초기화
     setAutoLabelingStatus("idle");
+    setCurrentLoop(0);
+    setLoopResults([]);
+    setCurrentLoopResult({ passed: 0, failed: 0 });
+    setIsAutoLoop(false);
+    setIsLoopRunning(false);
     setResultImages([]);
     setFailedImages([]);
     setActiveTab("pass");
     setSelectedImage(null);
     setIsImageModalOpen(false);
-    setResultCounts({ passed: 0, failed: 0 });
 
     // 진행률 계산
     const fetchAutoLabelingStatus = async () => {
       const response = await getProject(projectId);
-      console.log(response.data);
-      // 진행률 계산: (승인된 작업 수 / 전체 작업 수) * 100
-      // totalJobCount가 0인 경우를 방지하기 위한 체크 추가
       const percentage =
         response.data.totalJobCount > 0
           ? (response.data.approvedJobCount / response.data.totalJobCount) * 100
           : 0;
-      setManualLabelingProgress(percentage);
-    };
-
-    const currentLabbeldObject = async () => {
-      const projectDetail = await getProjectDetail(projectId);
-      console.log(projectDetail.data.labelInfos);
-      // labelInfos에서 objectInfos가 있는 클래스만 필터링하여 저장
-      // 각 클래스의 이름과 objectInfos.length를 저장
-      const classesWithObjects = (projectDetail.data?.labelInfos || [])
-        .filter(
-          (labelInfo) =>
-            labelInfo.objectInfos && labelInfo.objectInfos.length > 0
-        )
-        .map((labelInfo) => ({
-          name: labelInfo.name,
-          count: labelInfo.objectInfos.length,
-          color: labelInfo.hexColor || "#ffffff",
-        }));
-      setLabeledClasses(classesWithObjects);
-
-      // 완료되지 않은 클래스 목록 가져오기
-      // 기준: Classes 페이지에 있고 Training Complete 상태인 클래스만 완료된 클래스
-      // Classes 페이지에 없거나, Training Complete가 아닌 클래스는 미완료 클래스
-      // 로컬 스토리지에서 추가된 클래스 가져오기
-      const stored = localStorage.getItem(STORAGE_KEY);
-      let customClasses = [];
-      if (stored) {
-        try {
-          customClasses = JSON.parse(stored);
-        } catch (error) {
-          console.error("로컬 스토리지 데이터 파싱 오류:", error);
-        }
-      }
-
-      // Classes 페이지에 있는 모든 클래스 정보 (기본 클래스 + 추가 클래스)
-      // 기본 클래스는 모두 Training Complete 상태 (dataCount = REQUIRED_DATA_COUNT)
-      const defaultClassesWithData = defaultClasses.map((cls) => ({
-        name: cls.name.toLowerCase(),
-        dataCount: REQUIRED_DATA_COUNT, // 기본 클래스는 모두 완료 상태
-      }));
-
-      // 추가 클래스는 dataCount 확인 필요
-      const customClassesWithData = customClasses.map((cls) => ({
-        name: cls.name.toLowerCase(),
-        dataCount: cls.dataCount || 0,
-      }));
-
-      const allClassesPageClasses = [
-        ...defaultClassesWithData,
-        ...customClassesWithData,
-      ];
-
-      // Training Complete 상태인 클래스만 완료된 클래스로 간주
-      // (dataCount >= REQUIRED_DATA_COUNT)
-      const completedClassNames = new Set(
-        allClassesPageClasses
-          .filter((cls) => cls.dataCount >= REQUIRED_DATA_COUNT)
-          .map((cls) => cls.name)
-      );
-
-      // labeledClasses에서 완료되지 않은 클래스 필터링
-      // 1. Classes 페이지에 없는 클래스
-      // 2. Classes 페이지에 있지만 Training Complete가 아닌 클래스
-      const incomplete = classesWithObjects
-        .filter((labeledClass) => {
-          const labeledClassName = labeledClass.name.toLowerCase();
-          // Classes 페이지에 없으면 미완료
-          const existsInClassesPage = allClassesPageClasses.some(
-            (cls) => cls.name === labeledClassName
-          );
-          if (!existsInClassesPage) {
-            return true;
-          }
-          // Classes 페이지에 있지만 Training Complete가 아니면 미완료
-          return !completedClassNames.has(labeledClassName);
-        })
-        .map((classInfo) => ({
-          name: classInfo.name,
-          color: classInfo.color || "#ffffff",
-        }));
-
-      setIncompleteClasses(incomplete);
+      //   setManualLabelingProgress(percentage);
+      setManualLabelingProgress(10);
     };
 
     fetchAutoLabelingStatus();
-    currentLabbeldObject();
-  }, [isOpen]);
+  }, [isOpen, projectId]);
 
-  const handleStartAutoLabeling = async () => {
-    setAutoLabelingStatus("running");
-
-    try {
-      const response = await startAutoLabeling(null, projectId);
-      console.log("startAutoLabeling response:", response);
-
-      // // 결과 확인
-      const result = await getAutoLabelingResult();
-      console.log(
-        "getAutoLabelingResult:",
-        result.failedCount,
-        result.passedCount
-      );
-
-      // 성공/실패 개수 저장
-      setResultCounts({
-        passed: result.passedCount || 0,
-        failed: result.failedCount || 0,
-      });
-
-      // 토스트 알림 표시
-      if (response) {
-        useToastStore
-          .getState()
-          .addToast("오토라벨링이 성공적으로 완료되었습니다.", "success");
-      } else {
-        useToastStore
-          .getState()
-          .addToast("오토라벨링 처리 중 오류가 발생했습니다.", "error");
-      }
-
-      // 완료 상태로 변경
-      setAutoLabelingStatus("completed");
-    } catch (error) {
-      console.error("Auto labeling error:", error);
-      useToastStore
-        .getState()
-        .addToast("오토라벨링 실행 중 오류가 발생했습니다.", "error");
-      setAutoLabelingStatus("idle");
-    }
-  };
-
-  const handleViewResults = async () => {
+  // 최종 결과 보기 함수 (useCallback으로 감싸서 의존성 문제 해결)
+  const handleViewFinalResults = useCallback(async () => {
     try {
       const result = await getAutoLabelingResult();
-      console.log("Result for view:", result);
+      console.log("Final Result for view:", result);
       let passdImages = [];
       let failedImages = [];
 
@@ -922,10 +705,8 @@ export default function AutoLabelingModal({
 
         // resultPath 파싱 함수
         const parseResultPath = (resultPath) => {
-          // resultPath 형식: /workspace/auto_labeling/demo/data/demo_runs/run_20251230_082135_b44872a0/result/fail/01a4933a-252e566a.jpg
           if (!resultPath) return null;
 
-          // /result/ 다음 경로에서 which (pass 또는 fail) 추출
           const resultIndex = resultPath.indexOf("/result/");
           if (resultIndex === -1) return null;
 
@@ -933,10 +714,9 @@ export default function AutoLabelingModal({
             resultIndex + "/result/".length
           );
           const parts = afterResult.split("/");
-          const which = parts[0]; // pass 또는 fail
-          const name = parts[parts.length - 1]; // 마지막 파일명 (01a4933a-252e566a.jpg)
+          const which = parts[0];
+          const name = parts[parts.length - 1];
 
-          // runId 추출 (run_으로 시작하는 부분 찾기)
           const runIdMatch = resultPath.match(/run_\d{8}_\d{6}_[a-f0-9]+/);
           const runId = runIdMatch ? runIdMatch[0] : null;
 
@@ -946,24 +726,20 @@ export default function AutoLabelingModal({
             runId,
             name,
             which,
-            fileName: name, // 표시용 파일명
+            fileName: name,
           };
         };
 
-        // passed === true인 항목들의 resultPath 파싱
         passdImages = resultItems
           .filter((item) => item.passed === true)
           .map((item) => parseResultPath(item.resultPath))
-          .filter((item) => item !== null); // null 제거
+          .filter((item) => item !== null);
 
-        // passed === false인 항목들의 resultPath 파싱
         failedImages = resultItems
           .filter((item) => item.passed === false)
           .map((item) => parseResultPath(item.resultPath))
-          .filter((item) => item !== null); // null 제거
+          .filter((item) => item !== null);
 
-        console.log("Passed images:", passdImages);
-        console.log("Failed images:", failedImages);
         setResultImages(passdImages);
         setFailedImages(failedImages);
         setAutoLabelingStatus("showingResults");
@@ -978,10 +754,125 @@ export default function AutoLabelingModal({
         .getState()
         .addToast("결과 조회 중 오류가 발생했습니다.", "error");
     }
+  }, []);
+
+  // 오토라벨링 시작 (첫 번째 루프 또는 다음 루프) - useCallback으로 감싸서 의존성 문제 해결
+  // handleStartAutoLabeling을 useEffect보다 위에 정의하여 초기화 오류 방지
+  const handleStartAutoLabeling = useCallback(async () => {
+    setAutoLabelingStatus("running");
+    setIsLoopRunning(true);
+
+    try {
+      const response = await startAutoLabeling(null, projectId);
+      console.log("startAutoLabeling response:", response);
+
+      // 결과 확인
+      const result = await getAutoLabelingResult();
+      console.log("getAutoLabelingResult:", result);
+
+      // 현재 루프 결과 저장
+      const passed = result.passedCount || 0;
+      const failed = result.failedCount || 0;
+      setCurrentLoopResult({ passed, failed });
+
+      // 루프 번호 증가
+      const newLoop = currentLoop + 1;
+      setCurrentLoop(newLoop);
+
+      // 루프 결과 저장
+      setLoopResults((prev) => [...prev, { loop: newLoop, passed, failed }]);
+
+      // 루프 완료 상태로 변경
+      setAutoLabelingStatus("loopComplete");
+
+      // 자동 루프가 활성화되어 있고 최대 횟수에 도달했으면 최종 완료 처리
+      // (useEffect에서 자동으로 다음 루프 진행하거나 최종 완료 처리)
+      if (isAutoLoop && newLoop >= MAX_LOOP_COUNT) {
+        setIsLoopRunning(false);
+        // useEffect에서 handleViewFinalResults 호출됨
+      }
+    } catch (error) {
+      console.error("Auto labeling error:", error);
+      useToastStore
+        .getState()
+        .addToast("오토라벨링 실행 중 오류가 발생했습니다.", "error");
+      setAutoLabelingStatus("idle");
+      setIsLoopRunning(false);
+    }
+  }, [
+    projectId,
+    currentLoop,
+    isAutoLoop,
+    MAX_LOOP_COUNT,
+    handleViewFinalResults,
+  ]);
+
+  // 자동 루프 진행 처리 (handleStartAutoLabeling과 handleViewFinalResults가 정의된 후에 실행)
+  useEffect(() => {
+    if (
+      isAutoLoop &&
+      isLoopRunning &&
+      autoLabelingStatus === "loopComplete" &&
+      currentLoop < MAX_LOOP_COUNT
+    ) {
+      // 자동으로 다음 루프 진행
+      const timer = setTimeout(() => {
+        // 다음 루프 시작
+        handleStartAutoLabeling();
+      }, 2000); // 2초 후 자동 진행
+
+      return () => clearTimeout(timer);
+    } else if (
+      isAutoLoop &&
+      currentLoop >= MAX_LOOP_COUNT &&
+      autoLabelingStatus === "loopComplete"
+    ) {
+      // 최대 루프 횟수 도달 시 최종 완료 처리
+      setIsLoopRunning(false);
+      handleViewFinalResults();
+    }
+  }, [
+    isAutoLoop,
+    isLoopRunning,
+    autoLabelingStatus,
+    currentLoop,
+    MAX_LOOP_COUNT,
+    handleStartAutoLabeling,
+    handleViewFinalResults,
+  ]);
+
+  // 다음 루프 진행 (수동 진행 시 사용)
+  // 체크박스가 활성화되어 있으면 자동 루프 모드로 전환
+  const handleNextLoop = async () => {
+    if (currentLoop >= MAX_LOOP_COUNT) {
+      // 최대 루프 횟수 도달
+      handleViewFinalResults();
+      return;
+    }
+
+    // 체크박스가 활성화되어 있으면 자동 루프 모드로 전환
+    if (isAutoLoop) {
+      setIsLoopRunning(true);
+    }
+
+    // 다음 루프 시작
+    await handleStartAutoLabeling();
+  };
+
+  // 루프 중단
+  const handleStopLoop = () => {
+    setIsLoopRunning(false);
+    setIsAutoLoop(false);
+    useToastStore.getState().addToast("루프가 중단되었습니다.", "info");
   };
 
   const handleClose = () => {
     setAutoLabelingStatus("idle");
+    setCurrentLoop(0);
+    setLoopResults([]);
+    setCurrentLoopResult({ passed: 0, failed: 0 });
+    setIsAutoLoop(false);
+    setIsLoopRunning(false);
     setResultImages([]);
     setFailedImages([]);
     setActiveTab("pass");
@@ -989,6 +880,7 @@ export default function AutoLabelingModal({
     setIsImageModalOpen(false);
     onClose();
   };
+
   const handleCloseImageModal = () => {
     if (selectedImage?.url) {
       URL.revokeObjectURL(selectedImage.url);
@@ -1000,7 +892,6 @@ export default function AutoLabelingModal({
 
   const handleFileNameClick = useCallback(async (imageData, index) => {
     try {
-      // imageData는 { runId, name, which, fileName } 형태의 객체
       const imageUrl = await getOriginalImageUrl(
         imageData.runId,
         imageData.name,
@@ -1017,7 +908,6 @@ export default function AutoLabelingModal({
     }
   }, []);
 
-  // 다음 이미지로 이동
   const handleNextImage = useCallback(async () => {
     const currentList = activeTab === "pass" ? resultImages : failedImages;
     if (selectedImageIndex < currentList.length - 1) {
@@ -1033,7 +923,6 @@ export default function AutoLabelingModal({
     handleFileNameClick,
   ]);
 
-  // 이전 이미지로 이동
   const handlePrevImage = useCallback(async () => {
     if (selectedImageIndex > 0) {
       const currentList = activeTab === "pass" ? resultImages : failedImages;
@@ -1049,7 +938,7 @@ export default function AutoLabelingModal({
     handleFileNameClick,
   ]);
 
-  // 키보드 이벤트 처리 (좌우 화살표 키)
+  // 키보드 이벤트 처리
   useEffect(() => {
     if (!isImageModalOpen) return;
 
@@ -1082,7 +971,7 @@ export default function AutoLabelingModal({
   // 오토라벨링 상태에 따라 컴포넌트 렌더링
   const renderContent = () => {
     // 초기 상태 (시작 전)
-    if (autoLabelingStatus === "idle" || autoLabelingStatus === "locked") {
+    if (autoLabelingStatus === "idle") {
       return (
         <>
           <ProgressSection>
@@ -1109,57 +998,6 @@ export default function AutoLabelingModal({
                 completed.
               </InfoMessage>
             )}
-            {/* 현재 라벨링된 클래스별 오브젝트 개수 표시 */}
-            {labeledClasses.length > 0 && (
-              <LabeledClassesSection>
-                <LabeledClassesTitle>
-                  Labeled Objects by Class
-                </LabeledClassesTitle>
-                <LabeledClassesList>
-                  {labeledClasses.map((classInfo, index) => (
-                    <ClassBadge key={index}>
-                      <ClassColorDot color={classInfo.color} />
-                      <ClassName>{classInfo.name}</ClassName>
-                      <ClassCount>({classInfo.count})</ClassCount>
-                    </ClassBadge>
-                  ))}
-                </LabeledClassesList>
-                {/* 클래스별 개수 균형 안내 메시지 */}
-                {labeledClasses.length > 1 && (
-                  <ClassBalanceInfo type="warning">
-                    For optimal model training performance, try to maintain a
-                    similar number of objects across all classes. <br />
-                    Balanced class distribution helps improve model accuracy and
-                    generalization.
-                  </ClassBalanceInfo>
-                )}
-              </LabeledClassesSection>
-            )}
-            {/* 학습이 완료되지 않은 클래스 표시 */}
-            {incompleteClasses.length > 0 && (
-              <IncompleteClassesSection>
-                <IncompleteClassesTitle>
-                  Classes Not Yet Trained
-                </IncompleteClassesTitle>
-                <IncompleteClassesList>
-                  {incompleteClasses.map((classInfo, index) => (
-                    <ClassBadge key={index}>
-                      <ClassColorDot color={classInfo.color} />
-                      <ClassName>{classInfo.name}</ClassName>
-                    </ClassBadge>
-                  ))}
-                </IncompleteClassesList>
-                <IncompleteClassLink
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate("/classes");
-                    handleClose();
-                  }}
-                >
-                  Go to train these classes →
-                </IncompleteClassLink>
-              </IncompleteClassesSection>
-            )}
           </ProgressSection>
 
           <ActionButtons>
@@ -1169,7 +1007,7 @@ export default function AutoLabelingModal({
             <Button
               className="primary"
               onClick={handleStartAutoLabeling}
-              // disabled={!canStartAutoLabeling}
+              //   disabled={!canStartAutoLabeling}
             >
               Start Auto Labeling
             </Button>
@@ -1196,8 +1034,9 @@ export default function AutoLabelingModal({
             >
               <StatusTitle>Auto Labeling in Progress</StatusTitle>
               <StatusDescription>
-                Our AI is analyzing and labeling your images. This may take a
-                few moments.
+                {currentLoop > 0
+                  ? `Loop ${currentLoop + 1} is being processed.`
+                  : "Our AI is analyzing and labeling your images. This may take a few moments."}
                 <br />
                 Please do not close this window.
               </StatusDescription>
@@ -1210,8 +1049,11 @@ export default function AutoLabelingModal({
       );
     }
 
-    // 완료 상태 (성공 메시지 + 결과 보기 버튼)
-    if (autoLabelingStatus === "completed") {
+    // 루프 완료 상태
+    if (autoLabelingStatus === "loopComplete") {
+      const passCount = currentLoopResult.passed;
+      const failCount = currentLoopResult.failed;
+
       return (
         <>
           <StatusCard $isCompleted={true}>
@@ -1224,11 +1066,9 @@ export default function AutoLabelingModal({
                 gap: "12px",
               }}
             >
-              <StatusTitle>Auto Labeling Completed!</StatusTitle>
+              <StatusTitle>Loop {currentLoop} Completed!</StatusTitle>
               <StatusDescription>
-                Your images have been successfully processed and labeled.
-                <br />
-                Click "View Results" to see the detailed results.
+                Loop {currentLoop} has been successfully processed.
               </StatusDescription>
               <div
                 style={{
@@ -1238,7 +1078,7 @@ export default function AutoLabelingModal({
                 }}
               >
                 <StatusBadge $isCompleted={true}>
-                  <span>✓ Pass: {resultCounts.passed}</span>
+                  <span>✓ Pass: {passCount}</span>
                 </StatusBadge>
                 <StatusBadge
                   $isCompleted={false}
@@ -1247,9 +1087,133 @@ export default function AutoLabelingModal({
                     color: "#ffffff",
                   }}
                 >
-                  <span>✗ Fail: {resultCounts.failed}</span>
+                  <span>✗ Fail: {failCount}</span>
                 </StatusBadge>
               </div>
+            </div>
+          </StatusCard>
+
+          <LoopCompleteSection>
+            {/* 루프 진행 정보 */}
+            {isAutoLoop && isLoopRunning && (
+              <LoopProgressInfo>
+                Auto loop is running... ({currentLoop} / {MAX_LOOP_COUNT})
+              </LoopProgressInfo>
+            )}
+
+            {/* 자동 루프 체크박스 - Next Loop 버튼이 있는 상황에서도 항상 표시 */}
+            {currentLoop < MAX_LOOP_COUNT && (
+              <AutoLoopCheckbox>
+                <CheckboxInput
+                  type="checkbox"
+                  id="autoLoop"
+                  checked={isAutoLoop}
+                  onChange={(e) => {
+                    // 체크박스만 체크하는 것으로는 루프가 시작되지 않음
+                    // Next Loop 버튼을 눌러야 자동 루프가 시작됨
+                    setIsAutoLoop(e.target.checked);
+                    // 체크박스를 체크할 때는 isLoopRunning을 false로 유지
+                    if (e.target.checked) {
+                      setIsLoopRunning(false);
+                    }
+                  }}
+                  disabled={isLoopRunning} // 루프 진행 중일 때는 비활성화
+                />
+                <CheckboxLabel htmlFor="autoLoop">
+                  Auto continue loops (up to {MAX_LOOP_COUNT} loops)
+                </CheckboxLabel>
+              </AutoLoopCheckbox>
+            )}
+
+            {/* 루프 히스토리 표시 */}
+            {loopResults.length > 0 && (
+              <div style={{ marginTop: "16px" }}>
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "#b6b5c5",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Loop History:
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "4px",
+                    fontSize: "12px",
+                    color: "#ffffff",
+                  }}
+                >
+                  {loopResults.map((result, index) => (
+                    <div key={index}>
+                      Loop {result.loop}: Pass {result.passed} / Fail{" "}
+                      {result.failed}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </LoopCompleteSection>
+
+          <ActionButtons>
+            {/* 자동 루프가 실행 중일 때는 Stop 버튼만 표시 */}
+            {isAutoLoop && isLoopRunning && (
+              <Button className="danger" onClick={handleStopLoop}>
+                Stop Auto Loop
+              </Button>
+            )}
+            {/* 자동 루프가 비활성화되어 있거나, 자동 루프가 활성화되어 있지만 실행 중이 아닐 때 */}
+            {(!isAutoLoop || (isAutoLoop && !isLoopRunning)) && (
+              <>
+                {currentLoop < MAX_LOOP_COUNT ? (
+                  <>
+                    <Button className="danger" onClick={handleStopLoop}>
+                      Stop Loop
+                    </Button>
+                    <Button className="primary" onClick={handleNextLoop}>
+                      Next Loop
+                    </Button>
+                  </>
+                ) : (
+                  <Button className="primary" onClick={handleViewFinalResults}>
+                    View Final Results
+                  </Button>
+                )}
+              </>
+            )}
+            {/* 자동 루프가 활성화되어 있고 최대 횟수에 도달했을 때 */}
+            {isAutoLoop && !isLoopRunning && currentLoop >= MAX_LOOP_COUNT && (
+              <Button className="primary" onClick={handleViewFinalResults}>
+                View Final Results
+              </Button>
+            )}
+          </ActionButtons>
+        </>
+      );
+    }
+
+    // 최종 완료 상태
+    if (autoLabelingStatus === "finalComplete") {
+      return (
+        <>
+          <StatusCard $isCompleted={true}>
+            <StatusIcon $isCompleted={true}>{CheckIcon}</StatusIcon>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
+              <StatusTitle>All Loops Completed!</StatusTitle>
+              <StatusDescription>
+                All {currentLoop} loops have been successfully processed.
+                <br />
+                Click "View Final Results" to see the detailed results.
+              </StatusDescription>
             </div>
           </StatusCard>
 
@@ -1257,15 +1221,15 @@ export default function AutoLabelingModal({
             <Button className="secondary" onClick={handleClose}>
               Close
             </Button>
-            <Button className="primary" onClick={handleViewResults}>
-              View Results
+            <Button className="primary" onClick={handleViewFinalResults}>
+              View Final Results
             </Button>
           </ActionButtons>
         </>
       );
     }
 
-    // 결과 표시 상태
+    // 최종 결과 표시 상태 (기존 AutoLabelingModal과 동일)
     if (autoLabelingStatus === "showingResults") {
       const currentList = activeTab === "pass" ? resultImages : failedImages;
       const passCount = resultImages.length;
@@ -1275,7 +1239,7 @@ export default function AutoLabelingModal({
         <>
           <CycleSection>
             <CycleHeader>
-              <CycleTitle>Auto Labeling Results</CycleTitle>
+              <CycleTitle>Final Auto Labeling Results</CycleTitle>
               <CycleBadge>Total: {passCount + failCount}</CycleBadge>
             </CycleHeader>
 
@@ -1307,7 +1271,7 @@ export default function AutoLabelingModal({
               </TabButton>
             </TabButtons>
 
-            {/* 파일명 리스트 (간단한 키값으로 표시) */}
+            {/* 파일명 리스트 */}
             <FileListContainer>
               {currentList.length > 0 ? (
                 currentList.map((imageData, index) => (
@@ -1315,7 +1279,6 @@ export default function AutoLabelingModal({
                     key={index}
                     onClick={() => handleFileNameClick(imageData, index)}
                   >
-                    {/* {activeTab === "pass" ? "PASS" : "FAIL"}-{index + 1} */}
                     {imageData.fileName}
                   </FileListItem>
                 ))
@@ -1348,7 +1311,6 @@ export default function AutoLabelingModal({
                 <ImageModalClose onClick={handleCloseImageModal}>
                   ×
                 </ImageModalClose>
-                {/* 이전 이미지 버튼 */}
                 {currentList.length > 1 && (
                   <ImageNavButton
                     className="prev"
@@ -1361,7 +1323,6 @@ export default function AutoLabelingModal({
                     ‹
                   </ImageNavButton>
                 )}
-                {/* 다음 이미지 버튼 */}
                 {currentList.length > 1 && (
                   <ImageNavButton
                     className="next"
@@ -1396,7 +1357,7 @@ export default function AutoLabelingModal({
     <ModalOverlay onClick={handleClose}>
       <ModalContent onClick={(e) => e.stopPropagation()}>
         <ModalHeader>
-          <ModalTitle>Auto Labeling</ModalTitle>
+          <ModalTitle>Auto Labeling Demo</ModalTitle>
           <CloseButton onClick={handleClose}>×</CloseButton>
         </ModalHeader>
 

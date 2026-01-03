@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Layer, Line, Rect, Stage, Text } from "react-konva";
+import { Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
 import styled from "styled-components";
 import LabelTooltip from "../molecules/LabelTooltip";
 import { useParams } from "react-router-dom";
-import { postObjectLabel } from "../../api/Job";
+import { postObjectLabel, updateObject } from "../../api/Job";
 import { uselabelDataFlagStore, useObjectStore } from "../../store/bboxStore";
+import { useToastStore } from "../../store/toastStore";
 
 const Container = styled.div`
   position: absolute;
@@ -26,8 +27,10 @@ export default function KonvaCanvas({
   deletedShapeIds = [],
   jobData,
   highlightedObjectId,
+  setHighlightedObjectId,
 }) {
   const containerRef = useRef(null);
+  const transformerRef = useRef(null); // objectsStore 박스용 Transformer ref
   const [size, setSize] = useState({ width: 790, height: 600 });
   const [mode, setMode] = useState("Bounding Box");
   const [imageSize, setImageSize] = useState({ width: 790, height: 600 });
@@ -67,6 +70,7 @@ export default function KonvaCanvas({
 
   const [shapes, setShapes] = useState([]); // 모든 도형 목록
   const [maxZIndex, setMaxZIndex] = useState(0); // 최대 Z 인덱스
+  const [selectedShapeId, setSelectedShapeId] = useState(null); // 선택된 도형 ID
 
   const [newRect, setNewRect] = useState(null); // 새로운 바운딩 박스
   const [isDragging, setIsDragging] = useState(false); // 드래그 상태
@@ -87,6 +91,14 @@ export default function KonvaCanvas({
   const { jobId } = useParams();
 
   const { objectsStore } = useObjectStore();
+
+  // jobId가 변경될 때 Transformer 해제
+  useEffect(() => {
+    if (setHighlightedObjectId) {
+      setHighlightedObjectId(null);
+    }
+    setSelectedShapeId(null);
+  }, [jobId, setHighlightedObjectId]);
 
   // YOLO 형식(좌상단 좌표 기준)을 캔버스 좌표로 변환하는 함수
   // 입력: [classId, normalizedX, normalizedY, normalizedWidth, normalizedHeight] 또는 [normalizedX, normalizedY, normalizedWidth, normalizedHeight]
@@ -271,6 +283,23 @@ export default function KonvaCanvas({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  // objectsStore 박스용 Transformer 연결 (highlightedObjectId가 변경될 때)
+  useEffect(() => {
+    if (!transformerRef.current || !highlightedObjectId) {
+      return;
+    }
+
+    const stage = transformerRef.current.getStage();
+    if (!stage) return;
+
+    // highlightedObjectId에 해당하는 Rect 노드 찾기
+    const node = stage.findOne(`#saved-obj-${highlightedObjectId}`);
+    if (node) {
+      transformerRef.current.nodes([node]);
+      transformerRef.current.getLayer().batchDraw();
+    }
+  }, [highlightedObjectId]);
+
   // 도형 완성 시 툴팁 표시
   const handleShapeComplete = (shapeData) => {
     let centerX, centerY;
@@ -326,7 +355,7 @@ export default function KonvaCanvas({
     setPolygonPoints([...polygonPoints, { x: point.x, y: point.y }]);
   };
 
-  // 바운딩 박스 이벤트 핸들러
+  // 바운딩 박스 이벤트 핸들러 (Stage 레벨)
   const handleMouseDown = (e) => {
     // 툴팁이 표시 중이면 새로운 박스를 그리지 못하도록 막음 (저장/취소 후에만 다음 박스 그리기 가능)
     if (showTooltip) return;
@@ -334,6 +363,19 @@ export default function KonvaCanvas({
     const stage = e.target.getStage();
     const point = stage.getPointerPosition();
 
+    // 클릭한 위치에 Shape가 있는지 확인 (getIntersection 사용)
+    const clickedShape = stage.getIntersection(point);
+    if (clickedShape && clickedShape.getType() === "Shape") {
+      return;
+    }
+    // 빈 공간 클릭 시 선택 해제 및 새 박스 그리기 시작
+    setSelectedShapeId(null);
+    // 저장된 객체의 강조 표시도 해제
+    if (setHighlightedObjectId) {
+      setHighlightedObjectId(null);
+    }
+
+    // 새 박스 그리기 시작
     if (mode === "boundingBox") {
       setNewRect({
         x: point.x,
@@ -370,23 +412,32 @@ export default function KonvaCanvas({
     if (mode !== "boundingBox") return;
 
     if (newRect) {
-      const newShape = {
-        type: "boundingBox",
-        zIndex: maxZIndex + 1,
-        ...newRect,
-      };
+      // 클릭만 하고 드래그하지 않은 경우 (너무 작은 박스) 툴팁을 띄우지 않음
+      const MIN_BOX_SIZE = 5; // 최소 박스 크기 (px)
+      const boxWidth = Math.abs(newRect.width);
+      const boxHeight = Math.abs(newRect.height);
 
-      setShapes([...shapes, newShape]);
-      setMaxZIndex(maxZIndex + 1);
+      // 박스가 최소 크기 이상이면 생성, 그렇지 않으면 무시
+      if (boxWidth >= MIN_BOX_SIZE && boxHeight >= MIN_BOX_SIZE) {
+        const newShape = {
+          type: "boundingBox",
+          zIndex: maxZIndex + 1,
+          ...newRect,
+        };
 
-      handleShapeComplete({
-        type: "boundingBox",
-        x: newRect.x,
-        y: newRect.y,
-        width: newRect.width,
-        height: newRect.height,
-        id: newRect.id,
-      });
+        setShapes([...shapes, newShape]);
+        setMaxZIndex(maxZIndex + 1);
+
+        handleShapeComplete({
+          type: "boundingBox",
+          x: newRect.x,
+          y: newRect.y,
+          width: newRect.width,
+          height: newRect.height,
+          id: newRect.id,
+        });
+      }
+      // 작은 박스이거나 클릭만 한 경우 newRect 초기화 (툴팁 띄우지 않음)
       setNewRect(null);
     }
     setIsDragging(false);
@@ -445,7 +496,9 @@ export default function KonvaCanvas({
   const handleLabelSave = async () => {
     // 예외처리
     if (labelData.className === "No Class" || labelData.objectName === "") {
-      alert("Please select a class and enter an object name");
+      useToastStore
+        .getState()
+        .addToast("Please select a class and enter an object name", "error");
       return;
     }
 
@@ -531,6 +584,151 @@ export default function KonvaCanvas({
     });
   };
 
+  // objectsStore 박스용 YOLO 형식 변환 함수 (클래스 ID 직접 사용)
+  const convertToYOLOFormatForObject = (bbox, classId) => {
+    // 이미지 원본 크기
+    const imgWidth = imageSize.width || size.width;
+    const imgHeight = imageSize.height || size.height;
+
+    // 바운딩 박스 좌표 정규화 (음수 width/height 처리)
+    const x = Math.min(bbox.x, bbox.x + bbox.width);
+    const y = Math.min(bbox.y, bbox.y + bbox.height);
+    const w = Math.abs(bbox.width);
+    const h = Math.abs(bbox.height);
+
+    // 캔버스 크기와 이미지 원본 크기의 비율 계산
+    const scaleX = imgWidth / size.width;
+    const scaleY = imgHeight / size.height;
+
+    // 캔버스 좌표를 이미지 원본 크기로 변환
+    const originalX = x * scaleX;
+    const originalY = y * scaleY;
+    const originalW = w * scaleX;
+    const originalH = h * scaleY;
+
+    // 좌상단 좌표 기준 형식: [클래스, x, y, width, height] (모두 0~1 사이 정규화)
+    const normalizedX = originalX / imgWidth;
+    const normalizedY = originalY / imgHeight;
+    const normalizedWidth = originalW / imgWidth;
+    const normalizedHeight = originalH / imgHeight;
+
+    return [
+      classId,
+      normalizedX,
+      normalizedY,
+      normalizedWidth,
+      normalizedHeight,
+    ];
+  };
+
+  // objectsStore 박스용 Transform 종료 핸들러 (크기 조절 후 API 호출)
+  const handleSavedObjectTransformEnd = async (e) => {
+    const node = e.target;
+    // id 형식: "saved-obj-{obj.id}"에서 obj.id 추출
+    const idStr = node.id().replace("saved-obj-", "");
+    const objectId = parseInt(idStr);
+    const obj = objectsStore?.find((o) => o.id === objectId);
+
+    if (!obj) return;
+
+    // Transformer가 적용된 Rect의 새로운 위치와 크기
+    const newX = node.x();
+    const newY = node.y();
+    const newWidth = node.width() * node.scaleX();
+    const newHeight = node.height() * node.scaleY();
+
+    // scale 초기화 (Transformer 사용 후 scale을 1로 리셋)
+    node.scaleX(1);
+    node.scaleY(1);
+    node.width(newWidth);
+    node.height(newHeight);
+
+    // 클래스 ID 찾기
+    const classId = obj.annotation?.class_id || obj.labelData?.class_id || 0;
+
+    // YOLO 형식으로 변환
+    const yoloFormat = convertToYOLOFormatForObject(
+      {
+        x: newX,
+        y: newY,
+        width: newWidth,
+        height: newHeight,
+      },
+      classId
+    );
+
+    // API 호출을 위한 데이터 준비
+    const updateData = {
+      name: obj.name || "",
+      labelType: "BOUNDING_BOX",
+      formatType: "YOLO",
+      labelData: yoloFormat.join(" "), // 배열을 공백으로 연결된 문자열로 변환
+    };
+
+    try {
+      await updateObject(objectId, updateData);
+      // 성공 시 objectsStore 새로고침을 위해 labelDataFlag 변경
+      setLabelDataFlag(!labelDataFlag);
+      useToastStore
+        .getState()
+        .addToast("Object updated successfully", "success");
+    } catch (error) {
+      console.error("Error updating object:", error);
+      useToastStore.getState().addToast("Failed to update object", "error");
+    }
+  };
+
+  // objectsStore 박스용 Drag 종료 핸들러 (위치 이동 후 API 호출)
+  const handleSavedObjectDragEnd = async (e) => {
+    const node = e.target;
+    // id 형식: "saved-obj-{obj.id}"에서 obj.id 추출
+    const idStr = node.id().replace("saved-obj-", "");
+    const objectId = parseInt(idStr);
+    const obj = objectsStore?.find((o) => o.id === objectId);
+
+    if (!obj) return;
+
+    // 드래그된 Rect의 새로운 위치
+    const newX = node.x();
+    const newY = node.y();
+    const newWidth = node.width();
+    const newHeight = node.height();
+
+    // 클래스 ID 찾기
+    const classId = obj.annotation?.class_id || obj.labelData?.class_id || 0;
+
+    // YOLO 형식으로 변환
+    const yoloFormat = convertToYOLOFormatForObject(
+      {
+        x: newX,
+        y: newY,
+        width: newWidth,
+        height: newHeight,
+      },
+      classId
+    );
+
+    // API 호출을 위한 데이터 준비
+    const updateData = {
+      name: obj.name || "",
+      labelType: "BOUNDING_BOX",
+      formatType: "YOLO",
+      labelData: yoloFormat.join(" "), // 배열을 공백으로 연결된 문자열로 변환
+    };
+
+    try {
+      await updateObject(objectId, updateData);
+      // 성공 시 objectsStore 새로고침을 위해 labelDataFlag 변경
+      setLabelDataFlag(!labelDataFlag);
+      useToastStore
+        .getState()
+        .addToast("Object updated successfully", "success");
+    } catch (error) {
+      console.error("Error updating object:", error);
+      useToastStore.getState().addToast("Failed to update object", "error");
+    }
+  };
+
   return (
     <Container ref={containerRef}>
       <Stage
@@ -549,16 +747,28 @@ export default function KonvaCanvas({
               if (shape.type === "boundingBox") {
                 // 저장된 색상이 있으면 사용, 없으면 기본 핑크색
                 const shapeColor = shape.color || "#f62579";
+                const isSelected = selectedShapeId === shape.id;
                 return (
                   <Rect
                     key={shape.id}
+                    id={shape.id}
                     x={shape.x}
                     y={shape.y}
                     width={shape.width}
                     height={shape.height}
-                    stroke={shapeColor}
-                    strokeWidth={2}
-                    fill={colorToRgba(shapeColor, 0.5)}
+                    stroke={isSelected ? "#FFFF00" : shapeColor}
+                    strokeWidth={isSelected ? 3 : 2}
+                    fill={colorToRgba(shapeColor, isSelected ? 0.3 : 0.5)}
+                    onClick={(e) => {
+                      e.cancelBubble = true;
+                      setSelectedShapeId(shape.id);
+                    }}
+                    onTap={(e) => {
+                      e.cancelBubble = true;
+                      setSelectedShapeId(shape.id);
+                    }}
+                    shadowBlur={isSelected ? 10 : 0}
+                    shadowColor={isSelected ? "#FFFF00" : "transparent"}
                   />
                 );
               } else if (shape.type === "polygon") {
@@ -613,14 +823,31 @@ export default function KonvaCanvas({
               return (
                 <Rect
                   key={`saved-obj-${obj.id}-${index}`}
+                  id={`saved-obj-${obj.id}`}
                   x={canvasCoords.x}
                   y={canvasCoords.y}
                   width={canvasCoords.width}
                   height={canvasCoords.height}
                   stroke={isHighlighted ? "#FFFF00" : color}
                   strokeWidth={isHighlighted ? 3 : 2}
-                  fill={colorToRgba(color, 0.2)}
-                  listening={false} // 클릭 이벤트 비활성화 (저장된 객체는 편집 불가)
+                  fill={colorToRgba(color, isHighlighted ? 0.3 : 0.2)}
+                  draggable={isHighlighted}
+                  onClick={(e) => {
+                    e.cancelBubble = true;
+                    if (setHighlightedObjectId) {
+                      setHighlightedObjectId(obj.id);
+                    }
+                  }}
+                  onTap={(e) => {
+                    e.cancelBubble = true;
+                    if (setHighlightedObjectId) {
+                      setHighlightedObjectId(obj.id);
+                    }
+                  }}
+                  onTransformEnd={handleSavedObjectTransformEnd}
+                  onDragEnd={handleSavedObjectDragEnd}
+                  shadowBlur={isHighlighted ? 10 : 0}
+                  shadowColor={isHighlighted ? "#FFFF00" : "transparent"}
                 />
               );
             }
@@ -647,6 +874,25 @@ export default function KonvaCanvas({
               strokeWidth={2}
               strokeDashArray={mousePosition ? [5, 5] : undefined}
               closed={false}
+            />
+          )}
+
+          {/* objectsStore 박스용 Transformer */}
+          {highlightedObjectId && (
+            <Transformer
+              ref={transformerRef}
+              flipEnabled={false}
+              boundBoxFunc={(oldBox, newBox) => {
+                // 최소 크기 제한 (5px)
+                if (Math.abs(newBox.width) < 5 || Math.abs(newBox.height) < 5) {
+                  return oldBox;
+                }
+                return newBox;
+              }}
+              anchorFill="#ffffff"
+              anchorStroke="#f62579"
+              borderStroke="#f62579"
+              borderStrokeWidth={2}
             />
           )}
         </Layer>

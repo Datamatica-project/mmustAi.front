@@ -15,6 +15,7 @@ import {
   drawCutoutOnBackground,
   prepareCutout,
   exportComposite,
+  calculateBBox,
 } from "../utils/drawImg";
 import { computeCompositeBBoxes } from "../utils/labelUtils";
 import { ScaleMouseMove, TransformScale } from "../utils/scale";
@@ -191,6 +192,35 @@ const ImageContainer = styled.div`
   }
 `;
 
+// 삭제 버튼 스타일
+const DeleteButton = styled.button`
+  position: absolute;
+  background-color: #f62579;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  font-size: 18px;
+  font-weight: bold;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  &:hover {
+    background-color: #d41e66;
+    transform: scale(1.1);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+`;
+
 const Sidebar = styled.aside`
   flex-grow: 1;
   display: flex;
@@ -273,6 +303,7 @@ export default function SyntheticBackground() {
   const [cutouts, setCutouts] = useState([]); // 원본 컷아웃 메타데이터
   const { placedObjects, setPlacedObjects } = usePlacedObjectsStore();
   const [activePlacedId, setActivePlacedId] = useState(null); // 현재 선택된 배치 객체
+  const [deleteButtonPosition, setDeleteButtonPosition] = useState(null); // 삭제 버튼 위치
   const cutoutCacheRef = useRef(new Map());
   const [, forceRender] = useState(0);
   // 사이드바에서 선택된 컷아웃 (아직 배치 안 됨)
@@ -369,6 +400,48 @@ export default function SyntheticBackground() {
       });
     });
   }, [placedObjects, bgImage, activePlacedId]);
+
+  // activePlacedId가 변경될 때 삭제 버튼 위치 계산
+  useEffect(() => {
+    if (!activePlacedId || !bgCanvasRef.current) {
+      setDeleteButtonPosition(null);
+      return;
+    }
+
+    const activeObj = placedObjects.find((obj) => obj.id === activePlacedId);
+    if (!activeObj) {
+      setDeleteButtonPosition(null);
+      return;
+    }
+
+    const bbox = calculateBBox(activeObj, cutoutCacheRef);
+    if (!bbox) {
+      setDeleteButtonPosition(null);
+      return;
+    }
+
+    // 캔버스의 실제 화면 위치 계산
+    const canvas = bgCanvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const img = document.querySelector(".target-image");
+    if (!img) return;
+
+    const imgRect = img.getBoundingClientRect();
+
+    // 이미지와 캔버스의 스케일 비율 계산
+    const scaleX = img.clientWidth / canvas.width;
+    const scaleY = img.clientHeight / canvas.height;
+
+    // bbox 좌표를 화면 좌표로 변환
+    const screenX = imgRect.left + bbox.x * scaleX;
+    const screenY = imgRect.top + bbox.y * scaleY;
+
+    // 삭제 버튼을 bbox 좌상단에 배치
+    setDeleteButtonPosition({
+      left: bbox.x + bbox.width / 2, // 버튼 크기의 절반만큼 왼쪽으로
+      top: bbox.y + bbox.height + 10, // 버튼 크기의 절반만큼 위로
+    });
+  }, [activePlacedId, placedObjects, bgImage]);
 
   useEffect(() => {
     cutouts.forEach((cutout) => {
@@ -631,6 +704,50 @@ export default function SyntheticBackground() {
     }
   };
 
+  // 배치된 객체 삭제 함수
+  const handleDeletePlacedObject = () => {
+    if (!activePlacedId) return;
+
+    setPlacedObjects((prev) => prev.filter((obj) => obj.id !== activePlacedId));
+    setActivePlacedId(null);
+    setDeleteButtonPosition(null);
+
+    useToastStore
+      .getState()
+      .addToast("Object deleted successfully.", "success");
+  };
+
+  // 백스페이스 키 이벤트 처리
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // 백스페이스 키이고 activePlacedId가 있을 때만 삭제
+      // input이나 textarea에 포커스가 있을 때는 삭제하지 않음
+      if (
+        e.key === "Backspace" &&
+        activePlacedId &&
+        !e.target.matches("input, textarea") &&
+        document.activeElement?.tagName !== "INPUT" &&
+        document.activeElement?.tagName !== "TEXTAREA"
+      ) {
+        e.preventDefault();
+        // 삭제 함수 직접 호출
+        setPlacedObjects((prev) =>
+          prev.filter((obj) => obj.id !== activePlacedId)
+        );
+        setActivePlacedId(null);
+        setDeleteButtonPosition(null);
+        useToastStore
+          .getState()
+          .addToast("Object deleted successfully.", "success");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [activePlacedId]);
+
   const handleNext = async () => {
     // 컷아웃 소스가 없으면 에러 메시지 표시
     if (placedObjects.length === 0) {
@@ -780,6 +897,22 @@ export default function SyntheticBackground() {
               onDragOver={(e) => e.preventDefault()} // 필수
               onDrop={handleCanvasDrop}
             />
+            {/* 삭제 버튼 (activePlacedId가 있을 때만 표시) */}
+            {deleteButtonPosition && activePlacedId && (
+              <DeleteButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeletePlacedObject();
+                }}
+                style={{
+                  left: `${deleteButtonPosition.left}px`,
+                  top: `${deleteButtonPosition.top}px`,
+                }}
+                title="Delete object (Backspace)"
+              >
+                ×
+              </DeleteButton>
+            )}
           </ImageContainer>
           <footer>
             <Navigation>

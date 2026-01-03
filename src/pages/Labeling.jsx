@@ -29,6 +29,8 @@ export default function Labeling() {
   useEffect(() => {
     const fetchJob = async () => {
       const response = await getJob(jobId);
+      console.log(response.data);
+
       setJobData(response.data);
       const allObjects = response.data.labelInfos
         .filter((labelInfo) => labelInfo.objectInfos?.length > 0)

@@ -17,7 +17,12 @@ import {
 import { objects } from "../../data";
 import KonvaCanvas from "./KonvaCanvas";
 import { getFileUrlByName } from "../../api/File";
-import { deleteObject, getObjectsByLabelId, submitJob } from "../../api/Job";
+import {
+  deleteObject,
+  getObjectsByLabelId,
+  submitJob,
+  updateObject,
+} from "../../api/Job";
 import { useToastStore } from "../../store/toastStore";
 import {
   useClassStore,
@@ -25,6 +30,7 @@ import {
   useObjectStore,
 } from "../../store/bboxStore";
 import { getTaskImgList } from "../../api/Project";
+import { classes } from "../../data";
 
 const Section = styled.section`
   display: flex;
@@ -227,6 +233,125 @@ const EditModalButton = styled.button`
   }
 `;
 
+// 거절 메시지 확인 버튼 스타일
+const RejectMessageButton = styled.button`
+  width: 100%;
+  padding: 5px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  color: #fff;
+  background-color: #f62579;
+  border: none;
+  cursor: pointer;
+  transition-duration: 150ms;
+  margin-top: 10px;
+
+  &:hover {
+    background-color: #e01f6b;
+  }
+`;
+
+// 거절 메시지 모달 스타일 (기존 EditModal 스타일 재사용)
+const RejectModalContent = styled.div`
+  background-color: #3b3c5d;
+  padding: 30px;
+  border-radius: 10px;
+  min-width: 400px;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+`;
+
+const RejectModalTitle = styled.h3`
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+`;
+
+const RejectModalFeedback = styled.div`
+  padding: 15px;
+  border: 2px solid #5b5d75;
+  border-radius: 5px;
+  background-color: #2a2b3d;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100px;
+  white-space: pre-wrap;
+  word-break: break-word;
+`;
+
+const RejectModalDate = styled.p`
+  color: #b6b5c5;
+  font-size: 13px;
+  margin: 0;
+  padding: 0;
+`;
+
+// 클래스 수정 모달 스타일
+const EditClassModalContent = styled.div`
+  background-color: #3b3c5d;
+  padding: 30px;
+  border-radius: 10px;
+  min-width: 400px;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+`;
+
+const EditClassModalTitle = styled.h3`
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+`;
+
+const EditClassModalInfo = styled.div`
+  color: #b6b5c5;
+  font-size: 14px;
+  margin: 0;
+`;
+
+const EditClassModalClassList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+`;
+
+const EditClassModalClassItem = styled.div`
+  padding: 10px 15px;
+  border: 2px solid ${(props) => (props.$isSelected ? "#f62579" : "#5b5d75")};
+  border-radius: 5px;
+  background-color: ${(props) => (props.$isSelected ? "#f6257920" : "#2a2b3d")};
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition-duration: 150ms;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  &:hover {
+    border-color: #f62579;
+    background-color: #f6257920;
+  }
+`;
+
+const EditClassModalClassColor = styled.div`
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background-color: ${(props) => props.$color || "#f62579"};
+  flex-shrink: 0;
+`;
+
 export default function LabelingWorkspace({ fileId, fileName, jobData }) {
   const [selectButton, setSelectButton] = useState("Bounding Box");
   const { labelInfos } = useClassStore();
@@ -339,21 +464,139 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
     return labeledObjects[selectedClass] || [];
   };
 
-  // const labelingButtonsOptions = [
-  //   { icon: BBoxIcon, title: "Bounding Box" },
-  //   { icon: PolygonIcon, title: "Polygon" },
-  // ];
+  const labelingButtonsOptions = [
+    { icon: BBoxIcon, title: "Bounding Box" },
+    { icon: PolygonIcon, title: "Polygon" },
+  ];
 
   // 이름 수정 모달 상태
   const [editingObject, setEditingObject] = useState(null);
   const [editName, setEditName] = useState("");
 
+  // 클래스 수정 모달 상태
+  const [editingClassObject, setEditingClassObject] = useState(null);
+  const [selectedNewClassId, setSelectedNewClassId] = useState(null);
+
+  // 거절 메시지 모달 상태
+  const [showRejectModal, setShowRejectModal] = useState(false);
+
+  // 작업 상태가 REJECTED이고 피드백이 존재하는지 확인
+  const hasRejectFeedback =
+    jobData?.status === "REJECTED" && jobData?.feedback != null;
+
   const handleEditClick = (objId) => {
-    const obj = getSelectedClassObjects().find((o) => o.id === objId);
+    // objectsStore에서 객체 찾기
+    const obj = objectsStore?.find((o) => o.id === objId);
     if (obj) {
-      setEditingObject(obj);
-      setEditName(obj.name);
+      console.log(obj);
+      setEditingClassObject(obj);
+      // 현재 클래스 ID 설정
+      const currentClassId =
+        obj.annotation?.class_id || obj.labelData?.class_id;
+      setSelectedNewClassId(currentClassId || null);
     }
+  };
+
+  // 클래스 수정 저장 핸들러
+  const handleSaveClassEdit = async () => {
+    if (!editingClassObject || !selectedNewClassId) {
+      useToastStore.getState().addToast("Please select a class", "error");
+      return;
+    }
+
+    try {
+      // 현재 bbox 정보 가져오기
+      let yoloFormat = null;
+      console.log(editingClassObject);
+
+      // annotation.yolo가 객체 형식인 경우 {x, y, w, h} - 가장 일반적인 경우
+      if (editingClassObject.annotation?.yolo) {
+        const yolo = editingClassObject.annotation.yolo;
+        // annotation.yolo는 중심 좌표 기준이지만, API는 좌상단 좌표 기준을 받을 수 있음
+        // 일단 기존 형식 유지 (서버에서 변환 처리)
+        // 만약 좌상단 좌표가 필요하면 변환 필요
+        yoloFormat = [selectedNewClassId, yolo.x, yolo.y, yolo.w, yolo.h];
+      }
+      // annotation.bbox가 배열 형식인 경우
+      else if (
+        editingClassObject.annotation?.bbox &&
+        Array.isArray(editingClassObject.annotation.bbox)
+      ) {
+        const bbox = editingClassObject.annotation.bbox;
+        // [classId, x, y, w, h] 형식에서 클래스 ID만 변경
+        const coords = bbox.length === 5 ? bbox.slice(1) : bbox;
+        yoloFormat = [selectedNewClassId, ...coords];
+      }
+      // labelData.bbox가 배열 형식인 경우 (하위 호환성)
+      else if (
+        editingClassObject.labelData?.bbox &&
+        Array.isArray(editingClassObject.labelData.bbox)
+      ) {
+        const bbox = editingClassObject.labelData.bbox;
+        // [classId, x, y, w, h] 형식에서 클래스 ID만 변경
+        const coords = bbox.length === 5 ? bbox.slice(1) : bbox;
+        yoloFormat = [selectedNewClassId, ...coords];
+      }
+      // labelData가 문자열인 경우 (이미 YOLO 형식 문자열)
+      else if (typeof editingClassObject.labelData === "string") {
+        // 문자열을 파싱하여 클래스 ID만 변경
+        const parts = editingClassObject.labelData.split(" ");
+        if (parts.length >= 5) {
+          parts[0] = selectedNewClassId.toString();
+          yoloFormat = parts.join(" ");
+        } else {
+          useToastStore
+            .getState()
+            .addToast("Invalid label data format", "error");
+          return;
+        }
+      } else {
+        useToastStore.getState().addToast("Cannot find bbox data", "error");
+        return;
+      }
+
+      // API 호출을 위한 데이터 준비
+      const updateData = {
+        name: editingClassObject.name || "",
+        labelType: "BOUNDING_BOX",
+        formatType: "YOLO",
+        labelData: Array.isArray(yoloFormat)
+          ? yoloFormat.join(" ")
+          : yoloFormat,
+      };
+
+      console.log(editingClassObject.id);
+      console.log(updateData);
+
+      const response = await updateObject(editingClassObject.id, updateData);
+
+      if (response.resultCode === "SUCCESS") {
+        // 성공 시 objectsStore 새로고침을 위해 labelDataFlag 변경
+        setLabelDataFlag(!labelDataFlag);
+
+        // 모달 닫기
+        setEditingClassObject(null);
+        setSelectedNewClassId(null);
+
+        // Transformer 해제 (클래스 변경 후)
+        if (highlightedObjectId === editingClassObject.id) {
+          setHighlightedObjectId(null);
+        }
+
+        useToastStore
+          .getState()
+          .addToast("Class updated successfully", "success");
+      }
+    } catch (error) {
+      console.error("Error updating class:", error);
+      useToastStore.getState().addToast("Failed to update class", "error");
+    }
+  };
+
+  // 클래스 수정 취소 핸들러
+  const handleCancelClassEdit = () => {
+    setEditingClassObject(null);
+    setSelectedNewClassId(null);
   };
 
   const handleDeleteClick = async (objId) => {
@@ -363,6 +606,11 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
       setObjects(objects.filter((obj) => obj.id !== objId));
       setObjectsStore(objectsStore.filter((obj) => obj.id !== objId));
       setLabelDataFlag(!labelDataFlag);
+
+      // 삭제된 객체가 현재 하이라이트된 객체인 경우 Transformer 해제
+      if (highlightedObjectId === objId) {
+        setHighlightedObjectId(null);
+      }
 
       useToastStore
         .getState()
@@ -430,16 +678,24 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
       {/* 왼쪽 사이드바 */}
       <Aside>
         {/* 작업자 정보 */}
-        <UserInfo role="Labeler" userName="John Doe" />
+        <UserInfo role="Labeler" userName={localStorage.getItem("email")} />
         {/* 작업 도구 선택 */}
-        {/* <ToolSelector
+        <ToolSelector
           buttons={labelingButtonsOptions}
           currentValue={selectButton}
           onChange={setSelectButton}
-        /> */}
+        />
         <DescriptionText>
           You can label by drawing a bounding box through click and drag
         </DescriptionText>
+
+        {/* 거절 메시지가 있는 경우 확인 버튼 표시 */}
+        {hasRejectFeedback && (
+          <RejectMessageButton onClick={() => setShowRejectModal(true)}>
+            View Rejection Message
+          </RejectMessageButton>
+        )}
+
         {/* 클래스 목록 */}
         <ListSection title={"Classes"}>
           {labelInfos
@@ -477,7 +733,7 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
                     name={obj.name}
                   >
                     <DotMenuButton
-                      // handleEditClick={() => handleEditClick(obj.id)}
+                      handleEditClick={() => handleEditClick(obj.id)}
                       handleDeleteClick={() => handleDeleteClick(obj.id)}
                       setHighlightedObjectId={setHighlightedObjectId}
                       objId={obj.id}
@@ -504,7 +760,6 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
         <Header>
           <div className="file-info">
             <h3>{fileName || "Image001.jpg"}</h3>
-            <p>1 hour ago</p>
           </div>
           <div className="action-buttons">
             {/* <button className="save-btn">
@@ -527,6 +782,7 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
             deletedShapeIds={deletedShapeIds}
             jobData={jobData}
             highlightedObjectId={highlightedObjectId}
+            setHighlightedObjectId={setHighlightedObjectId}
           />
           <img
             ref={setImageRef}
@@ -594,6 +850,79 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
               </EditModalButton>
             </EditModalButtons>
           </EditModalContent>
+        </EditModal>
+      )}
+
+      {/* 클래스 수정 모달 */}
+      {editingClassObject && (
+        <EditModal onClick={handleCancelClassEdit}>
+          <EditClassModalContent onClick={(e) => e.stopPropagation()}>
+            <EditClassModalTitle>Edit Class</EditClassModalTitle>
+            <EditClassModalInfo>
+              Object: {editingClassObject.name || "Unnamed"}
+            </EditClassModalInfo>
+            <EditClassModalInfo>
+              Current Class:{" "}
+              {(() => {
+                const currentClassId =
+                  editingClassObject.annotation?.class_id ||
+                  editingClassObject.labelData?.class_id;
+                const currentClass = labelInfos.find(
+                  (cls) => cls.id === currentClassId
+                );
+                return classes[currentClassId]?.name || "Unknown";
+              })()}
+            </EditClassModalInfo>
+            <EditClassModalInfo>Select New Class:</EditClassModalInfo>
+            <EditClassModalClassList>
+              {labelInfos.map((cls) => (
+                <EditClassModalClassItem
+                  key={cls.id}
+                  $isSelected={selectedNewClassId === cls.id}
+                  onClick={() => setSelectedNewClassId(cls.name)}
+                >
+                  <EditClassModalClassColor $color={cls.hexColor} />
+                  <span>{cls.name}</span>
+                </EditClassModalClassItem>
+              ))}
+            </EditClassModalClassList>
+            <EditModalButtons>
+              <EditModalButton
+                className="cancel"
+                onClick={handleCancelClassEdit}
+              >
+                Cancel
+              </EditModalButton>
+              <EditModalButton className="save" onClick={handleSaveClassEdit}>
+                Confirm
+              </EditModalButton>
+            </EditModalButtons>
+          </EditClassModalContent>
+        </EditModal>
+      )}
+
+      {/* 거절 메시지 확인 모달 */}
+      {showRejectModal && (
+        <EditModal onClick={() => setShowRejectModal(false)}>
+          <RejectModalContent onClick={(e) => e.stopPropagation()}>
+            <RejectModalTitle>Rejection Message</RejectModalTitle>
+            <RejectModalFeedback>{jobData?.feedback || ""}</RejectModalFeedback>
+            {jobData?.feedbackAt && (
+              <RejectModalDate>
+                Feedback Date:{" "}
+                {new Date(jobData.feedbackAt).toLocaleString("en-US")}
+              </RejectModalDate>
+            )}
+            <EditModalButtons>
+              <EditModalButton
+                className="save"
+                onClick={() => setShowRejectModal(false)}
+                style={{ width: "100%" }}
+              >
+                Confirm
+              </EditModalButton>
+            </EditModalButtons>
+          </RejectModalContent>
         </EditModal>
       )}
     </Section>

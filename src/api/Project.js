@@ -26,6 +26,7 @@ export const createProject = async (projectData) => {
     files: projectData.files || [],
   };
   try {
+    console.log(Data);
     const response = await api.post("/api/v1/projects", Data);
     return response.data;
   } catch (error) {
@@ -164,9 +165,11 @@ export const inviteMembers = async (projectId, members, tasks) => {
  * @param {string} projectId - 프로젝트 ID
  * @returns {Promise}
  */
-export const startAutoLabeling = async () => {
+export const startAutoLabeling = async (type, projectId) => {
   try {
-    const response = await api.post(`/api/v1/ai/demo/auto-labeling/start`);
+    const response = await api.post(
+      `/api/v1/ai/demo/auto-labeling/start?type=${type}&projectId=${projectId}`
+    );
     return response.data;
   } catch (error) {
     console.error("Error starting auto labeling:", error);

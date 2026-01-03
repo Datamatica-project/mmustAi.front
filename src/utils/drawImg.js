@@ -54,6 +54,82 @@ export function getRotatedAABB(w, h, angle) {
   };
 }
 
+// bbox 좌표 계산 함수 (drawCutoutOnBackground와 동일한 로직)
+export function calculateBBox(obj, cutoutCacheRef) {
+  const cached = cutoutCacheRef.current.get(obj.cutoutId || obj.sourceId);
+  if (!cached) return null;
+
+  const { offCanvas } = cached;
+  const { x, y, scale = 1, rotate = 0 } = obj;
+
+  const imgW = cached.width * scale;
+  const imgH = cached.height * scale;
+
+  const cx = x + imgW / 2;
+  const cy = y + imgH / 2;
+
+  // 마스크(alpha > 0) 기준으로 tight bbox 계산
+  const tempCanvas = document.createElement("canvas");
+  const diagonal = Math.sqrt(imgW * imgW + imgH * imgH);
+  tempCanvas.width = Math.ceil(diagonal) + 20;
+  tempCanvas.height = Math.ceil(diagonal) + 20;
+
+  const tempCtx = tempCanvas.getContext("2d", { willReadFrequently: true });
+  const tempCx = tempCanvas.width / 2;
+  const tempCy = tempCanvas.height / 2;
+
+  tempCtx.save();
+  tempCtx.translate(tempCx, tempCy);
+  tempCtx.rotate(rotate);
+  tempCtx.drawImage(offCanvas, -imgW / 2, -imgH / 2, imgW, imgH);
+  tempCtx.restore();
+
+  const imageData = tempCtx.getImageData(
+    0,
+    0,
+    tempCanvas.width,
+    tempCanvas.height
+  );
+  const data = imageData.data;
+
+  let minX = tempCanvas.width;
+  let minY = tempCanvas.height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let py = 0; py < tempCanvas.height; py++) {
+    for (let px = 0; px < tempCanvas.width; px++) {
+      const idx = (py * tempCanvas.width + px) * 4;
+      const alpha = data[idx + 3];
+      if (alpha > 0) {
+        if (px < minX) minX = px;
+        if (py < minY) minY = py;
+        if (px > maxX) maxX = px;
+        if (py > maxY) maxY = py;
+      }
+    }
+  }
+
+  let boxW, boxH, boxX, boxY;
+
+  if (maxX >= minX && maxY >= minY) {
+    boxW = maxX - minX + 1;
+    boxH = maxY - minY + 1;
+    const offsetX = minX - tempCx;
+    const offsetY = minY - tempCy;
+    boxX = cx + offsetX;
+    boxY = cy + offsetY;
+  } else {
+    const aabb = getRotatedAABB(imgW, imgH, rotate);
+    boxW = aabb.width;
+    boxH = aabb.height;
+    boxX = cx - boxW / 2;
+    boxY = cy - boxH / 2;
+  }
+
+  return { x: boxX, y: boxY, width: boxW, height: boxH };
+}
+
 // 배경 canvas에 컷아웃 그리기
 export function drawCutoutOnBackground({
   canvas,
@@ -255,8 +331,11 @@ export function flattenComposite({ bgCanvasRef }) {
   if (!bgCanvas || !img) return;
 
   const outCanvas = document.createElement("canvas");
-  outCanvas.width = bgCanvas.width;
-  outCanvas.height = bgCanvas.height;
+  // outCanvas.width = bgCanvas.width;
+  // outCanvas.height = bgCanvas.height;
+  outCanvas.width = img.clientWidth;
+  outCanvas.height = img.clientHeight;
+  console.log("img", img.clientWidth, img.clientHeight);
 
   const ctx = outCanvas.getContext("2d");
 
