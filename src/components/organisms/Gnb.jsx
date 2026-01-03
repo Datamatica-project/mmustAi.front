@@ -136,7 +136,12 @@ export default function Gnb() {
         </li>
         <li className="user-info-container">
           {UserIcon}
-          <p>{localStorage.getItem("email").split("@")[0]}</p>
+          <p>
+            {(() => {
+              const email = localStorage.getItem("email");
+              return email ? email.split("@")[0] : "User";
+            })()}
+          </p>
         </li>
       </ul>
     </Nav>
