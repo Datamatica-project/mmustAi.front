@@ -806,6 +806,16 @@ export default function CreateProject() {
           font-weight: 700 !important;
         }
         
+        .react-datepicker__day--disabled {
+          color: #5b5d75 !important;
+          cursor: not-allowed !important;
+          opacity: 0.5 !important;
+        }
+        
+        .react-datepicker__day--disabled:hover {
+          background-color: transparent !important;
+        }
+        
         .react-datepicker__navigation {
           top: 10px !important;
         }
@@ -874,6 +884,7 @@ export default function CreateProject() {
                   wrapperClassName="date-picker-wrapper"
                   className="date-picker-input"
                   calendarClassName="date-picker-calendar"
+                  minDate={new Date()} // 오늘 기준 과거 날짜 선택 불가
                 />
               </div>
 
