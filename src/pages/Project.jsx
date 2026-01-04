@@ -344,36 +344,84 @@ export default function Project() {
       />
 
       {/* 오토라벨링 모달 */}
-      <AutoLabelingModal
-        isOpen={isAutoLabelingModalOpen}
-        onClose={() => setIsAutoLabelingModalOpen(false)}
-        projectId={params.projectId}
-        projectData={data}
-        onComplete={() => {
-          // 프로젝트 데이터 새로고침
-          const fetchProject = async () => {
-            const response = await getProject(params.projectId);
-            setData(response.data);
-          };
-          fetchProject();
-        }}
-      />
+      {isAutoLabelingModalOpen && (
+        <AutoLabelingModal
+          isOpen={isAutoLabelingModalOpen}
+          onClose={() => {
+            setIsAutoLabelingModalOpen(false);
+            // 프로젝트 데이터 새로고침
+            const fetchProject = async () => {
+              const projectDetail = await getProjectDetail(params.projectId);
+              const response = await getProject(params.projectId);
+              const BestWorkerData = await getBestWorker(params.projectId);
+              const ProjectTasksData = await getProjectTasks(params.projectId);
+
+              setProjectDetail(projectDetail.data);
+              setData(response.data);
+              setBestWorkerData(BestWorkerData.data);
+              setProjectTasksData(ProjectTasksData);
+            };
+            fetchProject();
+          }}
+          projectId={params.projectId}
+          projectData={data}
+          onComplete={() => {
+            // 프로젝트 데이터 새로고침
+            const fetchProject = async () => {
+              const projectDetail = await getProjectDetail(params.projectId);
+              const response = await getProject(params.projectId);
+              const BestWorkerData = await getBestWorker(params.projectId);
+              const ProjectTasksData = await getProjectTasks(params.projectId);
+
+              setProjectDetail(projectDetail.data);
+              setData(response.data);
+              setBestWorkerData(BestWorkerData.data);
+              setProjectTasksData(ProjectTasksData);
+            };
+            fetchProject();
+          }}
+        />
+      )}
 
       {/* 오토라벨링 데모 모달 */}
-      <AutoLabelingDemoModal
-        isOpen={isAutoLabelingDemoModalOpen}
-        onClose={() => setIsAutoLabelingDemoModalOpen(false)}
-        projectId={params.projectId}
-        projectData={data}
-        onComplete={() => {
-          // 프로젝트 데이터 새로고침
-          const fetchProject = async () => {
-            const response = await getProject(params.projectId);
-            setData(response.data);
-          };
-          fetchProject();
-        }}
-      />
+      {isAutoLabelingDemoModalOpen && (
+        <AutoLabelingDemoModal
+          isOpen={isAutoLabelingDemoModalOpen}
+          onClose={() => {
+            setIsAutoLabelingDemoModalOpen(false);
+            // 프로젝트 데이터 새로고침
+            const fetchProject = async () => {
+              const projectDetail = await getProjectDetail(params.projectId);
+              const response = await getProject(params.projectId);
+              const BestWorkerData = await getBestWorker(params.projectId);
+              const ProjectTasksData = await getProjectTasks(params.projectId);
+
+              setProjectDetail(projectDetail.data);
+              setData(response.data);
+              setBestWorkerData(BestWorkerData.data);
+              setProjectTasksData(ProjectTasksData);
+            };
+            fetchProject();
+          }}
+          projectId={params.projectId}
+          projectData={data}
+          onComplete={() => {
+            // 프로젝트 데이터 새로고침
+            const fetchProject = async () => {
+              const projectDetail = await getProjectDetail(params.projectId);
+              const response = await getProject(params.projectId);
+              const BestWorkerData = await getBestWorker(params.projectId);
+              const ProjectTasksData = await getProjectTasks(params.projectId);
+
+              setProjectDetail(projectDetail.data);
+              setData(response.data);
+              setBestWorkerData(BestWorkerData.data);
+              setProjectTasksData(ProjectTasksData);
+            };
+            fetchProject();
+          }}
+        />
+      )}
     </main>
   );
 }
