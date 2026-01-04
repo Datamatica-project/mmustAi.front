@@ -604,14 +604,20 @@ export default function AutoLabelingDemoModal({
     passed: 0,
     failed: 0,
   }); // 현재 루프의 결과
+  const [finalResult, setFinalResult] = useState({
+    passed: 0,
+    failed: 0,
+  }); // 최종 결과 (최초 루프에서 받은 값)
   const [isAutoLoop, setIsAutoLoop] = useState(false); // 자동 루프 진행 여부
   const [isLoopRunning, setIsLoopRunning] = useState(false); // 루프 진행 중 여부 (자동 진행 시)
   const [resultImages, setResultImages] = useState([]); // 최종 결과 이미지 리스트 (pass)
   const [failedImages, setFailedImages] = useState([]); // 최종 결과 이미지 리스트 (fail)
+  const [firstLoopPassedImages, setFirstLoopPassedImages] = useState([]); // 최초 루프에서 pass된 이미지 리스트
   const [activeTab, setActiveTab] = useState("pass"); // pass/fail 탭 전환
   const [selectedImage, setSelectedImage] = useState(null); // 선택된 이미지 (원본 이미지 URL)
   const [selectedImageIndex, setSelectedImageIndex] = useState(-1); // 선택된 이미지의 인덱스
   const [isImageModalOpen, setIsImageModalOpen] = useState(false); // 이미지 모달 열림 상태
+  const [isFirstLoopImageList, setIsFirstLoopImageList] = useState(false); // 최초 루프 이미지 리스트 여부
 
   const canStartAutoLabeling = manualLabelingProgress >= 10;
 
@@ -770,17 +776,124 @@ export default function AutoLabelingDemoModal({
       const result = await getAutoLabelingResult(projectId);
       console.log("getAutoLabelingResult:", result);
 
-      // 현재 루프 결과 저장
-      const passed = result.passedCount || 0;
-      const failed = result.failedCount || 0;
-      setCurrentLoopResult({ passed, failed });
-
       // 루프 번호 증가
       const newLoop = currentLoop + 1;
+
+      // 최초 루프(1회차)에서는 최종 결과를 저장하고 시뮬레이션 시작점 계산
+      let finalPassed, finalFailed;
+      if (newLoop === 1) {
+        // 최초 루프에서 최종 결과를 받아서 저장
+        finalPassed = result.passedCount || 0;
+        finalFailed = result.failedCount || 0;
+        setFinalResult({ passed: finalPassed, failed: finalFailed });
+
+        // 최초 루프에서 받은 최종 결과 데이터 콘솔 출력
+        console.log("=== 최초 루프에서 받은 최종 결과 데이터 ===");
+        console.log("전체 결과 데이터:", result);
+        console.log("최종 Pass 개수:", finalPassed);
+        console.log("최종 Fail 개수:", finalFailed);
+        console.log("최종 총 개수:", finalPassed + finalFailed);
+        console.log("========================================");
+
+        // 최초 루프에서 passed된 항목들의 resultPath를 랜덤으로 추출하여 저장
+        if (result && result.items && Array.isArray(result.items)) {
+          const parseResultPath = (resultPath) => {
+            if (!resultPath) return null;
+
+            const resultIndex = resultPath.indexOf("/result/");
+            if (resultIndex === -1) return null;
+
+            const afterResult = resultPath.substring(
+              resultIndex + "/result/".length
+            );
+            const parts = afterResult.split("/");
+            const which = parts[0];
+            const name = parts[parts.length - 1];
+
+            const runIdMatch = resultPath.match(/run_\d{8}_\d{6}_[a-f0-9]+/);
+            const runId = runIdMatch ? runIdMatch[0] : null;
+
+            if (!runId || !name || !which) return null;
+
+            return {
+              runId,
+              name,
+              which,
+              fileName: name,
+            };
+          };
+
+          // passed === true인 항목들 필터링 및 파싱
+          const passedItems = result.items
+            .filter((item) => item.passed === true)
+            .map((item) => parseResultPath(item.resultPath))
+            .filter((item) => item !== null);
+
+          // 랜덤으로 섞기 (Fisher-Yates 셔플 알고리즘)
+          const shuffled = [...passedItems];
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          }
+
+          // 40개만 선택하여 저장 (초기 결과는 40개로 표시)
+          const displayCount = 40;
+          const selectedImages = shuffled.slice(
+            0,
+            Math.min(displayCount, shuffled.length)
+          );
+          setFirstLoopPassedImages(selectedImages);
+        }
+      } else {
+        // 2회차 이후에는 저장된 최종 결과 사용
+        finalPassed = finalResult.passed;
+        finalFailed = finalResult.failed;
+      }
+
+      // 각 루프마다 시뮬레이션된 결과 계산
+      // 최종 결과를 기준으로 fail에서 pass로 점진적으로 이동하는 효과
+      let simulatedPassed, simulatedFailed;
+      const total = finalPassed + finalFailed;
+
+      if (newLoop === 1) {
+        // 최초 루프: 초기 결과는 40개로 표시 (점진적 개선을 보여주기 위해)
+        simulatedPassed = 40;
+        simulatedFailed = total - 40;
+      } else {
+        // 2~4회차: 점진적으로 fail에서 pass로 이동
+        // 진행률 계산 (0.0 ~ 1.0)
+        // newLoop가 2일 때: progress = 1/3 = 0.33
+        // newLoop가 3일 때: progress = 2/3 = 0.67
+        // newLoop가 4일 때: progress = 3/3 = 1.0
+        const progress = (newLoop - 1) / (MAX_LOOP_COUNT - 1);
+
+        // 최초 값 (fail이 많고 pass가 적음) - 1회차에서 사용한 값 (40개)
+        const initialPassed = 40;
+        const initialFailed = total - initialPassed;
+
+        // 선형 보간으로 점진적 변화
+        // progress가 0일 때: initial 값 (1회차)
+        // progress가 1일 때: final 값 (4회차)
+        simulatedFailed = Math.round(
+          initialFailed + (finalFailed - initialFailed) * progress
+        );
+        simulatedPassed = total - simulatedFailed;
+      }
+
+      // 현재 루프 결과 저장
+      setCurrentLoopResult({
+        passed: simulatedPassed,
+        failed: simulatedFailed,
+      });
+
+      // 루프 번호 업데이트
       setCurrentLoop(newLoop);
 
       // 루프 결과 저장
-      setLoopResults((prev) => [...prev, { loop: newLoop, passed, failed }]);
+      setLoopResults((prev) => [
+        ...prev,
+        { loop: newLoop, passed: simulatedPassed, failed: simulatedFailed },
+      ]);
 
       // 루프 완료 상태로 변경
       setAutoLabelingStatus("loopComplete");
@@ -805,6 +918,7 @@ export default function AutoLabelingDemoModal({
     isAutoLoop,
     MAX_LOOP_COUNT,
     handleViewFinalResults,
+    finalResult,
   ]);
 
   // 자동 루프 진행 처리 (handleStartAutoLabeling과 handleViewFinalResults가 정의된 후에 실행)
@@ -871,13 +985,16 @@ export default function AutoLabelingDemoModal({
     setCurrentLoop(0);
     setLoopResults([]);
     setCurrentLoopResult({ passed: 0, failed: 0 });
+    setFinalResult({ passed: 0, failed: 0 }); // 최종 결과도 초기화
     setIsAutoLoop(false);
     setIsLoopRunning(false);
     setResultImages([]);
     setFailedImages([]);
+    setFirstLoopPassedImages([]); // 최초 루프 이미지 리스트 초기화
     setActiveTab("pass");
     setSelectedImage(null);
     setIsImageModalOpen(false);
+    setIsFirstLoopImageList(false); // 최초 루프 이미지 리스트 상태 초기화
     onClose();
   };
 
@@ -888,6 +1005,7 @@ export default function AutoLabelingDemoModal({
     setSelectedImage(null);
     setSelectedImageIndex(-1);
     setIsImageModalOpen(false);
+    setIsFirstLoopImageList(false); // 모달 닫을 때 최초 루프 이미지 리스트 상태 초기화
   };
 
   const handleFileNameClick = useCallback(async (imageData, index) => {
@@ -909,13 +1027,20 @@ export default function AutoLabelingDemoModal({
   }, []);
 
   const handleNextImage = useCallback(async () => {
-    const currentList = activeTab === "pass" ? resultImages : failedImages;
+    // 최초 루프 이미지 리스트인 경우 firstLoopPassedImages 사용
+    const currentList = isFirstLoopImageList
+      ? firstLoopPassedImages
+      : activeTab === "pass"
+      ? resultImages
+      : failedImages;
     if (selectedImageIndex < currentList.length - 1) {
       const nextIndex = selectedImageIndex + 1;
       const nextImageData = currentList[nextIndex];
       await handleFileNameClick(nextImageData, nextIndex);
     }
   }, [
+    isFirstLoopImageList,
+    firstLoopPassedImages,
     activeTab,
     resultImages,
     failedImages,
@@ -925,12 +1050,19 @@ export default function AutoLabelingDemoModal({
 
   const handlePrevImage = useCallback(async () => {
     if (selectedImageIndex > 0) {
-      const currentList = activeTab === "pass" ? resultImages : failedImages;
+      // 최초 루프 이미지 리스트인 경우 firstLoopPassedImages 사용
+      const currentList = isFirstLoopImageList
+        ? firstLoopPassedImages
+        : activeTab === "pass"
+        ? resultImages
+        : failedImages;
       const prevIndex = selectedImageIndex - 1;
       const prevImageData = currentList[prevIndex];
       await handleFileNameClick(prevImageData, prevIndex);
     }
   }, [
+    isFirstLoopImageList,
+    firstLoopPassedImages,
     activeTab,
     resultImages,
     failedImages,
@@ -1125,6 +1257,35 @@ export default function AutoLabelingDemoModal({
               </AutoLoopCheckbox>
             )}
 
+            {/* 최초 루프(1회차)일 때만 pass된 이미지 리스트 표시 */}
+            {currentLoop === 1 && firstLoopPassedImages.length > 0 && (
+              <div style={{ marginTop: "24px" }}>
+                <CycleSection>
+                  <CycleHeader>
+                    <CycleTitle>Passed Images (Loop 1)</CycleTitle>
+                    <CycleBadge>
+                      Total: {firstLoopPassedImages.length}
+                    </CycleBadge>
+                  </CycleHeader>
+
+                  {/* 파일명 리스트 */}
+                  <FileListContainer>
+                    {firstLoopPassedImages.map((imageData, index) => (
+                      <FileListItem
+                        key={index}
+                        onClick={() => {
+                          setIsFirstLoopImageList(true);
+                          handleFileNameClick(imageData, index);
+                        }}
+                      >
+                        {imageData.fileName}
+                      </FileListItem>
+                    ))}
+                  </FileListContainer>
+                </CycleSection>
+              </div>
+            )}
+
             {/* 루프 히스토리 표시 */}
             {loopResults.length > 0 && (
               <div style={{ marginTop: "16px" }}>
@@ -1190,6 +1351,61 @@ export default function AutoLabelingDemoModal({
               </Button>
             )}
           </ActionButtons>
+
+          {/* 이미지 모달 (loopComplete 상태에서도 표시) */}
+          {isImageModalOpen && selectedImage && (
+            <ImageModalOverlay onClick={handleCloseImageModal}>
+              <ImageModalContent onClick={(e) => e.stopPropagation()}>
+                <ImageModalClose onClick={handleCloseImageModal}>
+                  ×
+                </ImageModalClose>
+                {(() => {
+                  // 최초 루프 이미지 리스트인 경우 firstLoopPassedImages 사용
+                  const modalList = isFirstLoopImageList
+                    ? firstLoopPassedImages
+                    : activeTab === "pass"
+                    ? resultImages
+                    : failedImages;
+                  return (
+                    <>
+                      {modalList.length > 1 && (
+                        <ImageNavButton
+                          className="prev"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePrevImage();
+                          }}
+                          disabled={selectedImageIndex === 0}
+                        >
+                          ‹
+                        </ImageNavButton>
+                      )}
+                      {modalList.length > 1 && (
+                        <ImageNavButton
+                          className="next"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleNextImage();
+                          }}
+                          disabled={selectedImageIndex === modalList.length - 1}
+                        >
+                          ›
+                        </ImageNavButton>
+                      )}
+                      <ImageModalImage
+                        src={selectedImage.url}
+                        alt={selectedImage.fileName}
+                      />
+                      <ImageModalFileName>
+                        {selectedImage.fileName} ({selectedImageIndex + 1} /{" "}
+                        {modalList.length})
+                      </ImageModalFileName>
+                    </>
+                  );
+                })()}
+              </ImageModalContent>
+            </ImageModalOverlay>
+          )}
         </>
       );
     }
@@ -1311,38 +1527,50 @@ export default function AutoLabelingDemoModal({
                 <ImageModalClose onClick={handleCloseImageModal}>
                   ×
                 </ImageModalClose>
-                {currentList.length > 1 && (
-                  <ImageNavButton
-                    className="prev"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handlePrevImage();
-                    }}
-                    disabled={selectedImageIndex === 0}
-                  >
-                    ‹
-                  </ImageNavButton>
-                )}
-                {currentList.length > 1 && (
-                  <ImageNavButton
-                    className="next"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleNextImage();
-                    }}
-                    disabled={selectedImageIndex === currentList.length - 1}
-                  >
-                    ›
-                  </ImageNavButton>
-                )}
-                <ImageModalImage
-                  src={selectedImage.url}
-                  alt={selectedImage.fileName}
-                />
-                <ImageModalFileName>
-                  {selectedImage.fileName} ({selectedImageIndex + 1} /{" "}
-                  {currentList.length})
-                </ImageModalFileName>
+                {(() => {
+                  // 최초 루프 이미지 리스트인 경우 firstLoopPassedImages 사용
+                  const modalList = isFirstLoopImageList
+                    ? firstLoopPassedImages
+                    : activeTab === "pass"
+                    ? resultImages
+                    : failedImages;
+                  return (
+                    <>
+                      {modalList.length > 1 && (
+                        <ImageNavButton
+                          className="prev"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePrevImage();
+                          }}
+                          disabled={selectedImageIndex === 0}
+                        >
+                          ‹
+                        </ImageNavButton>
+                      )}
+                      {modalList.length > 1 && (
+                        <ImageNavButton
+                          className="next"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleNextImage();
+                          }}
+                          disabled={selectedImageIndex === modalList.length - 1}
+                        >
+                          ›
+                        </ImageNavButton>
+                      )}
+                      <ImageModalImage
+                        src={selectedImage.url}
+                        alt={selectedImage.fileName}
+                      />
+                      <ImageModalFileName>
+                        {selectedImage.fileName} ({selectedImageIndex + 1} /{" "}
+                        {modalList.length})
+                      </ImageModalFileName>
+                    </>
+                  );
+                })()}
               </ImageModalContent>
             </ImageModalOverlay>
           )}
