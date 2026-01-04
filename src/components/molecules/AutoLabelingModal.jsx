@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import styled from "styled-components";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   getAutoLabelingResult,
   getProject,
@@ -684,9 +684,9 @@ const Button = styled.button`
 export default function AutoLabelingModal({
   isOpen,
   onClose,
-  projectId,
   projectData,
   onComplete,
+  projectId,
 }) {
   const navigate = useNavigate();
   const [autoLabelingStatus, setAutoLabelingStatus] = useState("idle"); // idle, running, completed, showingResults
@@ -875,7 +875,7 @@ export default function AutoLabelingModal({
       console.log("startAutoLabeling response:", response);
 
       // // 결과 확인
-      const result = await getAutoLabelingResult();
+      const result = await getAutoLabelingResult(projectId);
       console.log(
         "getAutoLabelingResult:",
         result.failedCount,
@@ -912,7 +912,7 @@ export default function AutoLabelingModal({
 
   const handleViewResults = async () => {
     try {
-      const result = await getAutoLabelingResult();
+      const result = await getAutoLabelingResult(projectId);
       console.log("Result for view:", result);
       let passdImages = [];
       let failedImages = [];

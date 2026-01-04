@@ -594,7 +594,7 @@ export default function AutoLabelingDemoModal({
   onComplete,
 }) {
   // 최대 루프 횟수 (변수로 관리 가능)
-  const MAX_LOOP_COUNT = 10;
+  const MAX_LOOP_COUNT = 4;
 
   const [autoLabelingStatus, setAutoLabelingStatus] = useState("idle"); // idle, running, loopComplete, finalComplete, showingResults
   const [manualLabelingProgress, setManualLabelingProgress] = useState(0);
@@ -695,7 +695,7 @@ export default function AutoLabelingDemoModal({
   // 최종 결과 보기 함수 (useCallback으로 감싸서 의존성 문제 해결)
   const handleViewFinalResults = useCallback(async () => {
     try {
-      const result = await getAutoLabelingResult();
+      const result = await getAutoLabelingResult(projectId);
       console.log("Final Result for view:", result);
       let passdImages = [];
       let failedImages = [];
@@ -767,7 +767,7 @@ export default function AutoLabelingDemoModal({
       console.log("startAutoLabeling response:", response);
 
       // 결과 확인
-      const result = await getAutoLabelingResult();
+      const result = await getAutoLabelingResult(projectId);
       console.log("getAutoLabelingResult:", result);
 
       // 현재 루프 결과 저장

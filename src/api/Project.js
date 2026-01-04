@@ -177,9 +177,12 @@ export const startAutoLabeling = async (type, projectId) => {
   }
 };
 
-export const getAutoLabelingResult = async () => {
+export const getAutoLabelingResult = async (projectId) => {
+  console.log("projectId", projectId);
   try {
-    const response = await api.get(`/api/v1/ai/demo/results/latest`);
+    const response = await api.get(
+      `/api/v1/ai/demo/results/latest?limit=200&offset=0&updateJobStatus=true&projectId=${projectId}`
+    );
     return response.data;
   } catch (error) {
     console.error("Error getting auto labeling result:", error);
