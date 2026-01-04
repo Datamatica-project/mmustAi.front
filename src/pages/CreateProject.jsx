@@ -624,7 +624,6 @@ export default function CreateProject() {
               );
             }
           );
-          console.log("response", response);
 
           // ZIP 파일인지 확인
           const isZipFile = file.name.endsWith(".zip");
@@ -636,7 +635,6 @@ export default function CreateProject() {
             const successFileIds =
               response.data?.successFileIds || response.data?.fileIds || [];
             fileId = successFileIds.length > 0 ? successFileIds : null;
-            console.log("ZIP file - extracted fileIds:", fileId);
           } else {
             // 개별 파일: 첫 번째 파일 ID만 사용
             fileId =
@@ -644,7 +642,6 @@ export default function CreateProject() {
               response.data?.fileIds?.[0] ||
               response.data?.fileId ||
               response.fileId;
-            console.log("Individual file - fileId:", fileId);
           }
 
           // Update fileId (for this file only)
@@ -720,9 +717,6 @@ export default function CreateProject() {
         return item.fileId ? [item.fileId] : [];
       });
 
-    console.log("uploadFiles:", uploadFiles);
-    console.log("uploadedFileIds:", uploadedFileIds);
-
     if (uploadedFileIds.length === 0) {
       useToastStore
         .getState()
@@ -743,7 +737,6 @@ export default function CreateProject() {
       hexColor: cls.hexColor,
       classId: cls.classId,
     }));
-    console.log(classes);
     const payload = {
       projectName,
       description,

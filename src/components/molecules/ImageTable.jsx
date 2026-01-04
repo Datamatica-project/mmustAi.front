@@ -89,7 +89,16 @@ export default function ImageTable({ imageData, page, pageSize, setPage }) {
                     </StyledLink>
                   ) : (
                     <StyledLink
-                      to={`/project/${projectId}/task/${taskId}/labeling/${item.id}`}
+                      to={
+                        item.status.toLowerCase() === "approved"
+                          ? false
+                          : `/project/${projectId}/task/${taskId}/labeling/${item.id}`
+                      }
+                      className={
+                        item.status.toLowerCase() === "approved"
+                          ? "disabled"
+                          : ""
+                      }
                       // to={`/project/${projectId}/task/${taskId}/reviewing/${item.id}`}
                       // state={{ fileId: item.fileId, fileName: item.fileName }}
                     >

@@ -159,7 +159,6 @@ export default function Home() {
   useEffect(() => {
     const fetchProjects = async () => {
       const response = await getProjects();
-      console.log("response", response);
 
       // 각 프로젝트의 역할을 로컬스토리지에 저장
       // const projectRoles = JSON.parse(

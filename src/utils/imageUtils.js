@@ -125,7 +125,6 @@ export async function saveMetaData(className, bbox, fullMask) {
     const file = new File([blob], fileName, { type: "image/jpeg" });
 
     const uploadResponse = await uploadFilesUnified([file], "PROJECT");
-    console.log("uploadResponse", uploadResponse);
 
     // 업로드 응답에서 fileId 추출 (여러 응답 형태 고려)
     sourceId = uploadResponse.data?.successFileIds?.[0] || null;
@@ -153,7 +152,6 @@ export async function saveMetaData(className, bbox, fullMask) {
     },
     createdAt: Date.now(),
   };
-  console.log("metadata", metadata);
 
   // 이전 세션 데이터 가져오기
   const prev = JSON.parse(sessionStorage.getItem("cutoutSources")) || [];

@@ -514,8 +514,6 @@ export default function SyntheticBackground() {
       }
     }
 
-    console.log("files", files);
-
     const data = e.dataTransfer.getData("application/cutout");
     if (!data) return;
 
@@ -552,8 +550,6 @@ export default function SyntheticBackground() {
     const y = mouseY - height / 2;
 
     await prepareCutout(cutout.id, cutout.bbox, cutoutCacheRef);
-
-    console.log("cutout", cutout);
 
     setPlacedObjects((prev) => [
       ...prev,

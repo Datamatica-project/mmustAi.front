@@ -94,7 +94,6 @@ export default function Gnb() {
 
   const handleGoBack = (e) => {
     e.preventDefault();
-    console.log(params);
     if (params.jobId) {
       navigate(`/project/${params.projectId}/task/${params.taskId}`);
     } else if (!params.jobId && params.taskId) {

@@ -371,7 +371,6 @@ export default function InviteMemberModal({
     const fetchMembers = async () => {
       try {
         const response = await getMembers();
-        console.log(response);
 
         // response.data.items에서 이메일 목록 추출
         if (response?.data?.items) {
@@ -400,7 +399,6 @@ export default function InviteMemberModal({
       try {
         // 첫 번째 task의 작업자 데이터 자동으로 가져오기
         const taskDetail = await getTaskDetail(firstTaskId);
-        console.log(taskDetail);
         setReviewer(taskDetail.data.reviewerEmail || "");
         setWorker(taskDetail.data.workerEmail || "");
       } catch (error) {
@@ -536,8 +534,6 @@ export default function InviteMemberModal({
     setReviewer(taskDetail.data.reviewerEmail);
     setWorker(taskDetail.data.workerEmail);
   };
-
-  console.log(members);
 
   return (
     <ModalOverlay onClick={handleClose}>

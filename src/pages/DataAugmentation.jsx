@@ -408,7 +408,6 @@ export default function DataAugmentation() {
           // 각 label의 sourceId를 fileId로 매핑
           // item.labels의 각 label은 { sourceId, classId, bbox, yolo } 구조를 가짐
           const labelsWithFileId = item.labels.map((label) => {
-            console.log("label", label); // 각 label을 추출
             // label의 sourceId로 cutoutSources에서 원본 메타데이터 찾기
             const sourceMetadata = cutoutSources.find(
               (source) => source.id === label.sourceId
@@ -432,7 +431,6 @@ export default function DataAugmentation() {
           const response = await sendToTraining(projectId, taskId, [
             itemWithFileId,
           ]);
-          console.log("response", response);
 
           // 저장 완료 상태 업데이트 (학습 데이터 저장 성공)
           setSavedStatus((prev) => ({

@@ -488,7 +488,6 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
     // objectsStore에서 객체 찾기
     const obj = objectsStore?.find((o) => o.id === objId);
     if (obj) {
-      console.log(obj);
       setEditingClassObject(obj);
       // 현재 클래스 ID 설정
       const currentClassId =
@@ -507,7 +506,6 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
     try {
       // 현재 bbox 정보 가져오기
       let yoloFormat = null;
-      console.log(editingClassObject);
 
       // annotation.yolo가 객체 형식인 경우 {x, y, w, h} - 가장 일반적인 경우
       if (editingClassObject.annotation?.yolo) {
@@ -564,9 +562,6 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
           ? yoloFormat.join(" ")
           : yoloFormat,
       };
-
-      console.log(editingClassObject.id);
-      console.log(updateData);
 
       const response = await updateObject(editingClassObject.id, updateData);
 
@@ -874,7 +869,6 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
                 const currentClass = labelInfos.find(
                   (cls) => cls.classId === +currentClassId
                 );
-                console.log(currentClass);
                 return currentClass?.name || "Unknown";
               })()}
             </EditClassModalInfo>

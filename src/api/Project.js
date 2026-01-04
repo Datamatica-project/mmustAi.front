@@ -26,7 +26,6 @@ export const createProject = async (projectData) => {
     files: projectData.files || [],
   };
   try {
-    console.log(Data);
     const response = await api.post("/api/v1/projects", Data);
     return response.data;
   } catch (error) {
@@ -178,7 +177,6 @@ export const startAutoLabeling = async (type, projectId) => {
 };
 
 export const getAutoLabelingResult = async (projectId) => {
-  console.log("projectId", projectId);
   try {
     const response = await api.get(
       `/api/v1/ai/demo/results/latest?limit=200&offset=0&updateJobStatus=true&projectId=${projectId}`

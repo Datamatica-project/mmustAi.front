@@ -97,7 +97,6 @@ export const uploadFilesUnified = async (
   files.forEach((file) => {
     formData.append("files", file);
   });
-  console.log("formData", formData.getAll("files"));
 
   try {
     const response = await api.post(
@@ -120,7 +119,6 @@ export const uploadFilesUnified = async (
         },
       }
     );
-    console.log("response", response);
     return response.data;
   } catch (error) {
     console.error("Upload files error:", error);
@@ -175,7 +173,6 @@ export const getFileUrlByName = async (fileName) => {
  * @returns {string} 이미지 URL
  */
 export const getOriginalImageUrl = async (runId, name, which) => {
-  console.log(runId, name, which);
   try {
     const response = await api.get(`/api/v1/ai/demo/results/preview`, {
       params: {

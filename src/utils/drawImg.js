@@ -335,7 +335,6 @@ export function flattenComposite({ bgCanvasRef }) {
   // outCanvas.height = bgCanvas.height;
   outCanvas.width = img.clientWidth;
   outCanvas.height = img.clientHeight;
-  console.log("img", img.clientWidth, img.clientHeight);
 
   const ctx = outCanvas.getContext("2d");
 
@@ -389,8 +388,6 @@ export async function exportComposite(
     console.error("원본 이미지 크기를 찾을 수 없습니다.");
     return;
   }
-
-  console.log("placedObjects", placedObjects);
 
   const labels = computeCompositeBBoxes({
     placedObjects,

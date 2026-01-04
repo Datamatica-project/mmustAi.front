@@ -67,7 +67,6 @@ export default function Task() {
   useEffect(() => {
     const fetchTaskImgList = async () => {
       const listData = await getTaskImgList(params.taskId);
-      console.log("listData", listData);
       setTaskImgList(listData.data);
     };
     fetchTaskImgList();

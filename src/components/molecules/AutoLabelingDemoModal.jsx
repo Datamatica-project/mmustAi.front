@@ -702,7 +702,6 @@ export default function AutoLabelingDemoModal({
   const handleViewFinalResults = useCallback(async () => {
     try {
       const result = await getAutoLabelingResult(projectId);
-      console.log("Final Result for view:", result);
       let passdImages = [];
       let failedImages = [];
 
@@ -770,11 +769,9 @@ export default function AutoLabelingDemoModal({
 
     try {
       const response = await startAutoLabeling(null, projectId);
-      console.log("startAutoLabeling response:", response);
 
       // 결과 확인
       const result = await getAutoLabelingResult(projectId);
-      console.log("getAutoLabelingResult:", result);
 
       // 루프 번호 증가
       const newLoop = currentLoop + 1;
@@ -786,14 +783,6 @@ export default function AutoLabelingDemoModal({
         finalPassed = result.passedCount || 0;
         finalFailed = result.failedCount || 0;
         setFinalResult({ passed: finalPassed, failed: finalFailed });
-
-        // 최초 루프에서 받은 최종 결과 데이터 콘솔 출력
-        console.log("=== 최초 루프에서 받은 최종 결과 데이터 ===");
-        console.log("전체 결과 데이터:", result);
-        console.log("최종 Pass 개수:", finalPassed);
-        console.log("최종 Fail 개수:", finalFailed);
-        console.log("최종 총 개수:", finalPassed + finalFailed);
-        console.log("========================================");
 
         // 최초 루프에서 passed된 항목들의 resultPath를 랜덤으로 추출하여 저장
         if (result && result.items && Array.isArray(result.items)) {

@@ -116,8 +116,6 @@ export function computeCompositeBBoxes({
       h: cocoBBox.height / originalImageHeight,
     };
 
-    console.log(obj);
-
     results.push({
       sourceId: obj.sourceId,
       classId: obj.classId,

@@ -772,7 +772,6 @@ export default function AutoLabelingModal({
     // 진행률 계산
     const fetchAutoLabelingStatus = async () => {
       const response = await getProject(projectId);
-      console.log(response.data);
       // 진행률 계산: (승인된 작업 수 / 전체 작업 수) * 100
       // totalJobCount가 0인 경우를 방지하기 위한 체크 추가
       const percentage =
@@ -784,7 +783,6 @@ export default function AutoLabelingModal({
 
     const currentLabbeldObject = async () => {
       const projectDetail = await getProjectDetail(projectId);
-      console.log(projectDetail.data.labelInfos);
       // labelInfos에서 objectInfos가 있는 클래스만 필터링하여 저장
       // 각 클래스의 이름과 objectInfos.length를 저장
       const classesWithObjects = (projectDetail.data?.labelInfos || [])
@@ -872,15 +870,9 @@ export default function AutoLabelingModal({
 
     try {
       const response = await startAutoLabeling(null, projectId);
-      console.log("startAutoLabeling response:", response);
 
       // // 결과 확인
       const result = await getAutoLabelingResult(projectId);
-      console.log(
-        "getAutoLabelingResult:",
-        result.failedCount,
-        result.passedCount
-      );
 
       // 성공/실패 개수 저장
       setResultCounts({
@@ -913,7 +905,6 @@ export default function AutoLabelingModal({
   const handleViewResults = async () => {
     try {
       const result = await getAutoLabelingResult(projectId);
-      console.log("Result for view:", result);
       let passdImages = [];
       let failedImages = [];
 
@@ -962,8 +953,6 @@ export default function AutoLabelingModal({
           .map((item) => parseResultPath(item.resultPath))
           .filter((item) => item !== null); // null 제거
 
-        console.log("Passed images:", passdImages);
-        console.log("Failed images:", failedImages);
         setResultImages(passdImages);
         setFailedImages(failedImages);
         setAutoLabelingStatus("showingResults");

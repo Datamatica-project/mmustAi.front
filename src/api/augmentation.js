@@ -49,7 +49,6 @@ const blobToBase64 = (blob) => {
  * @returns {Promise} 전송 결과
  */
 export const sendToTraining = async (projectId, taskId, itemArray) => {
-  console.log(projectId, taskId, itemArray);
   let item = itemArray[0];
   let labels = item.labels;
 
