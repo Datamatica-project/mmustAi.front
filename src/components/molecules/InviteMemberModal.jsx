@@ -283,6 +283,16 @@ const EmptyMessage = styled.div`
   text-align: center;
 `;
 
+const InfoMessage = styled.div`
+  padding: 12px;
+  background-color: rgba(42, 188, 245, 0.1);
+  border: 1px solid #2abcf5;
+  border-radius: 8px;
+  color: #2abcf5;
+  font-size: 13px;
+  line-height: 1.5;
+`;
+
 const ActionButtons = styled.div`
   display: flex;
   gap: 12px;
@@ -361,10 +371,14 @@ export default function InviteMemberModal({
     const fetchMembers = async () => {
       try {
         const response = await getMembers();
+        console.log(response);
 
         // response.data.items에서 이메일 목록 추출
         if (response?.data?.items) {
-          const emails = response.data.items.map((item) => item.email);
+          let emails = response.data.items.map((item) => item.email);
+          emails = emails.filter(
+            (email) => email !== worker && email !== reviewer
+          );
           setAvailableMembers(emails);
         }
       } catch (error) {
@@ -372,7 +386,7 @@ export default function InviteMemberModal({
       }
     };
     fetchMembers();
-  }, [isOpen]);
+  }, [isOpen, worker, reviewer]);
 
   // 모달이 열릴 때 첫 번째 task 자동 선택하여 작업자 데이터 가져오기
   useEffect(() => {
@@ -386,6 +400,7 @@ export default function InviteMemberModal({
       try {
         // 첫 번째 task의 작업자 데이터 자동으로 가져오기
         const taskDetail = await getTaskDetail(firstTaskId);
+        console.log(taskDetail);
         setReviewer(taskDetail.data.reviewerEmail || "");
         setWorker(taskDetail.data.workerEmail || "");
       } catch (error) {
@@ -564,57 +579,71 @@ export default function InviteMemberModal({
               </AssignedMembersCard>
             )}
           </InputGroup>
-          <InputGroup>
-            <Label>Email</Label>
-            <DropdownContainer data-dropdown-container>
-              <DropdownInput
-                type="text"
-                placeholder="Search or select email..."
-                value={searchQuery || email}
-                onChange={handleSearchChange}
-                onFocus={() => setIsDropdownOpen(true)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") {
-                    handleAddMember();
-                  }
-                }}
-              />
-              {isDropdownOpen && filteredEmails.length > 0 && (
-                <DropdownList>
-                  {filteredEmails
-                    .filter((email) => !members.some((m) => m.email === email))
-                    .map((emailItem) => (
-                      <DropdownItem
-                        key={emailItem}
-                        onClick={() => handleEmailSelect(emailItem)}
-                      >
-                        {emailItem}
-                      </DropdownItem>
-                    ))}
-                </DropdownList>
-              )}
-              {isDropdownOpen && filteredEmails.length === 0 && (
-                <DropdownList>
-                  <EmptyMessage>No matching emails found</EmptyMessage>
-                </DropdownList>
-              )}
-            </DropdownContainer>
-          </InputGroup>
-          <InputGroup>
-            <Label>Role</Label>
-            <Select value={role} onChange={(e) => setRole(e.target.value)}>
-              {ROLE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </InputGroup>
+          {/* Worker와 Reviewer가 모두 할당되어 있으면 Email 입력 부분 숨김 */}
+          {!(worker && reviewer) && (
+            <>
+              <InputGroup>
+                <Label>Email</Label>
+                <DropdownContainer data-dropdown-container>
+                  <DropdownInput
+                    type="text"
+                    placeholder="Search or select email..."
+                    value={searchQuery || email}
+                    onChange={handleSearchChange}
+                    onFocus={() => setIsDropdownOpen(true)}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        handleAddMember();
+                      }
+                    }}
+                  />
+                  {isDropdownOpen && filteredEmails.length > 0 && (
+                    <DropdownList>
+                      {filteredEmails
+                        .filter(
+                          (email) => !members.some((m) => m.email === email)
+                        )
+                        .map((emailItem) => (
+                          <DropdownItem
+                            key={emailItem}
+                            onClick={() => handleEmailSelect(emailItem)}
+                          >
+                            {emailItem}
+                          </DropdownItem>
+                        ))}
+                    </DropdownList>
+                  )}
+                  {isDropdownOpen && filteredEmails.length === 0 && (
+                    <DropdownList>
+                      <EmptyMessage>No matching emails found</EmptyMessage>
+                    </DropdownList>
+                  )}
+                </DropdownContainer>
+              </InputGroup>
+              <InputGroup>
+                <Label>Role</Label>
+                <Select value={role} onChange={(e) => setRole(e.target.value)}>
+                  {ROLE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </InputGroup>
 
-          {members.length === 0 && (
-            <Button className="primary" onClick={handleAddMember}>
-              Add
-            </Button>
+              {members.length === 0 && (
+                <Button className="primary" onClick={handleAddMember}>
+                  Add
+                </Button>
+              )}
+            </>
+          )}
+          {/* Worker와 Reviewer가 모두 할당되어 있을 때 안내 메시지 표시 */}
+          {tasks && worker && reviewer && (
+            <InfoMessage type="info" style={{ marginTop: "16px" }}>
+              This task already has both a Labeler and Reviewer assigned. No
+              additional members can be invited.
+            </InfoMessage>
           )}
         </Section>
 
@@ -652,7 +681,7 @@ export default function InviteMemberModal({
           <Button
             className="primary"
             onClick={handleInvite}
-            disabled={members.length === 0}
+            disabled={members.length === 0 || (tasks && worker && reviewer)}
           >
             Invite
           </Button>

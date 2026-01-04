@@ -50,6 +50,7 @@ export const deleteObject = async (objectId) => {
 };
 
 export const updateObject = async (objectId, updateData) => {
+  console.log(objectId, updateData);
   try {
     const response = await api.patch(`/api/v1/objects/${objectId}`, updateData);
     return response.data;

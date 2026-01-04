@@ -225,7 +225,7 @@ export default function DotMenuButton({
               <li>
                 <button onClick={(e) => handleEditClick(e)}>
                   {EditIcon}
-                  <span>수정</span>
+                  <span>Edit</span>
                 </button>
               </li>
             )}

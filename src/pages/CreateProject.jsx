@@ -384,7 +384,7 @@ export default function CreateProject() {
     { name: "car", hexColor: "#8A4A4A", classId: 0 }, // red → tone down
     { name: "truck", hexColor: "#4A5A8A", classId: 1 }, // blue
     { name: "bus", hexColor: "#4A8A5A", classId: 2 }, // green
-    { name: "special_vehicle", hexColor: "#4A8A8A", classId: 3 }, // cyan (optional)
+    // { name: "special_vehicle", hexColor: "#4A8A8A", classId: 3 }, // cyan (optional)
     { name: "motorcycle", hexColor: "#8A4A7A", classId: 4 }, // pink
     { name: "bicycle", hexColor: "#6C4A8A", classId: 5 }, // purple
     { name: "pedestrian", hexColor: "#8A6A4A", classId: 6 }, // orange

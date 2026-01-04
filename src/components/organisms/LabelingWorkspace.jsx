@@ -164,7 +164,7 @@ const EditModal = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 10000; /* DotMenuButton의 z-index(9999)보다 높게 설정 */
 `;
 
 const EditModalContent = styled.div`
@@ -732,12 +732,15 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
                     color={classItem?.hexColor || "red"}
                     name={obj.name}
                   >
-                    <DotMenuButton
-                      handleEditClick={() => handleEditClick(obj.id)}
-                      handleDeleteClick={() => handleDeleteClick(obj.id)}
-                      setHighlightedObjectId={setHighlightedObjectId}
-                      objId={obj.id}
-                    />
+                    {/* 모달이 열려있을 때는 DotMenuButton 숨기기 */}
+                    {!editingClassObject && (
+                      <DotMenuButton
+                        // handleEditClick={() => handleEditClick(obj.id)}
+                        handleDeleteClick={() => handleDeleteClick(obj.id)}
+                        setHighlightedObjectId={setHighlightedObjectId}
+                        objId={obj.id}
+                      />
+                    )}
                   </ClassLabel>
                 );
               })
@@ -867,19 +870,21 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
                 const currentClassId =
                   editingClassObject.annotation?.class_id ||
                   editingClassObject.labelData?.class_id;
+
                 const currentClass = labelInfos.find(
-                  (cls) => cls.id === currentClassId
+                  (cls) => cls.classId === +currentClassId
                 );
-                return classes[currentClassId]?.name || "Unknown";
+                console.log(currentClass);
+                return currentClass?.name || "Unknown";
               })()}
             </EditClassModalInfo>
             <EditClassModalInfo>Select New Class:</EditClassModalInfo>
             <EditClassModalClassList>
               {labelInfos.map((cls) => (
                 <EditClassModalClassItem
-                  key={cls.id}
-                  $isSelected={selectedNewClassId === cls.id}
-                  onClick={() => setSelectedNewClassId(cls.name)}
+                  key={cls.classId}
+                  $isSelected={selectedNewClassId === cls.classId}
+                  onClick={() => setSelectedNewClassId(cls.classId)}
                 >
                   <EditClassModalClassColor $color={cls.hexColor} />
                   <span>{cls.name}</span>
