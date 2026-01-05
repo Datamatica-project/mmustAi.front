@@ -17,6 +17,11 @@ const LoginButton = styled.button`
   &.show {
     border-radius: 12px;
   }
+
+  @media (max-width: 375px) {
+    padding: 11px 40px;
+    font-size: 14px;
+  }
 `;
 
 const InputSection = styled.section`
@@ -49,6 +54,21 @@ const InputSection = styled.section`
   &.show {
     height: 100px;
     margin-bottom: 30px;
+  }
+
+  @media (max-width: 375px) {
+    gap: 12px;
+
+    .input {
+      font-size: 14px;
+      padding: 9px 16px;
+      max-width: 100%;
+    }
+
+    &.show {
+      height: 90px;
+      margin-bottom: 25px;
+    }
   }
 `;
 

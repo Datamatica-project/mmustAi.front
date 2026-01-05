@@ -7,6 +7,7 @@ import AuthForm from "../molecules/AuthForm";
 import AuthLinks from "../molecules/AuthLinks";
 import { usePostLogin } from "../../hooks/useUser";
 import { useAuthStore } from "../../store/authStore";
+import { isMobileDevice } from "../../utils/deviceUtils";
 /**
  * 로그인 관리 방식
  * Zustand 상태 관리 방식 사용
@@ -20,6 +21,8 @@ const Container = styled.div`
   justify-content: center;
   align-items: center;
   position: relative;
+  padding: 20px;
+  box-sizing: border-box;
 
   .d-icon,
   .l-icon {
@@ -51,11 +54,54 @@ const Container = styled.div`
       height: 300px;
     }
   }
+
+  @media (max-width: 768px) {
+    padding: 15px;
+
+    .d-icon,
+    .l-icon {
+      height: 200px;
+    }
+
+    .d-icon {
+      bottom: 20px;
+      left: 20px;
+    }
+
+    .l-icon {
+      top: 20px;
+      right: 20px;
+    }
+  }
+
+  @media (max-width: 375px) {
+    padding: 10px;
+
+    .d-icon,
+    .l-icon {
+      height: 120px;
+      opacity: 0.3;
+    }
+
+    .d-icon {
+      bottom: 10px;
+      left: 10px;
+    }
+
+    .l-icon {
+      top: 10px;
+      right: 10px;
+    }
+  }
 `;
 
 const Main = styled.main`
   text-align: center;
   background-color: #1c1d2fd9;
+  padding: 30px 20px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 500px;
 
   .title {
     font-size: 20px;
@@ -82,6 +128,61 @@ const Main = styled.main`
     color: #7c7e9c;
     line-height: 1.5;
     margin-bottom: 45px;
+  }
+
+  @media (max-width: 768px) {
+    padding: 25px 15px;
+
+    .title {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 36px;
+      line-height: 44px;
+      margin-bottom: 16px;
+
+      & > div:first-of-type {
+        margin-bottom: 8px;
+      }
+      & > div:last-of-type {
+        margin-top: 8px;
+      }
+    }
+
+    .description {
+      font-size: 16px;
+      margin-bottom: 35px;
+    }
+  }
+
+  @media (max-width: 375px) {
+    padding: 20px 12px;
+
+    .title {
+      font-size: 16px;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 28px;
+      line-height: 34px;
+      margin-bottom: 12px;
+
+      & > div:first-of-type {
+        margin-bottom: 6px;
+      }
+      & > div:last-of-type {
+        margin-top: 6px;
+      }
+    }
+
+    .description {
+      font-size: 14px;
+      line-height: 1.4;
+      margin-bottom: 25px;
+    }
   }
 
   .highlight {
@@ -194,7 +295,15 @@ export default function LoginPage() {
             localStorage.setItem("email", res.data.data.email);
             const accessToken = res.data.data.accessToken;
             setToken(accessToken); // 토큰 저장
-            navigate("/");
+
+            // 모바일 디바이스인지 확인
+            if (isMobileDevice()) {
+              // 모바일이면 안내 페이지로 리다이렉트
+              navigate("/mobile-not-supported");
+            } else {
+              // 데스크탑이면 정상적으로 홈으로 이동
+              navigate("/");
+            }
           },
           // 로그인 실패 시 실행
           onError: (error) => {

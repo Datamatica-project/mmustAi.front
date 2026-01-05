@@ -12,6 +12,7 @@ import SyntheticBackground from "../pages/SyntheticBackground";
 import DataAugmentation from "../pages/DataAugmentation";
 import ImageGeneration from "../pages/ImageGeneration";
 import Classes from "../pages/Classes";
+import MobileNotSupported from "../pages/MobileNotSupported";
 
 const Loader = styled.div`
   height: 100vh;
@@ -43,6 +44,7 @@ const Router = ({ isAuthFailed }) => {
     <Suspense fallback={<Loader>Loading...</Loader>}>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/mobile-not-supported" element={<MobileNotSupported />} />
         <Route element={<Layout />}>
           <Route path="/" index element={<Home />} />
           <Route path="/create-project" element={<CreateProject />} />
