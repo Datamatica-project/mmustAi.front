@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import styled from "styled-components";
 import { CheckIcon, CrossIcon } from "../icons/Icons";
 
@@ -36,6 +36,16 @@ const InputContainer = styled.div`
     width: 100%;
     padding: 5px;
     box-sizing: border-box;
+    border: 2px solid ${(props) => (props.$hasError ? "#f44468" : "#5b5d75")};
+    border-radius: 4px;
+    background-color: #2a2b3d;
+    color: #fff;
+    transition: border-color 0.2s ease;
+
+    &:focus {
+      outline: none;
+      border-color: ${(props) => (props.$hasError ? "#f44468" : "#f62579")};
+    }
   }
   .selected-class {
     transition-duration: 150ms;
@@ -107,17 +117,49 @@ export default function LabelTooltip({
   labelData,
   setLabelData,
 }) {
+  const inputRef = useRef(null);
+  const [hasError, setHasError] = useState(false);
+
+  // 에러 상태가 true가 되면 input에 포커스
+  useEffect(() => {
+    if (hasError && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [hasError]);
+
+  const handleConfirm = () => {
+    // 객체 이름이 비어있으면 에러 표시 및 포커스
+    if (!labelData.objectName || labelData.objectName.trim() === "") {
+      setHasError(true);
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+      return;
+    }
+
+    // 에러 상태 초기화 후 확인 처리
+    setHasError(false);
+    onConfirm();
+  };
+
+  const handleInputChange = (e) => {
+    // 입력 시 에러 상태 초기화
+    if (hasError) {
+      setHasError(false);
+    }
+    setLabelData({ ...labelData, objectName: e.target.value });
+  };
+
   return (
     <Container $x={x} $y={y}>
       <h4>Select Class</h4>
-      <InputContainer $selectedClass={labelData.className}>
+      <InputContainer $selectedClass={labelData.className} $hasError={hasError}>
         <input
+          ref={inputRef}
           type="text"
           placeholder="Object Name"
           value={labelData.objectName}
-          onChange={(e) =>
-            setLabelData({ ...labelData, objectName: e.target.value })
-          }
+          onChange={handleInputChange}
         />
         <span className="selected-class">Class: {labelData.className}</span>
         <ul className="class-list">
@@ -136,7 +178,7 @@ export default function LabelTooltip({
         </ul>
       </InputContainer>
       <ButtonContainer>
-        <button className="confirm-btn" onClick={onConfirm}>
+        <button className="confirm-btn" onClick={handleConfirm}>
           {CheckIcon}
           <span>Confirm</span>
         </button>
