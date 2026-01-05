@@ -135,11 +135,46 @@ const Main = styled.main`
   gap: 20px;
 `;
 
+const LoadingContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  min-height: 300px;
+`;
+
+const Spinner = styled.div`
+  width: 50px;
+  height: 50px;
+  border: 4px solid #3b3c5d;
+  border-top: 4px solid #f62579;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
+const LoadingText = styled.p`
+  font-size: 16px;
+  color: #b6b5c5;
+  margin: 0;
+`;
+
 export default function Home() {
   const [selectTab, setSelectTab] = useState(0);
   const [search, setSearch] = useState("");
   const [projects, setProjects] = useState([]);
   const [refresh, setRefresh] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const TabTitles = [
     "All Projects", // "All"
@@ -158,14 +193,21 @@ export default function Home() {
 
   useEffect(() => {
     const fetchProjects = async () => {
-      const response = await getProjects();
+      setIsLoading(true);
+      try {
+        const response = await getProjects();
 
-      // 각 프로젝트의 역할을 로컬스토리지에 저장
-      // const projectRoles = JSON.parse(
-      //   localStorage.getItem("projectRoles") || "{}"
-      // );
+        // 각 프로젝트의 역할을 로컬스토리지에 저장
+        // const projectRoles = JSON.parse(
+        //   localStorage.getItem("projectRoles") || "{}"
+        // );
 
-      setProjects(response.data.items);
+        setProjects(response.data.items);
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchProjects();
   }, [refresh]);
@@ -251,15 +293,22 @@ export default function Home() {
         </ActionBar>
       </header>
       <h2 className="recent-projects">Recent Projects</h2>
-      <Main>
-        {filteredProjects.map((project) => (
-          <ProjectCard
-            key={project.id}
-            project={project}
-            onDelete={() => setRefresh((prev) => !prev)}
-          />
-        ))}
-      </Main>
+      {isLoading ? (
+        <LoadingContainer>
+          <Spinner />
+          <LoadingText>Loading projects...</LoadingText>
+        </LoadingContainer>
+      ) : (
+        <Main>
+          {filteredProjects.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              onDelete={() => setRefresh((prev) => !prev)}
+            />
+          ))}
+        </Main>
+      )}
     </Container>
   );
 }

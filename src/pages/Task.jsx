@@ -5,6 +5,7 @@ import ImageTable from "../components/molecules/ImageTable";
 import TaskInfo from "../components/molecules/TaskInfo";
 import { ImageData } from "../data";
 import { getTaskImgList, getTaskStatistics } from "../api/Project";
+import { getTaskDetail } from "../api/Task";
 
 const Title = styled.h1`
   font-size: 32px;
@@ -55,11 +56,15 @@ export default function Task() {
   const params = useParams();
   const [taskData, setTaskData] = useState(null);
   const [taskImgList, setTaskImgList] = useState(null);
+  const [taskDetail, setTaskDetail] = useState(null);
 
   useEffect(() => {
     const fetchTask = async () => {
+      const detailData = await getTaskDetail(params.taskId);
+      console.log(detailData.data);
       const response = await getTaskStatistics(params.taskId);
       setTaskData(response.data);
+      setTaskDetail(detailData.data);
     };
     fetchTask();
   }, []);
@@ -76,10 +81,12 @@ export default function Task() {
     <main>
       <TaskHeader>
         <div className="task-header-wrapper">
-          <Title>{taskData?.name}</Title>
-          <Description>{taskData?.projectName}</Description>
+          <Title>{taskDetail?.projectInfo?.name}</Title>
+          <Description>{taskDetail?.projectInfo?.status}</Description>
         </div>
-        <span className="task-total-image">{taskData?.total} images</span>
+        <span className="task-total-image">
+          {taskDetail?.projectInfo?.taskCount} images
+        </span>
       </TaskHeader>
       <TaskContent>
         {taskImgList && (

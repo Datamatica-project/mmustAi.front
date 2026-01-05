@@ -25,12 +25,20 @@ import { useToastStore } from "../store/toastStore";
 import { createSyntheticTask } from "../api/syntheticApi";
 
 const Title = styled.h1`
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 500px;
   font-size: 32px;
   font-weight: 700;
   line-height: 2;
 `;
 
 const Description = styled.p`
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 500px;
   font-size: 15px;
   font-weight: 700;
   color: #a7a7a7;
@@ -216,17 +224,17 @@ export default function Project() {
           >
             Auto Labeling
           </button> */}
-          <button
+          {/* <button
             className="button"
             onClick={() => setIsAutoLabelingModalOpen(true)}
           >
             Auto Labeling
-          </button>
+          </button> */}
           <button
             className="button"
             onClick={() => setIsAutoLabelingDemoModalOpen(true)}
           >
-            Auto Labeling Demo
+            Auto Labeling
           </button>
           {/* <StyledLink
             to={`/project/${params.projectId}/synthetic-data`}

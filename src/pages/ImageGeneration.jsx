@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import styled from "styled-components";
 import { useToastStore } from "../store/toastStore";
 import { ImageGenerationIcon } from "../components/icons/Project";
@@ -143,6 +143,33 @@ const GenerateButton = styled.button`
   }
 `;
 
+const RefreshButton = styled.button`
+  background-color: transparent;
+  color: #b6b5c5;
+  border: 2px solid #5b5d75;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background-color: #5b5d75;
+    color: #ffffff;
+    border-color: #f62579;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
 const CurrentPromptSection = styled.div`
   margin-bottom: 30px;
   padding: 16px 20px;
@@ -187,6 +214,15 @@ const TitleIndicator = styled.div`
   height: 8px;
   border-radius: 50%;
   background-color: #b6b5c5;
+`;
+
+const DownloadHint = styled.div`
+  font-size: 14px;
+  color: #b6b5c5;
+  margin-top: 12px;
+  margin-bottom: 20px;
+  text-align: center;
+  font-style: italic;
 `;
 
 const ImagesGrid = styled.div`
@@ -271,15 +307,23 @@ export default function ImageGeneration() {
   const [currentPrompt, setCurrentPrompt] = useState("");
   const [generatedImages, setGeneratedImages] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [searchPage, setSearchPage] = useState(1); // Unsplash API 페이지 번호
 
-  const handleGenerate = async () => {
-    if (!prompt.trim()) {
+  // 스크롤 및 포커스를 위한 ref
+  const promptInputRef = useRef(null);
+  const imagesSectionRef = useRef(null);
+
+  // 이미지 검색 함수 (공통 로직)
+  const fetchImages = async (page = 1, promptToUse = null) => {
+    // 프롬프트 파라미터가 있으면 사용, 없으면 currentPrompt 또는 prompt 사용
+    const searchPrompt = promptToUse || currentPrompt || prompt;
+
+    if (!searchPrompt.trim()) {
       useToastStore.getState().addToast("Please enter a prompt", "error");
       return;
     }
 
     setIsGenerating(true);
-    setCurrentPrompt(prompt);
 
     try {
       // Unsplash API를 사용하여 프롬프트로 이미지 검색
@@ -287,9 +331,8 @@ export default function ImageGeneration() {
       const unsplashAccessKey =
         import.meta.env.VITE_UNSPLASH_ACCESS_KEY || "YOUR_UNSPLASH_ACCESS_KEY"; // 실제 사용 시 환경 변수에 설정 필요
 
-      // 현장감 있는 사진을 얻기 위한 키워드 추가
-      // 예쁜 배경사진 대신 실제 현장감 있는 사진을 검색하기 위해 키워드 조합
-      const basePrompt = prompt.trim();
+      // 프롬프트 사용
+      const basePrompt = searchPrompt.trim();
       const realisticKeywords = [
         "realistic",
         "documentary",
@@ -313,10 +356,10 @@ export default function ImageGeneration() {
         ? basePrompt
         : `${basePrompt} realistic documentary on-site`;
 
-      // 프롬프트를 검색어로 사용하여 Unsplash에서 이미지 검색
+      // 프롬프트를 검색어로 사용하여 Unsplash에서 이미지 검색 (페이지 번호 포함)
       const searchQuery = encodeURIComponent(enhancedPrompt);
       const response = await fetch(
-        `https://api.unsplash.com/search/photos?query=${searchQuery}&client_id=${unsplashAccessKey}&per_page=4&orientation=landscape`
+        `https://api.unsplash.com/search/photos?query=${searchQuery}&client_id=${unsplashAccessKey}&per_page=4&orientation=landscape&page=${page}`
       );
 
       if (!response.ok) {
@@ -332,6 +375,22 @@ export default function ImageGeneration() {
         useToastStore
           .getState()
           .addToast("Images loaded successfully!", "success");
+
+        // 이미지 로드 후 스크롤을 맨 밑(input 위치)으로 이동하고 input에 포커스
+        setTimeout(() => {
+          // 페이지 맨 밑으로 스크롤 (input이 있는 위치)
+          window.scrollTo({
+            top: document.documentElement.scrollHeight,
+            behavior: "smooth",
+          });
+
+          // 스크롤 완료 후 input에 포커스
+          setTimeout(() => {
+            if (promptInputRef.current) {
+              promptInputRef.current.focus();
+            }
+          }, 500);
+        }, 100);
       } else {
         // 검색 결과가 없을 경우
         useToastStore
@@ -357,9 +416,72 @@ export default function ImageGeneration() {
     }
   };
 
+  const handleGenerate = async () => {
+    if (!prompt.trim()) {
+      useToastStore.getState().addToast("Please enter a prompt", "error");
+      return;
+    }
+
+    setCurrentPrompt(prompt);
+    setSearchPage(1); // 새 검색 시 페이지를 1로 리셋
+    // prompt를 직접 전달하여 즉시 사용 (currentPrompt 상태 업데이트를 기다리지 않음)
+    await fetchImages(1, prompt);
+  };
+
+  // 다른 이미지 가져오기 (새로고침 버튼)
+  const handleRefreshImages = async () => {
+    if (!currentPrompt.trim()) {
+      useToastStore
+        .getState()
+        .addToast("Please generate images first", "error");
+      return;
+    }
+
+    // 다음 페이지로 이동 (최대 10페이지까지, 그 이후는 랜덤)
+    const nextPage =
+      searchPage >= 10 ? Math.floor(Math.random() * 10) + 1 : searchPage + 1;
+    setSearchPage(nextPage);
+    await fetchImages(nextPage);
+  };
+
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
       handleGenerate();
+    }
+  };
+
+  // 이미지 다운로드 함수
+  const handleImageDownload = async (imageUrl, index) => {
+    try {
+      // 이미지 URL에서 파일명 추출 (없으면 기본값 사용)
+      const urlParts = imageUrl.split("/");
+      const filename =
+        urlParts[urlParts.length - 1].split("?")[0] || `image-${index + 1}.jpg`;
+
+      // 이미지를 fetch로 가져와서 blob으로 변환
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+
+      // blob URL 생성
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      // 다운로드 링크 생성 및 클릭
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+
+      // 정리
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+
+      useToastStore
+        .getState()
+        .addToast("Image downloaded successfully!", "success");
+    } catch (error) {
+      console.error("Image download error:", error);
+      useToastStore.getState().addToast("Failed to download image", "error");
     }
   };
 
@@ -387,14 +509,25 @@ export default function ImageGeneration() {
         )}
 
         {generatedImages.length > 0 && (
-          <ImagesSection>
+          <ImagesSection ref={imagesSectionRef}>
             <ImagesTitle>
               <TitleIndicator />
               Here are the images:
+              <RefreshButton
+                onClick={handleRefreshImages}
+                disabled={isGenerating}
+                style={{ marginLeft: "auto" }}
+              >
+                Load Different Images
+              </RefreshButton>
             </ImagesTitle>
+            <DownloadHint>Click on any image to download it</DownloadHint>
             <ImagesGrid>
               {generatedImages.map((imageUrl, index) => (
-                <ImageCard key={index}>
+                <ImageCard
+                  key={index}
+                  onClick={() => handleImageDownload(imageUrl, index)}
+                >
                   {isGenerating && index === generatedImages.length - 1 ? (
                     <LoadingOverlay>
                       <Spinner />
@@ -410,6 +543,7 @@ export default function ImageGeneration() {
         <PromptSection>
           <PromptInputContainer>
             <PromptInput
+              ref={promptInputRef}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyPress}
