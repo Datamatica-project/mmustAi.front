@@ -451,23 +451,49 @@ export default function KonvaCanvas({
     if (polygonPoints.length >= 3) {
       const closedPoints = [...polygonPoints, polygonPoints[0]];
 
+      // 폴리곤 ID 생성 (한 번만 생성하여 일관성 유지)
+      const polygonId = `polygon-${Date.now()}-${Math.random()}`;
+
       const newShape = {
         type: "polygon",
         zIndex: maxZIndex + 1,
         points: closedPoints,
-        id: `polygon-${Date.now()}-${Math.random()}`,
+        id: polygonId,
       };
       setShapes([...shapes, newShape]);
       setMaxZIndex(maxZIndex + 1);
 
+      // handleShapeComplete에 실제 생성된 폴리곤의 ID 전달
       handleShapeComplete({
         type: "polygon",
         points: closedPoints,
-        id: `polygon-${Date.now()}-${Math.random()}`,
+        id: polygonId, // 동일한 ID 사용
       });
       setPolygonPoints([]);
       setMousePosition(null);
     }
+  };
+
+  // 폴리곤 점들을 바운딩 박스로 변환하는 함수
+  const polygonToBoundingBox = (points) => {
+    if (!points || points.length === 0) return null;
+
+    // 모든 점의 x, y 좌표에서 최소/최대값 찾기
+    const xCoords = points.map((p) => p.x);
+    const yCoords = points.map((p) => p.y);
+
+    const minX = Math.min(...xCoords);
+    const maxX = Math.max(...xCoords);
+    const minY = Math.min(...yCoords);
+    const maxY = Math.max(...yCoords);
+
+    // 바운딩 박스 좌표 계산 (좌상단 좌표와 너비/높이)
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
   };
 
   // 색상을 CSS 색상 이름 또는 hex에서 rgba로 변환 (투명도 포함)
@@ -509,6 +535,8 @@ export default function KonvaCanvas({
 
     const classColor = selectedClass?.hexColor || "#f62579";
     let yoloFormat;
+    let bboxId = null; // 생성된 바운딩 박스 ID 추적
+
     // 바운딩 박스인 경우 색상 업데이트
     if (currentShape?.type === "boundingBox") {
       // shapes 배열에서 해당 바운딩 박스 찾아서 색상 업데이트
@@ -531,6 +559,8 @@ export default function KonvaCanvas({
         labelData.className
       );
 
+      bboxId = currentShape.id;
+
       // 콜백 함수가 있으면 호출
       if (onBoundingBoxComplete) {
         onBoundingBoxComplete(
@@ -541,29 +571,99 @@ export default function KonvaCanvas({
         );
       }
     }
+    // 폴리곤인 경우 - 바운딩 박스로 변환하여 시각화하고 폴리곤 제거
+    else if (currentShape?.type === "polygon") {
+      // 폴리곤 점들을 바운딩 박스로 변환
+      const bbox = polygonToBoundingBox(currentShape.points);
 
-    const response = await postObjectLabel(
-      jobId,
-      labelData.id,
-      yoloFormat,
-      labelData
-    );
-    // 서버 저장 성공 시 shapes에서 해당 shape 제거 (중복 렌더링 방지)
-    // 서버에서 다시 불러올 때 objectsStore에 포함되어 렌더링됨
-    if (currentShape?.id) {
-      setShapes((prevShapes) =>
-        prevShapes.filter((shape) => shape.id !== currentShape.id)
-      );
+      if (!bbox) {
+        useToastStore.getState().addToast("Invalid polygon data", "error");
+        return;
+      }
+
+      // YOLO 형식으로 변환
+      yoloFormat = convertToYOLOFormat(bbox, labelData.className);
+
+      // 바운딩 박스 ID 생성
+      bboxId = `bbox-from-polygon-${Date.now()}-${Math.random()}`;
+
+      // 폴리곤을 shapes에서 제거하고 바운딩 박스를 추가 (시각화)
+      setShapes((prevShapes) => {
+        // 폴리곤 제거 (Cancel 버튼처럼 마지막 shape 제거)
+        const filteredShapes = prevShapes.filter(
+          (shape) => shape.id !== currentShape.id
+        );
+
+        // 변환된 바운딩 박스 추가 (시각화)
+        const newBoundingBox = {
+          type: "boundingBox",
+          zIndex: maxZIndex + 1,
+          x: bbox.x,
+          y: bbox.y,
+          width: bbox.width,
+          height: bbox.height,
+          id: bboxId,
+          color: classColor,
+          className: labelData.className,
+        };
+
+        return [...filteredShapes, newBoundingBox];
+      });
+      setMaxZIndex(maxZIndex + 1);
+
+      // 콜백 함수가 있으면 호출
+      if (onBoundingBoxComplete) {
+        onBoundingBoxComplete(
+          yoloFormat,
+          labelData.className,
+          labelData.objectName,
+          bboxId // 변환된 바운딩 박스 ID 전달
+        );
+      }
+    } else {
+      // 알 수 없는 타입인 경우 에러 처리
+      useToastStore.getState().addToast("Unknown shape type", "error");
+      return;
     }
 
-    setLabelData({
-      className: "No Class",
-      objectName: "",
-      id: 0,
-    });
+    // yoloFormat이 설정되지 않은 경우 에러 처리
+    if (!yoloFormat) {
+      useToastStore
+        .getState()
+        .addToast("Failed to convert shape to YOLO format", "error");
+      return;
+    }
 
-    setShowTooltip(false);
-    setLabelDataFlag(!labelDataFlag);
+    try {
+      const response = await postObjectLabel(
+        jobId,
+        labelData.id,
+        yoloFormat,
+        labelData
+      );
+
+      // 서버 저장 성공 시 shapes에서 해당 shape 제거 (중복 렌더링 방지)
+      // 서버에서 다시 불러올 때 objectsStore에 포함되어 렌더링됨
+      if (bboxId) {
+        setShapes((prevShapes) =>
+          prevShapes.filter((shape) => shape.id !== bboxId)
+        );
+      }
+
+      setLabelData({
+        className: "No Class",
+        objectName: "",
+        id: 0,
+      });
+
+      setShowTooltip(false);
+      setLabelDataFlag(!labelDataFlag);
+
+      useToastStore.getState().addToast("Label saved successfully", "success");
+    } catch (error) {
+      console.error("Error saving label:", error);
+      useToastStore.getState().addToast("Failed to save label", "error");
+    }
   };
 
   // 라벨 취소
