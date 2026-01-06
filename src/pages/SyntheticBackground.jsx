@@ -192,24 +192,23 @@ const ImageContainer = styled.div`
   }
 `;
 
-// 삭제 버튼 스타일
+// 삭제 버튼 스타일 (Header 영역 근처 고정 위치)
 const DeleteButton = styled.button`
-  position: absolute;
   background-color: #f62579;
   color: #ffffff;
   border: 2px solid #ffffff;
   border-radius: 50%;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 10;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: bold;
   transition: all 0.2s;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
 
   &:hover {
     background-color: #d41e66;
@@ -303,7 +302,6 @@ export default function SyntheticBackground() {
   const [cutouts, setCutouts] = useState([]); // 원본 컷아웃 메타데이터
   const { placedObjects, setPlacedObjects } = usePlacedObjectsStore();
   const [activePlacedId, setActivePlacedId] = useState(null); // 현재 선택된 배치 객체
-  const [deleteButtonPosition, setDeleteButtonPosition] = useState(null); // 삭제 버튼 위치
   const cutoutCacheRef = useRef(new Map());
   const [, forceRender] = useState(0);
   // 사이드바에서 선택된 컷아웃 (아직 배치 안 됨)
@@ -367,14 +365,20 @@ export default function SyntheticBackground() {
   }, [bgImage]);
 
   useEffect(() => {
-    // 캔버스 크기 === 이미지 크기로 조정
+    // 캔버스 크기를 배경 이미지의 실제 표시 영역에 맞추기
     const canvas = bgCanvasRef.current;
     const img = document.querySelector(".target-image");
     if (!canvas || !img) return;
 
-    canvas.width = img.clientWidth;
-    canvas.height = img.clientHeight;
-  }, [bgImage]);
+    // 배경 이미지의 실제 표시 영역 크기 (padding 제외)
+    const imgRect = img.getBoundingClientRect();
+    const actualImageWidth = imgRect.width;
+    const actualImageHeight = imgRect.height;
+
+    // 캔버스 크기를 배경 이미지의 실제 표시 영역에 맞춤
+    canvas.width = actualImageWidth;
+    canvas.height = actualImageHeight;
+  }, [bgImage, imageStyle]);
 
   // 저장된 세션스토리지 클립아웃 소스 불러오기
   useEffect(() => {
@@ -400,48 +404,6 @@ export default function SyntheticBackground() {
       });
     });
   }, [placedObjects, bgImage, activePlacedId]);
-
-  // activePlacedId가 변경될 때 삭제 버튼 위치 계산
-  useEffect(() => {
-    if (!activePlacedId || !bgCanvasRef.current) {
-      setDeleteButtonPosition(null);
-      return;
-    }
-
-    const activeObj = placedObjects.find((obj) => obj.id === activePlacedId);
-    if (!activeObj) {
-      setDeleteButtonPosition(null);
-      return;
-    }
-
-    const bbox = calculateBBox(activeObj, cutoutCacheRef);
-    if (!bbox) {
-      setDeleteButtonPosition(null);
-      return;
-    }
-
-    // 캔버스의 실제 화면 위치 계산
-    const canvas = bgCanvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const img = document.querySelector(".target-image");
-    if (!img) return;
-
-    const imgRect = img.getBoundingClientRect();
-
-    // 이미지와 캔버스의 스케일 비율 계산
-    const scaleX = img.clientWidth / canvas.width;
-    const scaleY = img.clientHeight / canvas.height;
-
-    // bbox 좌표를 화면 좌표로 변환
-    const screenX = imgRect.left + bbox.x * scaleX;
-    const screenY = imgRect.top + bbox.y * scaleY;
-
-    // 삭제 버튼을 bbox 좌상단에 배치
-    setDeleteButtonPosition({
-      left: bbox.x + bbox.width / 2, // 버튼 크기의 절반만큼 왼쪽으로
-      top: bbox.y + bbox.height + 10, // 버튼 크기의 절반만큼 위로
-    });
-  }, [activePlacedId, placedObjects, bgImage]);
 
   useEffect(() => {
     cutouts.forEach((cutout) => {
@@ -535,10 +497,10 @@ export default function SyntheticBackground() {
     }
 
     const canvas = bgCanvasRef.current;
-    const rect = canvas.getBoundingClientRect();
+    if (!canvas) return;
 
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    // 배경 이미지의 실제 표시 영역 기준으로 좌표 변환
+    const { x: mouseX, y: mouseY } = getCanvasPos(e, canvas);
 
     const scale = 0.3;
     const { bbox } = cutout;
@@ -706,7 +668,6 @@ export default function SyntheticBackground() {
 
     setPlacedObjects((prev) => prev.filter((obj) => obj.id !== activePlacedId));
     setActivePlacedId(null);
-    setDeleteButtonPosition(null);
 
     useToastStore
       .getState()
@@ -731,7 +692,6 @@ export default function SyntheticBackground() {
           prev.filter((obj) => obj.id !== activePlacedId)
         );
         setActivePlacedId(null);
-        setDeleteButtonPosition(null);
         useToastStore
           .getState()
           .addToast("Object deleted successfully.", "success");
@@ -855,9 +815,23 @@ export default function SyntheticBackground() {
         <section>
           <Header>
             <h3>Background Image</h3>
-            <button onClick={() => fileInputRef.current.click()}>
-              {PlusIcon} Add
-            </button>
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              {/* 삭제 버튼 (객체 선택 시에만 표시) */}
+              {activePlacedId && (
+                <DeleteButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeletePlacedObject();
+                  }}
+                  title="Delete object (Backspace)"
+                >
+                  ×
+                </DeleteButton>
+              )}
+              <button onClick={() => fileInputRef.current.click()}>
+                {PlusIcon} Add
+              </button>
+            </div>
             <input
               type="file"
               accept="image/*"
@@ -893,22 +867,6 @@ export default function SyntheticBackground() {
               onDragOver={(e) => e.preventDefault()} // 필수
               onDrop={handleCanvasDrop}
             />
-            {/* 삭제 버튼 (activePlacedId가 있을 때만 표시) */}
-            {deleteButtonPosition && activePlacedId && (
-              <DeleteButton
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeletePlacedObject();
-                }}
-                style={{
-                  left: `${deleteButtonPosition.left}px`,
-                  top: `${deleteButtonPosition.top}px`,
-                }}
-                title="Delete object (Backspace)"
-              >
-                ×
-              </DeleteButton>
-            )}
           </ImageContainer>
           <footer>
             <Navigation>

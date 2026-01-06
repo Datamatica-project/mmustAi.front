@@ -683,7 +683,9 @@ export default function DataAugmentation() {
         <Navigation>
           <button
             onClick={() =>
-              navigate(`/project/${projectId}/synthetic-data/background`)
+              navigate(
+                `/project/${projectId}/synthetic-data/${taskId}/background`
+              )
             }
           >
             {LeftArrowIcon}Prev

@@ -330,19 +330,23 @@ export function flattenComposite({ bgCanvasRef }) {
   const img = document.querySelector(".target-image");
   if (!bgCanvas || !img) return;
 
+  // 배경 이미지의 실제 표시 영역 크기 (padding 제외)
+  const imgRect = img.getBoundingClientRect();
+  const actualImageWidth = imgRect.width;
+  const actualImageHeight = imgRect.height;
+
   const outCanvas = document.createElement("canvas");
-  // outCanvas.width = bgCanvas.width;
-  // outCanvas.height = bgCanvas.height;
-  outCanvas.width = img.clientWidth;
-  outCanvas.height = img.clientHeight;
+  // 배경 이미지의 실제 표시 영역 크기로 설정
+  outCanvas.width = actualImageWidth;
+  outCanvas.height = actualImageHeight;
 
   const ctx = outCanvas.getContext("2d");
 
-  // 1️⃣ 배경 이미지 draw
+  // 1️⃣ 배경 이미지 draw (원본 크기로, 비율 유지)
   ctx.drawImage(img, 0, 0, outCanvas.width, outCanvas.height);
 
-  // 2️⃣ 컷아웃 캔버스 draw (이미 합성된 상태)
-  ctx.drawImage(bgCanvas, 0, 0);
+  // 2️⃣ 컷아웃 캔버스 draw (캔버스와 배경 이미지가 같은 크기이므로 그대로 그리기)
+  ctx.drawImage(bgCanvas, 0, 0, outCanvas.width, outCanvas.height);
 
   return new Promise((resolve) => {
     outCanvas.toBlob((blob) => {
