@@ -304,7 +304,7 @@ export default function Project() {
         </div>
       </Overview>
       <TaskContainer>
-        <h2>Task list</h2>
+        <h2>Task lists</h2>
         <TaskTable
           value={projectTasksData}
           page={page}
