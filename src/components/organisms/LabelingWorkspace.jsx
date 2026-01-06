@@ -681,7 +681,9 @@ export default function LabelingWorkspace({ fileId, fileName, jobData }) {
           onChange={setSelectButton}
         />
         <DescriptionText>
-          You can label by drawing a bounding box through click and drag
+          {selectButton === "Polygon"
+            ? "You can label by clicking to add points and right-clicking to close the polygon."
+            : "You can label by drawing a bounding box through click and drag"}
         </DescriptionText>
 
         {/* 거절 메시지가 있는 경우 확인 버튼 표시 */}

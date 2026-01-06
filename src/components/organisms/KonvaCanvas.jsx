@@ -313,6 +313,18 @@ export default function KonvaCanvas({
       centerY = points.reduce((sum, p) => sum + p.y, 0) / points.length;
     }
 
+    // 현재 job의 오브젝트 개수를 기반으로 자동 ID 생성
+    // objectsStore에 현재 job의 모든 오브젝트가 포함되어 있으므로 길이를 사용
+    const currentObjectCount = objectsStore?.length || 0;
+    const nextObjectId = currentObjectCount + 1;
+
+    // labelData에 자동 생성된 ID를 objectName으로 설정
+    setLabelData({
+      className: "No Class",
+      objectName: nextObjectId.toString(), // 자동 생성된 ID를 문자열로 저장
+      id: 0,
+    });
+
     // 툴팁 크기 추정 (대략적인 값, 실제 크기에 맞게 조정 필요)
     const TOOLTIP_WIDTH = 300; // 툴팁의 대략적인 너비
     const TOOLTIP_HEIGHT = 330; // 툴팁의 대략적인 높이
@@ -520,11 +532,9 @@ export default function KonvaCanvas({
 
   // 라벨 저장
   const handleLabelSave = async () => {
-    // 예외처리
-    if (labelData.className === "No Class" || labelData.objectName === "") {
-      useToastStore
-        .getState()
-        .addToast("Please select a class and enter an object name", "error");
+    // 예외처리: 클래스만 선택되었는지 확인 (objectName은 자동 생성되므로 검증 불필요)
+    if (labelData.className === "No Class") {
+      useToastStore.getState().addToast("Please select a class", "error");
       return;
     }
 
@@ -652,7 +662,7 @@ export default function KonvaCanvas({
 
       setLabelData({
         className: "No Class",
-        objectName: "",
+        objectName: "", // 다음 오브젝트를 위해 초기화
         id: 0,
       });
 
@@ -679,7 +689,7 @@ export default function KonvaCanvas({
     setShowTooltip(false);
     setLabelData({
       className: "No Class",
-      objectName: "",
+      objectName: "", // 다음 오브젝트를 위해 초기화
       id: 0,
     });
   };

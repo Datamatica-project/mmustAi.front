@@ -6,6 +6,7 @@ const Container = styled.header`
   align-items: flex-end;
   gap: 13px;
   h1 {
+    line-height: 1.5;
     font-size: 32px;
     font-weight: 700;
     text-overflow: ellipsis;
@@ -14,6 +15,7 @@ const Container = styled.header`
     max-width: 700px;
   }
   p {
+    line-height: 1.5;
     font-size: 15px;
     font-weight: 700;
     color: #9c9ec9;
