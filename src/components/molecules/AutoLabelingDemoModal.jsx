@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import styled from "styled-components";
+import { useNavigate } from "react-router-dom";
 import {
   getAutoLabelingResult,
   getProject,
@@ -438,6 +439,92 @@ const LoopProgressInfo = styled.div`
   text-align: center;
 `;
 
+// 라벨링된 클래스 정보 표시용 스타일 컴포넌트
+const LabeledClassesSection = styled.div`
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #3b3c5d;
+`;
+
+const LabeledClassesTitle = styled.div`
+  font-size: 14px;
+  color: #b6b5c5;
+  font-weight: 500;
+  margin-bottom: 12px;
+`;
+
+const LabeledClassesList = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const ClassBadge = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #2a2b3d;
+  border-radius: 6px;
+  border: 1px solid #3b3c5d;
+`;
+
+const ClassColorDot = styled.div`
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: ${(props) => props.color || "#ffffff"};
+`;
+
+const ClassName = styled.span`
+  font-size: 13px;
+  color: #ffffff;
+  font-weight: 500;
+`;
+
+const ClassCount = styled.span`
+  font-size: 13px;
+  color: #b6b5c5;
+  font-weight: 600;
+`;
+
+const ClassBalanceInfo = styled(InfoMessage)`
+  margin-top: 12px;
+`;
+
+// 학습이 안된 클래스 섹션 스타일 (비슷한 UI)
+const IncompleteClassesSection = styled.div`
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #3b3c5d;
+`;
+
+const IncompleteClassesTitle = styled.div`
+  font-size: 14px;
+  color: #b6b5c5;
+  font-weight: 500;
+  margin-bottom: 12px;
+`;
+
+const IncompleteClassesList = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+`;
+
+const IncompleteClassLink = styled.a`
+  font-size: 13px;
+  color: #f62579;
+  text-decoration: underline;
+  cursor: pointer;
+  transition: color 0.2s;
+
+  &:hover {
+    color: #ea257f;
+  }
+`;
+
 // 최종 결과 화면용 스타일 (기존 AutoLabelingModal과 동일)
 const TabButtons = styled.div`
   display: flex;
@@ -593,11 +680,18 @@ export default function AutoLabelingDemoModal({
   projectData,
   onComplete,
 }) {
+  const navigate = useNavigate();
   // 최대 루프 횟수 (변수로 관리 가능)
   const MAX_LOOP_COUNT = 4;
 
+  // AI 학습에 필요한 최소 데이터 수 (Classes.jsx와 동일한 값)
+  const REQUIRED_DATA_COUNT = 1000;
+  const STORAGE_KEY = "customClasses";
+
   const [autoLabelingStatus, setAutoLabelingStatus] = useState("idle"); // idle, running, loopComplete, finalComplete, showingResults
   const [manualLabelingProgress, setManualLabelingProgress] = useState(0);
+  const [labeledClasses, setLabeledClasses] = useState([]); // 현재 라벨링된 클래스 정보
+  const [incompleteClasses, setIncompleteClasses] = useState([]); // 학습이 완료되지 않은 클래스 목록
   const [currentLoop, setCurrentLoop] = useState(0); // 현재 루프 번호 (1부터 시작)
   const [loopResults, setLoopResults] = useState([]); // 각 루프의 결과 저장 [{ loop: 1, passed: 10, failed: 2 }, ...]
   const [currentLoopResult, setCurrentLoopResult] = useState({
@@ -680,6 +774,8 @@ export default function AutoLabelingDemoModal({
     setIsLoopRunning(false);
     setResultImages([]);
     setFailedImages([]);
+    setLabeledClasses([]);
+    setIncompleteClasses([]);
     setActiveTab("pass");
     setSelectedImage(null);
     setIsImageModalOpen(false);
@@ -695,7 +791,89 @@ export default function AutoLabelingDemoModal({
       setManualLabelingProgress(10);
     };
 
+    // 현재 라벨링된 클래스 정보 가져오기
+    const currentLabbeldObject = async () => {
+      const projectDetail = await getProjectDetail(projectId);
+      // labelInfos에서 objectInfos가 있는 클래스만 필터링하여 저장
+      // 각 클래스의 이름과 objectInfos.length를 저장
+      const classesWithObjects = (projectDetail.data?.labelInfos || [])
+        .filter(
+          (labelInfo) =>
+            labelInfo.objectInfos && labelInfo.objectInfos.length > 0
+        )
+        .map((labelInfo) => ({
+          name: labelInfo.name,
+          count: labelInfo.objectInfos.length,
+          color: labelInfo.hexColor || "#ffffff",
+        }));
+      setLabeledClasses(classesWithObjects);
+
+      // 완료되지 않은 클래스 목록 가져오기
+      // 기준: Classes 페이지에 있고 Training Complete 상태인 클래스만 완료된 클래스
+      // Classes 페이지에 없거나, Training Complete가 아닌 클래스는 미완료 클래스
+      // 로컬 스토리지에서 추가된 클래스 가져오기
+      const stored = localStorage.getItem(STORAGE_KEY);
+      let customClasses = [];
+      if (stored) {
+        try {
+          customClasses = JSON.parse(stored);
+        } catch (error) {
+          console.error("로컬 스토리지 데이터 파싱 오류:", error);
+        }
+      }
+
+      // Classes 페이지에 있는 모든 클래스 정보 (기본 클래스 + 추가 클래스)
+      // 기본 클래스는 모두 Training Complete 상태 (dataCount = REQUIRED_DATA_COUNT)
+      const defaultClassesWithData = defaultClasses.map((cls) => ({
+        name: cls.name.toLowerCase(),
+        dataCount: REQUIRED_DATA_COUNT, // 기본 클래스는 모두 완료 상태
+      }));
+
+      // 추가 클래스는 dataCount 확인 필요
+      const customClassesWithData = customClasses.map((cls) => ({
+        name: cls.name.toLowerCase(),
+        dataCount: cls.dataCount || 0,
+      }));
+
+      const allClassesPageClasses = [
+        ...defaultClassesWithData,
+        ...customClassesWithData,
+      ];
+
+      // Training Complete 상태인 클래스만 완료된 클래스로 간주
+      // (dataCount >= REQUIRED_DATA_COUNT)
+      const completedClassNames = new Set(
+        allClassesPageClasses
+          .filter((cls) => cls.dataCount >= REQUIRED_DATA_COUNT)
+          .map((cls) => cls.name)
+      );
+
+      // labeledClasses에서 완료되지 않은 클래스 필터링
+      // 1. Classes 페이지에 없는 클래스
+      // 2. Classes 페이지에 있지만 Training Complete가 아닌 클래스
+      const incomplete = classesWithObjects
+        .filter((labeledClass) => {
+          const labeledClassName = labeledClass.name.toLowerCase();
+          // Classes 페이지에 없으면 미완료
+          const existsInClassesPage = allClassesPageClasses.some(
+            (cls) => cls.name === labeledClassName
+          );
+          if (!existsInClassesPage) {
+            return true;
+          }
+          // Classes 페이지에 있지만 Training Complete가 아니면 미완료
+          return !completedClassNames.has(labeledClassName);
+        })
+        .map((classInfo) => ({
+          name: classInfo.name,
+          color: classInfo.color || "#ffffff",
+        }));
+
+      setIncompleteClasses(incomplete);
+    };
+
     fetchAutoLabelingStatus();
+    currentLabbeldObject();
   }, [isOpen, projectId]);
 
   // 최종 결과 보기 함수 (useCallback으로 감싸서 의존성 문제 해결)
@@ -1118,6 +1296,57 @@ export default function AutoLabelingDemoModal({
                 You can start auto labeling. Minimum 10% manual labeling is
                 completed.
               </InfoMessage>
+            )}
+            {/* 현재 라벨링된 클래스별 오브젝트 개수 표시 */}
+            {labeledClasses.length > 0 && (
+              <LabeledClassesSection>
+                <LabeledClassesTitle>
+                  Labeled Objects by Class
+                </LabeledClassesTitle>
+                <LabeledClassesList>
+                  {labeledClasses.map((classInfo, index) => (
+                    <ClassBadge key={index}>
+                      <ClassColorDot color={classInfo.color} />
+                      <ClassName>{classInfo.name}</ClassName>
+                      <ClassCount>({classInfo.count})</ClassCount>
+                    </ClassBadge>
+                  ))}
+                </LabeledClassesList>
+                {/* 클래스별 개수 균형 안내 메시지 */}
+                {labeledClasses.length > 1 && (
+                  <ClassBalanceInfo type="warning">
+                    For optimal model training performance, try to maintain a
+                    similar number of objects across all classes. <br />
+                    Balanced class distribution helps improve model accuracy and
+                    generalization.
+                  </ClassBalanceInfo>
+                )}
+              </LabeledClassesSection>
+            )}
+            {/* 학습이 완료되지 않은 클래스 표시 */}
+            {incompleteClasses.length > 0 && (
+              <IncompleteClassesSection>
+                <IncompleteClassesTitle>
+                  Classes Not Yet Trained
+                </IncompleteClassesTitle>
+                <IncompleteClassesList>
+                  {incompleteClasses.map((classInfo, index) => (
+                    <ClassBadge key={index}>
+                      <ClassColorDot color={classInfo.color} />
+                      <ClassName>{classInfo.name}</ClassName>
+                    </ClassBadge>
+                  ))}
+                </IncompleteClassesList>
+                <IncompleteClassLink
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate("/classes");
+                    handleClose();
+                  }}
+                >
+                  Go to train these classes →
+                </IncompleteClassLink>
+              </IncompleteClassesSection>
             )}
           </ProgressSection>
 

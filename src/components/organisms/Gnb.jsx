@@ -1,7 +1,13 @@
 import React from "react";
 import styled from "styled-components";
 import logoPng from "../../assets/image/datamatica_Logo.png";
-import { Link, NavLink, useNavigate, useParams } from "react-router-dom";
+import {
+  Link,
+  NavLink,
+  useNavigate,
+  useParams,
+  useLocation,
+} from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
 import { UserIcon } from "../icons/HomeIcons";
 
@@ -83,6 +89,7 @@ export default function Gnb() {
   const navigate = useNavigate();
   const { clearToken } = useAuthStore();
   const params = useParams();
+  const location = useLocation();
 
   const handleLogout = (e) => {
     e.preventDefault();
@@ -94,12 +101,22 @@ export default function Gnb() {
 
   const handleGoBack = (e) => {
     e.preventDefault();
+    // 현재 경로가 /create-project인 경우 홈으로 이동
+    if (location.pathname === "/create-project") {
+      navigate("/");
+      return;
+    }
+
+    // 프로젝트, 태스크, 잡 파라미터에 따른 뒤로가기 처리
     if (params.jobId) {
       navigate(`/project/${params.projectId}/task/${params.taskId}`);
     } else if (!params.jobId && params.taskId) {
       navigate(`/project/${params.projectId}`);
     } else if (!params.jobId && !params.taskId && params.projectId) {
       navigate(`/`);
+    } else {
+      // 모든 파라미터가 없는 경우 (예: /create-project 외의 다른 경로) 홈으로 이동
+      navigate("/");
     }
   };
 
