@@ -4,13 +4,26 @@ import { computeCompositeBBoxes } from "./labelUtils";
 
 export function loadImage(src) {
   return new Promise((resolve, reject) => {
+    // src가 유효한지 확인
+    if (!src) {
+      reject(new Error("Image source is empty or invalid"));
+      return;
+    }
+
     const img = new Image();
 
     // CORS 이슈 방지 (같은 origin이면 없어도 됨)
     img.crossOrigin = "anonymous";
 
+    // 이미지 로드 성공 시 resolve
     img.onload = () => resolve(img);
-    img.onerror = (err) => reject(err);
+
+    // 이미지 로드 실패 시 더 명확한 에러 메시지와 함께 reject
+    img.onerror = (err) => {
+      const errorMessage = `Failed to load image from source: ${src}`;
+      console.error(errorMessage, err);
+      reject(new Error(errorMessage));
+    };
 
     img.src = src;
   });
@@ -274,54 +287,97 @@ export async function prepareCutout(
   cutoutCacheRef,
   forceRender
 ) {
+  // 이미 캐시에 있으면 스킵
   if (cutoutCacheRef.current.has(sourceId)) return;
 
-  const maskRecord = await getMaskFromIndexedDB(sourceId);
-  const imageURL = await loadImageFromIndexedDB(sourceId);
-  const img = await loadImage(imageURL);
-
-  const offCanvas = document.createElement("canvas");
-  offCanvas.width = bbox.width;
-  offCanvas.height = bbox.height;
-  const ctx = offCanvas.getContext("2d", { willReadFrequently: true });
-
-  // bbox 영역 draw
-  ctx.drawImage(
-    img,
-    bbox.x,
-    bbox.y,
-    bbox.width,
-    bbox.height,
-    0,
-    0,
-    bbox.width,
-    bbox.height
-  );
-
-  // mask → alpha 적용
-  const imageData = ctx.getImageData(0, 0, bbox.width, bbox.height);
-  const data = imageData.data;
-  const mask = maskRecord.mask;
-
-  let idx = 0;
-  for (let by = 0; by < bbox.height; by++) {
-    for (let bx = 0; bx < bbox.width; bx++) {
-      if (mask[bbox.y + by][bbox.x + bx] === 0) {
-        data[idx * 4 + 3] = 0;
-      }
-      idx++;
+  try {
+    // IndexedDB에서 마스크 데이터 가져오기 (null 체크)
+    const maskRecord = await getMaskFromIndexedDB(sourceId);
+    if (!maskRecord) {
+      console.warn(`Mask record not found for sourceId: ${sourceId}`);
+      return;
     }
+
+    // IndexedDB에서 이미지 blob URL 가져오기 (null 체크)
+    const imageURL = await loadImageFromIndexedDB(sourceId);
+    if (!imageURL) {
+      console.warn(`Image URL not found for sourceId: ${sourceId}`);
+      return;
+    }
+
+    // blob URL을 사용하여 이미지 로드 (에러 처리 포함)
+    let img;
+    try {
+      img = await loadImage(imageURL);
+    } catch (error) {
+      // blob URL이 만료되었을 수 있으므로 재생성 시도
+      console.warn(
+        `Failed to load image with URL, retrying: ${sourceId}`,
+        error
+      );
+      // IndexedDB에서 다시 blob을 가져와서 새로운 URL 생성
+      const retryImageURL = await loadImageFromIndexedDB(sourceId);
+      if (!retryImageURL) {
+        console.error(
+          `Failed to retry loading image for sourceId: ${sourceId}`
+        );
+        return;
+      }
+      img = await loadImage(retryImageURL);
+    }
+
+    // 캔버스 생성 및 이미지 그리기
+    const offCanvas = document.createElement("canvas");
+    offCanvas.width = bbox.width;
+    offCanvas.height = bbox.height;
+    const ctx = offCanvas.getContext("2d", { willReadFrequently: true });
+
+    // bbox 영역 draw
+    ctx.drawImage(
+      img,
+      bbox.x,
+      bbox.y,
+      bbox.width,
+      bbox.height,
+      0,
+      0,
+      bbox.width,
+      bbox.height
+    );
+
+    // mask → alpha 적용
+    const imageData = ctx.getImageData(0, 0, bbox.width, bbox.height);
+    const data = imageData.data;
+    const mask = maskRecord.mask;
+
+    let idx = 0;
+    for (let by = 0; by < bbox.height; by++) {
+      for (let bx = 0; bx < bbox.width; bx++) {
+        if (mask[bbox.y + by][bbox.x + bx] === 0) {
+          data[idx * 4 + 3] = 0;
+        }
+        idx++;
+      }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    // 캐시에 저장
+    cutoutCacheRef.current.set(sourceId, {
+      offCanvas,
+      width: bbox.width,
+      height: bbox.height,
+    });
+
+    // 렌더링 강제 업데이트 (forceRender가 제공된 경우에만)
+    if (forceRender && typeof forceRender === "function") {
+      forceRender((prev) => prev + 1);
+    }
+  } catch (error) {
+    // 전체 에러 처리: IndexedDB 접근 실패, 이미지 로드 실패 등 모든 에러를 캐치
+    console.error(`Failed to prepare cutout for sourceId: ${sourceId}`, error);
+    // 에러가 발생해도 앱이 크래시되지 않도록 조용히 실패 처리
   }
-
-  ctx.putImageData(imageData, 0, 0);
-
-  cutoutCacheRef.current.set(sourceId, {
-    offCanvas,
-    width: bbox.width,
-    height: bbox.height,
-  });
-
-  forceRender((prev) => prev + 1);
 }
 
 // 배경이미지와 컷아웃 캔버스를 합성하여 Blob 반환

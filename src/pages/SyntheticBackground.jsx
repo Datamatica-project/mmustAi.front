@@ -406,9 +406,21 @@ export default function SyntheticBackground() {
   }, [placedObjects, bgImage, activePlacedId]);
 
   useEffect(() => {
-    cutouts.forEach((cutout) => {
-      prepareCutout(cutout.id, cutout.bbox, cutoutCacheRef, forceRender);
-    });
+    // cutouts 배열의 각 항목에 대해 prepareCutout을 비동기로 실행
+    // 에러가 발생해도 다른 cutout 처리에 영향을 주지 않도록 Promise.allSettled 사용
+    const processCutouts = async () => {
+      try {
+        await Promise.allSettled(
+          cutouts.map((cutout) =>
+            prepareCutout(cutout.id, cutout.bbox, cutoutCacheRef, forceRender)
+          )
+        );
+      } catch (error) {
+        // prepareCutout 내부에서 이미 에러 처리를 하므로 여기서는 로그만 남김
+        console.error("Error processing cutouts:", error);
+      }
+    };
+    processCutouts();
   }, [cutouts]);
 
   // 썸네일 이미지 클릭
@@ -511,8 +523,16 @@ export default function SyntheticBackground() {
     const x = mouseX - width / 2;
     const y = mouseY - height / 2;
 
-    await prepareCutout(cutout.id, cutout.bbox, cutoutCacheRef);
+    // prepareCutout 실행 (에러가 발생해도 객체는 배치되도록 처리)
+    try {
+      await prepareCutout(cutout.id, cutout.bbox, cutoutCacheRef);
+    } catch (error) {
+      // prepareCutout 내부에서 이미 에러 처리를 하므로 여기서는 로그만 남김
+      // 에러가 발생해도 객체는 배치되도록 계속 진행
+      console.error(`Failed to prepare cutout for drop: ${cutout.id}`, error);
+    }
 
+    // 객체 배치 (prepareCutout 실패 여부와 관계없이 진행)
     setPlacedObjects((prev) => [
       ...prev,
       {

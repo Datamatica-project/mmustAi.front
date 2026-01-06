@@ -63,8 +63,23 @@ export async function saveImageToIndexedDB(id, fileOrBlob) {
 
 // 이미지 로드
 export async function loadImageFromIndexedDB(id) {
-  const record = await cutoutDB.get("images", id);
-  if (!record) return null;
+  try {
+    const record = await cutoutDB.get("images", id);
+    if (!record || !record.blob) {
+      console.warn(`Image record not found for id: ${id}`);
+      return null;
+    }
 
-  return URL.createObjectURL(record.blob);
+    // blob이 유효한지 확인 후 URL 생성
+    if (record.blob instanceof Blob) {
+      return URL.createObjectURL(record.blob);
+    } else {
+      console.error(`Invalid blob type for id: ${id}`);
+      return null;
+    }
+  } catch (error) {
+    // IndexedDB 접근 실패 시 에러 처리
+    console.error(`Failed to load image from IndexedDB for id: ${id}`, error);
+    return null;
+  }
 }
