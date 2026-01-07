@@ -159,6 +159,7 @@ export async function saveMetaData(className, bbox, fullMask) {
 
   // IndexedDB에 원본 이미지 저장 (fetch로 가져온 원본 blob 사용)
   // 업로드용 blob과는 별도로 원본 이미지를 저장하기 위해 다시 fetch
+  console.log(img.src);
   const originalResponse = await fetch(img.src);
   const originalBlob = await originalResponse.blob();
   await saveImageToIndexedDB(id, originalBlob);
