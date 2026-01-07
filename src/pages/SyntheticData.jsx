@@ -478,14 +478,33 @@ export default function SyntheticData() {
     drawMaskOnCanvas(merged, document.querySelector(".mask-canvas"), setBbox);
   }
 
-  function handleCutout(fullMask) {
+  // ✅ 세그 컷아웃 저장 처리
+  // - saveMetaData가 async 이므로 반드시 await 해서
+  //   IndexedDB/세션 저장이 끝난 뒤에만 다음 단계(리셋, 토스트)를 실행
+  async function handleCutout(fullMask) {
+    // 클래스 미선택 시 즉시 안내
     if (!selectedClass) {
       useToastStore.getState().addToast("Please select a class", "error");
       return;
     }
-    saveMetaData(selectedClass, bbox, fullMask);
-    handleReset();
-    useToastStore.getState().addToast("Cutout saved", "success");
+
+    // 마스크가 없는 상태에서 저장을 시도하는 경우 방어
+    if (!fullMask) {
+      useToastStore.getState().addToast("Please create a mask first", "error");
+      return;
+    }
+
+    try {
+      // 🔹 메타데이터 + 원본/마스크를 모두 저장 완료될 때까지 대기
+      await saveMetaData(selectedClass, bbox, fullMask);
+
+      // 🔹 저장이 끝난 뒤에만 UI 상태 리셋
+      handleReset();
+      useToastStore.getState().addToast("Cutout saved", "success");
+    } catch (error) {
+      console.error("Failed to save cutout:", error);
+      useToastStore.getState().addToast("Failed to save cutout", "error");
+    }
   }
 
   // 클릭 이벤트

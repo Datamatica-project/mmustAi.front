@@ -79,6 +79,7 @@ export async function saveMetaData(className, bbox, fullMask) {
   const id = generateUUID();
 
   let sourceId = null;
+  let originalBlob = null; // ✅ IndexedDB에 저장할 원본 blob (fetch 대신 canvas blob 재사용)
 
   try {
     // canvas에서 직접 PNG blob 생성 (타입과 확장자 보장)
@@ -104,6 +105,11 @@ export async function saveMetaData(className, bbox, fullMask) {
         0.85 // 최고 품질
       );
     });
+
+    // ✅ 여기서 만든 blob을 그대로 "원본 이미지"로도 사용
+    //    - blob: URL을 다시 fetch 해서 가져오는 불안정한 패턴 제거
+    //    - 배포 환경에서 발생하던 blob:... ERR_FILE_NOT_FOUND 방지
+    originalBlob = blob;
 
     // 파일명 생성 (확장자 보장)
     // img.src에서 파일명을 추출하되, 확장자가 없거나 유효하지 않으면 .png 추가
@@ -157,11 +163,16 @@ export async function saveMetaData(className, bbox, fullMask) {
   const prev = JSON.parse(sessionStorage.getItem("cutoutSources")) || [];
   sessionStorage.setItem("cutoutSources", JSON.stringify([...prev, metadata]));
 
-  // IndexedDB에 원본 이미지 저장 (fetch로 가져온 원본 blob 사용)
-  // 업로드용 blob과는 별도로 원본 이미지를 저장하기 위해 다시 fetch
-  console.log(img.src);
-  const originalResponse = await fetch(img.src);
-  const originalBlob = await originalResponse.blob();
+  // ✅ IndexedDB에 원본 이미지 저장
+  //    - 위에서 만든 originalBlob(canvas 기반)을 그대로 저장
+  //    - blob: URL 재-fetch 로직 제거로 배포 환경에서의 Failed to fetch 제거
+  if (!originalBlob) {
+    // 이 경우는 이론상 거의 없지만, 방어적으로 에러 로그만 남김
+    console.error(
+      "originalBlob is null. Failed to save original image to IndexedDB"
+    );
+    return;
+  }
   await saveImageToIndexedDB(id, originalBlob);
   await saveMaskToIndexedDB(id, fullMask, img.naturalWidth, img.naturalHeight);
 }

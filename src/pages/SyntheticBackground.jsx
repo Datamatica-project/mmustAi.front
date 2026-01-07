@@ -525,7 +525,7 @@ export default function SyntheticBackground() {
 
     // prepareCutout 실행 (에러가 발생해도 객체는 배치되도록 처리)
     try {
-      await prepareCutout(cutout.id, cutout.bbox, cutoutCacheRef);
+    await prepareCutout(cutout.id, cutout.bbox, cutoutCacheRef);
     } catch (error) {
       // prepareCutout 내부에서 이미 에러 처리를 하므로 여기서는 로그만 남김
       // 에러가 발생해도 객체는 배치되도록 계속 진행
@@ -848,9 +848,9 @@ export default function SyntheticBackground() {
                   ×
                 </DeleteButton>
               )}
-              <button onClick={() => fileInputRef.current.click()}>
-                {PlusIcon} Add
-              </button>
+            <button onClick={() => fileInputRef.current.click()}>
+              {PlusIcon} Add
+            </button>
             </div>
             <input
               type="file"
